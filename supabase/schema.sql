@@ -24,6 +24,7 @@ create table if not exists tickets (
   priority text not null,
   status text not null,
   assigned_to text references technicians(id),
+  latest_detail text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

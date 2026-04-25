@@ -49,6 +49,22 @@ async function setTicketStatus(ticketId, status, detail = "") {
   await loadState();
 }
 
+function detailForStatus(status) {
+  if (status === "Blocked") {
+    return window.prompt("Blocked reason", "Spare part required") || "";
+  }
+  if (status === "Resolved") {
+    return window.prompt("Resolution note", "Fixed permanently") || "";
+  }
+  if (status === "Reopened") {
+    return window.prompt("Reopen / rejection reason", "Issue not fixed") || "";
+  }
+  if (status === "Closed") {
+    return "Manager approved resolution";
+  }
+  return "";
+}
+
 async function assignTicket(ticketId, technicianId) {
   const technician = technicianById(technicianId);
   const payload = { technicianId };
@@ -137,6 +153,7 @@ function ticketCard(ticket, mode) {
         <span class="badge">${assigned ? assigned.name : "Unassigned"}</span>
         ${mode === "admin" && suggested ? `<span class="badge">Suggested: ${suggested.name}</span>` : ""}
       </div>
+      ${ticket.latestDetail ? `<p class="ticket-meta">Detail: ${ticket.latestDetail}</p>` : ""}
       ${ticket.history?.length ? `<p class="ticket-meta">Last: ${ticket.history[ticket.history.length - 1].action}</p>` : ""}
       ${actions ? `<div class="actions">${actions}</div>` : ""}
     </article>
@@ -198,7 +215,21 @@ function renderReports() {
       <strong>${value}</strong>
       <span>${label}</span>
     </article>
-  `).join("");
+  `).join("") + renderAlerts();
+}
+
+function renderAlerts() {
+  const alerts = state.reports.alerts || [];
+  if (!alerts.length) return "";
+  return `
+    <article class="report-card alert-card">
+      <strong>${alerts.length}</strong>
+      <span>Operational Alerts</span>
+      <ul>
+        ${alerts.slice(0, 6).map((alert) => `<li>${alert.ticketId}: ${alert.message}</li>`).join("")}
+      </ul>
+    </article>
+  `;
 }
 
 function render() {
@@ -228,7 +259,9 @@ document.addEventListener("click", async (event) => {
   const statusTarget = event.target.dataset.status;
   if (statusTarget) {
     const [ticketId, status] = statusTarget.split(":");
-    await setTicketStatus(ticketId, status);
+    const detail = detailForStatus(status);
+    if (["Blocked", "Resolved", "Reopened"].includes(status) && !detail.trim()) return;
+    await setTicketStatus(ticketId, status, detail);
   }
 
   const assignId = event.target.dataset.assignButton;

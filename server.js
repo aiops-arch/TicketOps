@@ -17,6 +17,14 @@ const supabase = useSupabase
     })
   : null;
 
+const ACTIVE_STATUSES = ["New", "Assigned", "Acknowledged", "In Progress", "Blocked", "Resolved", "Verification Pending", "Reopened"];
+const VALID_TICKET_STATUSES = [...ACTIVE_STATUSES, "Closed", "Cancelled"];
+const DETAIL_REQUIRED_STATUSES = {
+  Blocked: "Blocked reason is required",
+  Reopened: "Reopen/rejection reason is required",
+  Resolved: "Resolution note is required"
+};
+
 app.use(cors());
 app.use(express.json({ limit: "8mb" }));
 app.use(express.static(__dirname));
@@ -39,6 +47,7 @@ const seed = {
       priority: "P1",
       status: "New",
       assignedTo: "",
+      latestDetail: "",
       createdAt: "2026-04-25T00:00:00.000Z",
       history: [{ at: "2026-04-25T00:00:00.000Z", action: "Ticket created by Outlet 1 manager" }]
     },
@@ -51,6 +60,7 @@ const seed = {
       priority: "P3",
       status: "Assigned",
       assignedTo: "T4",
+      latestDetail: "",
       createdAt: "2026-04-25T00:00:00.000Z",
       history: [
         { at: "2026-04-25T00:00:00.000Z", action: "Ticket created" },
@@ -107,6 +117,18 @@ function smartSuggestion(db, ticket) {
 
 function reports(db) {
   const openTickets = db.tickets.filter((ticket) => ticket.status !== "Closed");
+  const alerts = openTickets.flatMap((ticket) => {
+    const ticketAlerts = [];
+    if (ticket.priority === "P1") ticketAlerts.push({ type: "critical", ticketId: ticket.id, message: "Critical ticket open" });
+    if (!ticket.assignedTo) ticketAlerts.push({ type: "unassigned", ticketId: ticket.id, message: "Ticket needs assignment" });
+    if (ticket.status === "Blocked") ticketAlerts.push({ type: "blocked", ticketId: ticket.id, message: "Blocked ticket needs admin action" });
+    if (ticket.status === "Reopened") ticketAlerts.push({ type: "reopened", ticketId: ticket.id, message: "Reopened ticket needs review" });
+    if (ticket.status === "Resolved" || ticket.status === "Verification Pending") {
+      ticketAlerts.push({ type: "verification", ticketId: ticket.id, message: "Manager verification pending" });
+    }
+    return ticketAlerts;
+  });
+
   return {
     open: openTickets.length,
     critical: openTickets.filter((ticket) => ticket.priority === "P1").length,
@@ -125,7 +147,8 @@ function reports(db) {
       name: tech.name,
       status: tech.status,
       openTickets: activeWorkload(db, tech.id)
-    }))
+    })),
+    alerts
   };
 }
 
@@ -151,6 +174,7 @@ function mapTicket(row, history = []) {
     priority: row.priority,
     status: row.status,
     assignedTo: row.assigned_to || "",
+    latestDetail: row.latest_detail || "",
     createdAt: row.created_at,
     history
   };
@@ -222,7 +246,8 @@ async function createTicket(payload) {
         note: ticket.note,
         priority: ticket.priority,
         status: ticket.status,
-        assigned_to: null
+        assigned_to: null,
+        latest_detail: ""
       })
     );
     await addSupabaseHistory(ticket.id, "Ticket created by manager");
@@ -273,17 +298,25 @@ async function updateTicketStatus(ticketId, status, detail) {
   const db = await loadDb();
   const ticket = db.tickets.find((item) => item.id === ticketId);
   if (!ticket) return { status: 404, body: { error: "Ticket not found" } };
+  if (!VALID_TICKET_STATUSES.includes(status)) return { status: 400, body: { error: "Invalid ticket status" } };
+  if (DETAIL_REQUIRED_STATUSES[status] && !String(detail || "").trim()) {
+    return { status: 400, body: { error: DETAIL_REQUIRED_STATUSES[status] } };
+  }
 
   const action = detail || `Status changed to ${status}`;
   if (useSupabase) {
     await requireSupabase(
-      await supabase.from("tickets").update({ status, updated_at: new Date().toISOString() }).eq("id", ticketId)
+      await supabase
+        .from("tickets")
+        .update({ status, latest_detail: action, updated_at: new Date().toISOString() })
+        .eq("id", ticketId)
     );
     await addSupabaseHistory(ticketId, action);
     return { status: 200, body: { ok: true } };
   }
 
   ticket.status = status;
+  ticket.latestDetail = action;
   ticket.history.push({ at: new Date().toISOString(), action });
   writeJsonDb(db);
   return { status: 200, body: ticket };

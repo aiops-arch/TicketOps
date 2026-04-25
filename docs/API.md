@@ -9,6 +9,7 @@
 - Assignment to unavailable technicians requires an override reason.
 - When a technician becomes unavailable, assigned but unstarted tickets return to the admin queue.
 - Every ticket status change must add a history event.
+- `Blocked`, `Resolved`, and `Reopened` status changes require an operational detail/reason.
 - Closed and cancelled tickets are excluded from active workload.
 
 ## Endpoints
@@ -22,6 +23,14 @@
 | PATCH | `/api/tickets/:id/status` | Change ticket status |
 | PATCH | `/api/technicians/:id/status` | Update technician availability |
 | POST | `/api/reset` | Reset demo data |
+
+## Status Detail Requirements
+
+| Status | Required Detail |
+| --- | --- |
+| Blocked | Blocked reason, such as spare part, vendor, access, approval, safety, or diagnosis |
+| Resolved | Resolution note, such as fixed permanently, temporary fix, part replaced, cleaning, or vendor completed |
+| Reopened | Manager rejection or issue-return reason |
 
 ## Frontend Rules
 
