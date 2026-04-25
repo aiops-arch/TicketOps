@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TicketOps</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>TicketOps</h1>
+        <p>Maintenance control for restaurant outlets</p>
+      </div>
+      <button id="resetData" class="ghost-button">Reset Demo</button>
+    </header>
+
+    <main class="app-shell">
+      <nav class="tabs" aria-label="Role views">
+        <button class="tab is-active" data-view="manager">Manager</button>
+        <button class="tab" data-view="admin">Admin</button>
+        <button class="tab" data-view="technician">Technician</button>
+        <button class="tab" data-view="reports">Reports</button>
+      </nav>
+
+      <section id="manager" class="view is-active">
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>Create Ticket</h2>
+            <span>Under 10 seconds</span>
+          </div>
+          <form id="ticketForm" class="ticket-form">
+            <label>
+              Outlet
+              <select id="ticketOutlet" required></select>
+            </label>
+            <label>
+              Category
+              <select id="ticketCategory" required>
+                <option>AC</option>
+                <option>Refrigeration</option>
+                <option>Electrical</option>
+                <option>Plumbing</option>
+                <option>Kitchen Equipment</option>
+                <option>Gas</option>
+                <option>POS / IT</option>
+                <option>Civil</option>
+              </select>
+            </label>
+            <label>
+              Impact
+              <select id="ticketImpact" required>
+                <option value="Service stopped">Service stopped</option>
+                <option value="Food safety risk">Food safety risk</option>
+                <option value="Customer visible">Customer visible</option>
+                <option value="Normal repair">Normal repair</option>
+                <option value="Cosmetic">Cosmetic</option>
+              </select>
+            </label>
+            <label>
+              Issue note
+              <input id="ticketNote" placeholder="Example: Freezer not cooling">
+            </label>
+            <button type="submit" class="primary-button">Create Ticket</button>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>Manager Verification</h2>
+            <span>Approve or reopen</span>
+          </div>
+          <div id="managerTickets" class="card-list"></div>
+        </div>
+      </section>
+
+      <section id="admin" class="view">
+        <div class="dashboard-grid">
+          <div class="metric urgent">
+            <span>Critical</span>
+            <strong id="criticalCount">0</strong>
+          </div>
+          <div class="metric">
+            <span>Unassigned</span>
+            <strong id="newCount">0</strong>
+          </div>
+          <div class="metric">
+            <span>Blocked</span>
+            <strong id="blockedCount">0</strong>
+          </div>
+          <div class="metric">
+            <span>Present Techs</span>
+            <strong id="presentCount">0</strong>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>Technician Attendance</h2>
+            <span>Assignment reads this live</span>
+          </div>
+          <div id="attendanceBoard" class="tech-grid"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>Admin Ticket Queue</h2>
+            <span>Assign, reassign, escalate</span>
+          </div>
+          <div id="adminTickets" class="card-list"></div>
+        </div>
+      </section>
+
+      <section id="technician" class="view">
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>My Work</h2>
+            <span>Acknowledge, start, block, resolve</span>
+          </div>
+          <label class="inline-control">
+            Technician
+            <select id="activeTechnician"></select>
+          </label>
+          <div id="technicianTickets" class="card-list"></div>
+        </div>
+      </section>
+
+      <section id="reports" class="view">
+        <div class="panel">
+          <div class="panel-heading">
+            <h2>Business Reports</h2>
+            <span>Live demo metrics</span>
+          </div>
+          <div id="reportsBoard" class="report-grid"></div>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
