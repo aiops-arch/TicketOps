@@ -1,5 +1,7 @@
 *.pdf
+*.apk
 node_modules/
 dist/
+www/
 .env
 .DS_Store

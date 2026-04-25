@@ -1,15 +1,18 @@
 :root {
-  --bg: #f5f7fb;
+  --bg: #f6f8f7;
   --surface: #ffffff;
-  --text: #172033;
-  --muted: #667085;
-  --line: #d9dee8;
-  --blue: #2563eb;
-  --purple: #7c3aed;
-  --green: #15803d;
-  --orange: #f97316;
-  --red: #dc2626;
-  --shadow: 0 8px 28px rgba(18, 32, 55, 0.08);
+  --text: #1c2523;
+  --muted: #64716d;
+  --line: #dce4e0;
+  --blue: #2f6f73;
+  --purple: #695b8c;
+  --green: #3f7d5a;
+  --orange: #b96f33;
+  --red: #b4443f;
+  --amber-soft: #fff4df;
+  --blue-soft: #e9f4f4;
+  --green-soft: #edf7ef;
+  --shadow: 0 10px 30px rgba(40, 56, 51, 0.08);
 }
 
 * {
@@ -35,7 +38,7 @@ select {
   justify-content: space-between;
   gap: 16px;
   padding: 18px 20px;
-  background: #101828;
+  background: #182421;
   color: #fff;
 }
 
@@ -46,7 +49,7 @@ select {
 
 .topbar p {
   margin: 4px 0 0;
-  color: #cbd5e1;
+  color: #c9d7d2;
   font-size: 13px;
 }
 
@@ -277,31 +280,31 @@ select {
   min-height: 24px;
   border-radius: 999px;
   padding: 0 9px;
-  background: #eef2ff;
-  color: #3730a3;
+  background: var(--blue-soft);
+  color: #225b5f;
   font-size: 12px;
   font-weight: 700;
 }
 
 .badge.priority-p1 {
-  background: #fee2e2;
-  color: #991b1b;
+  background: #fde9e7;
+  color: #8f2f2b;
 }
 
 .badge.priority-p2 {
-  background: #ffedd5;
-  color: #9a3412;
+  background: var(--amber-soft);
+  color: #855522;
 }
 
 .badge.status-closed {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--green-soft);
+  color: #2f6847;
 }
 
 .badge.status-blocked,
 .badge.status-reopened {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--amber-soft);
+  color: #855522;
 }
 
 .tech-card strong,

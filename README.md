@@ -7,12 +7,26 @@ The product replaces WhatsApp-based maintenance communication with a structured 
 ## Current Status
 
 - `docs/PLAN.md` contains the business and developer-ready plan.
-- `index.html`, `styles.css`, and `app.js` contain the first clickable prototype.
-- The prototype uses browser local storage and can be opened directly without a server.
+- `docs/WORKFLOW.md` explains how the maintenance problem starts and how the system handles it end to end.
+- `docs/API.md` contains REST API rules.
+- `docs/SUPABASE.md` contains the Supabase storage model.
+- `index.html`, `styles.css`, and `app.js` contain the mobile-first frontend.
+- `server.js` contains the REST API backend.
 
 ## Open Prototype
 
-Open `index.html` in a browser.
+Run:
+
+```bash
+npm install
+npm start
+```
+
+Then open:
+
+```text
+http://localhost:3000
+```
 
 ## Core Workflow
 
@@ -21,3 +35,21 @@ Manager creates ticket -> System logs ticket -> Admin assigns technician -> Tech
 ## Attendance Rule
 
 Technicians must be present and available for normal assignment. Admin can override with reason.
+
+## Storage
+
+Production target is Supabase Postgres. Add credentials in `.env` using `.env.example`.
+
+Without Supabase credentials, the API uses `data/db.json` for local development.
+
+## Mobile
+
+Android uses Capacitor and can produce an APK when Android SDK/JDK are installed.
+
+iOS uses Capacitor iOS, but final IPA builds require macOS and Xcode.
+
+Current Android debug APK:
+
+```text
+TicketOps-debug.apk
+```

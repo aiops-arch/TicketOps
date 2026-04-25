@@ -1,0 +1,40 @@
+{
+  "outlets": ["Outlet 1", "Outlet 2", "Outlet 3", "Outlet 4"],
+  "technicians": [
+    { "id": "T1", "name": "Technician 1", "skill": "AC", "status": "Present", "workload": 0 },
+    { "id": "T2", "name": "Technician 2", "skill": "Refrigeration", "status": "Present", "workload": 0 },
+    { "id": "T3", "name": "Technician 3", "skill": "Electrical", "status": "Break", "workload": 0 },
+    { "id": "T4", "name": "Technician 4", "skill": "Plumbing", "status": "Absent", "workload": 0 }
+  ],
+  "tickets": [
+    {
+      "id": "TK-1001",
+      "outlet": "Outlet 1",
+      "category": "Refrigeration",
+      "impact": "Food safety risk",
+      "note": "Freezer temperature rising",
+      "priority": "P1",
+      "status": "New",
+      "assignedTo": "",
+      "createdAt": "2026-04-25T00:00:00.000Z",
+      "history": [
+        { "at": "2026-04-25T00:00:00.000Z", "action": "Ticket created by Outlet 1 manager" }
+      ]
+    },
+    {
+      "id": "TK-1002",
+      "outlet": "Outlet 3",
+      "category": "Plumbing",
+      "impact": "Normal repair",
+      "note": "Dishwash area drain slow",
+      "priority": "P3",
+      "status": "Assigned",
+      "assignedTo": "T4",
+      "createdAt": "2026-04-25T00:00:00.000Z",
+      "history": [
+        { "at": "2026-04-25T00:00:00.000Z", "action": "Ticket created" },
+        { "at": "2026-04-25T00:00:00.000Z", "action": "Assigned to Technician 4" }
+      ]
+    }
+  ]
+}

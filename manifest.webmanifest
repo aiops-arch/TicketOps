@@ -1,0 +1,17 @@
+{
+  "name": "TicketOps Maintenance",
+  "short_name": "TicketOps",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#101828",
+  "description": "Restaurant maintenance tickets, attendance, assignment and reporting.",
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
