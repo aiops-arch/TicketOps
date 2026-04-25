@@ -53,3 +53,5 @@ Current Android debug APK:
 ```text
 TicketOps-debug.apk
 ```
+
+For a physical phone, the APK needs the REST API running on a reachable URL. If the app cannot connect, it will show an API URL field.

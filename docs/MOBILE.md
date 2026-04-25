@@ -31,3 +31,9 @@ Apple app target:
 Web, Android, and iOS must all use the same backend REST API.
 
 Frontend clients must not contain Supabase service keys.
+
+For packaged mobile testing:
+
+- Android emulator default API URL is `http://10.0.2.2:3000`.
+- Physical phones need a reachable API URL, such as a deployed server or the PC LAN IP.
+- If the API is unreachable, the app shows an API URL field so the server can be changed without rebuilding.

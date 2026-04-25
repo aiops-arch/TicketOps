@@ -1,4 +1,5 @@
-const API_BASE = localStorage.getItem("ticketops-api-base") || "";
+const NATIVE_DEFAULT_API = location.protocol === "capacitor:" ? "http://10.0.2.2:3000" : "";
+const API_BASE = localStorage.getItem("ticketops-api-base") || NATIVE_DEFAULT_API;
 
 let state = {
   outlets: [],
@@ -248,7 +249,16 @@ loadState().catch((error) => {
     <section class="panel">
       <h2>API connection failed</h2>
       <p>${error.message}</p>
-      <p>Run <strong>npm start</strong> and open <strong>http://localhost:3000</strong>.</p>
+      <p>Run <strong>npm start</strong> and open <strong>http://localhost:3000</strong> for web testing.</p>
+      <label class="inline-control">
+        API server URL
+        <input id="apiBaseInput" value="${API_BASE}" placeholder="https://your-api-domain.com">
+      </label>
+      <button class="primary-button" id="saveApiBase">Save API URL</button>
     </section>
   `;
+  document.querySelector("#saveApiBase").addEventListener("click", () => {
+    localStorage.setItem("ticketops-api-base", document.querySelector("#apiBaseInput").value.trim());
+    window.location.reload();
+  });
 });
