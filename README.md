@@ -28,6 +28,12 @@ Then open:
 http://localhost:3000
 ```
 
+On Windows, you can also double-click:
+
+```text
+START-WEB.bat
+```
+
 ## Core Workflow
 
 Manager creates ticket -> System logs ticket -> Admin assigns technician -> Technician acknowledges and works -> Technician resolves with proof -> Manager verifies -> Ticket closes or reopens.
@@ -55,3 +61,15 @@ TicketOps-debug.apk
 ```
 
 For a physical phone, the APK needs the REST API running on a reachable URL. If the app cannot connect, it will show an API URL field.
+
+Full usage guide:
+
+```text
+docs/USER_GUIDE.md
+```
+
+Rebuild APK:
+
+```text
+BUILD-APK.bat
+```
