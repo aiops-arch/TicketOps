@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "build:web": "powershell -ExecutionPolicy Bypass -File scripts/build-web.ps1",
+    "build:web": "node scripts/build-web.js",
     "cap:sync": "npx cap sync",
     "android:open": "npx cap open android",
     "android:build": "cd android && gradlew.bat assembleDebug",
