@@ -287,3 +287,10 @@ where not exists (
 
 update tickets set assigned_to = 'T3' where assigned_to = 'T4';
 delete from technicians where id = 'T4';
+
+grant usage on schema public to service_role;
+grant all privileges on all tables in schema public to service_role;
+grant all privileges on all sequences in schema public to service_role;
+
+alter default privileges in schema public grant all on tables to service_role;
+alter default privileges in schema public grant all on sequences to service_role;
