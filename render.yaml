@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: ticketops
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build:web
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: REQUIRE_SUPABASE
+        value: "true"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false

@@ -11,6 +11,8 @@ TicketOps uses Supabase Postgres as the intended production data store.
 5. Fill `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
 6. Start the API with `npm start`.
 
+For Render production deploys, set `REQUIRE_SUPABASE=true` so the server fails fast if the Supabase variables are missing.
+
 ## Storage Rules
 
 - The backend uses the Supabase service role key.
@@ -29,3 +31,5 @@ TicketOps uses Supabase Postgres as the intended production data store.
 ## Production Note
 
 Do not expose `SUPABASE_SERVICE_ROLE_KEY` in frontend code or mobile app builds.
+
+For zero-cost hosting guidance, see `docs/DEPLOY_RENDER_SUPABASE.md`.

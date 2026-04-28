@@ -217,12 +217,11 @@ Category: Refrigeration
 Priority: P1
 
 System checks:
-Technician 2 is present and skilled in Refrigeration.
-Technician 1 is present but AC skilled.
-Technician 3 is on break.
-Technician 4 is absent.
+Rahul Patil is present and skilled in Refrigeration.
+Vicky is present but AC skilled.
+Abrar is on break.
 
-Suggested technician: Technician 2
+Suggested technician: Rahul Patil
 ```
 
 ## 10. Mid-Shift Change Workflow

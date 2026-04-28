@@ -48,6 +48,14 @@ Production target is Supabase Postgres. Add credentials in `.env` using `.env.ex
 
 Without Supabase credentials, the API uses `data/db.json` for local development.
 
+## Free Production Deploy
+
+Use Supabase for production data and Render for the Node/web service.
+
+- `render.yaml` contains the Render Blueprint.
+- `supabase/schema.sql` creates and seeds the database.
+- `docs/DEPLOY_RENDER_SUPABASE.md` has the zero-cost deployment steps and free-tier caveats.
+
 ## Mobile
 
 Android uses Capacitor and can produce an APK when Android SDK/JDK are installed.

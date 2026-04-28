@@ -4,4 +4,7 @@ node_modules/
 dist/
 www/
 .env
+.vercel/
+.reference-git-recover/
+*.log
 .DS_Store

@@ -3,39 +3,185 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>TicketOps</title>
-    <meta name="theme-color" content="#101828">
+    <title>TicketOps Live Command</title>
+    <meta name="theme-color" content="#12211f">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <header class="topbar">
-      <div>
-        <h1>TicketOps</h1>
-        <p>Maintenance control for restaurant outlets</p>
+      <div class="nav-ambient" aria-hidden="true"></div>
+      <div class="brand-lockup">
+        <img class="brand-mark" src="assets/ticketops-logo-tight.png" alt="" aria-hidden="true">
+        <div>
+          <h1>Restaurant Maintenance</h1>
+        </div>
       </div>
-      <button id="resetData" class="ghost-button">Reset Demo</button>
+      <nav class="tabs" aria-label="Role views">
+        <button class="tab is-active" data-view="dashboard"><span>01</span>Dashboard</button>
+        <button class="tab" data-view="manager"><span>02</span>Manager</button>
+        <button class="tab" data-view="admin"><span>03</span>Admin</button>
+        <button class="tab" data-view="scheduler"><span>04</span>Scheduler</button>
+        <button class="tab" data-view="masters"><span>05</span>Masters</button>
+        <button class="tab" data-view="technician"><span>06</span>Technician</button>
+        <button class="tab" data-view="reports"><span>07</span>Reports</button>
+        <a class="tab portal-tab" href="customer.html"><span>08</span>Customer Portal</a>
+      </nav>
+      <div class="topbar-actions" aria-label="Account controls">
+        <div class="account-dock">
+          <div class="live-pill" aria-live="polite">
+            <span class="pulse-dot"></span>
+            <span id="syncStatus">Syncing live data</span>
+          </div>
+          <div id="userPill" class="user-pill is-hidden" aria-live="polite">
+            <span id="userName">Not signed in</span>
+            <strong id="userPost">Guest</strong>
+          </div>
+          <div class="account-actions">
+            <button id="resetData" class="ghost-button danger-soft" title="Reset demo data">Reset</button>
+            <button id="logoutButton" class="ghost-button is-hidden" title="Sign out">Logout</button>
+          </div>
+        </div>
+      </div>
     </header>
 
-    <main class="app-shell">
-      <nav class="tabs" aria-label="Role views">
-        <button class="tab is-active" data-view="manager">Manager</button>
-        <button class="tab" data-view="admin">Admin</button>
-        <button class="tab" data-view="technician">Technician</button>
-        <button class="tab" data-view="reports">Reports</button>
-      </nav>
+    <section id="loginScreen" class="login-screen">
+      <div class="login-grid login-grid-simple">
+        <form id="loginForm" class="login-panel">
+          <div>
+            <span class="section-kicker">TicketOps Access</span>
+            <h2>Sign in</h2>
+          </div>
+          <label>
+            Username
+            <input id="loginUsername" autocomplete="username" required placeholder="username">
+          </label>
+          <label>
+            Password
+            <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="password">
+          </label>
+          <p id="loginError" class="form-error" role="alert"></p>
+          <button type="submit" class="primary-button">Enter Command Center</button>
+        </form>
+      </div>
+    </section>
 
-      <section id="manager" class="view is-active">
-        <div class="panel">
+    <main class="app-shell is-hidden" id="appShell">
+      <section class="intel-strip" aria-label="Live operations intelligence">
+        <article class="intel-card critical">
+          <span class="intel-label">SLA Heat</span>
+          <strong id="intelSla">Loading</strong>
+          <p id="intelSlaDetail">Reading queue pressure</p>
+        </article>
+        <article class="intel-card dispatch">
+          <span class="intel-label">Smart Dispatch</span>
+          <strong id="intelDispatch">Loading</strong>
+          <p id="intelDispatchDetail">Checking technician coverage</p>
+        </article>
+        <article class="intel-card verification">
+          <span class="intel-label">Closure Loop</span>
+          <strong id="intelVerify">Loading</strong>
+          <p id="intelVerifyDetail">Watching manager decisions</p>
+        </article>
+        <article class="intel-card clock-card">
+          <span class="intel-label">Control Room</span>
+          <strong id="liveClock">--:--</strong>
+          <p id="storageMode">Connecting</p>
+        </article>
+      </section>
+
+      <section id="dashboard" class="view is-active">
+        <div class="command-hero">
+          <div>
+            <span class="section-kicker">Live Command Dashboard</span>
+            <h2 id="dashboardTitle">Operations Pulse</h2>
+            <p id="dashboardSubtitle">Reading outlets, tickets, attendance, and dispatch movement.</p>
+          </div>
+          <div class="hero-metrics">
+            <article>
+              <span>Open</span>
+              <strong id="dashOpen">0</strong>
+            </article>
+            <article>
+              <span>Critical</span>
+              <strong id="dashCritical">0</strong>
+            </article>
+            <article>
+              <span>Ready Techs</span>
+              <strong id="dashReady">0/0</strong>
+            </article>
+          </div>
+        </div>
+
+        <div class="command-grid">
+          <div class="panel dashboard-panel wide">
+            <div class="panel-heading">
+              <div>
+                <span class="section-kicker">Outlet Health</span>
+                <h2>aiko surat / Capiche</h2>
+              </div>
+              <span class="heading-chip">Live pressure</span>
+            </div>
+            <div id="outletHealthBoard" class="outlet-health-grid"></div>
+          </div>
+
+          <div class="panel dashboard-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="section-kicker">Needs Action</span>
+                <h2>Next Moves</h2>
+              </div>
+              <span class="heading-chip">Role-aware</span>
+            </div>
+            <div id="needsActionBoard" class="action-list"></div>
+          </div>
+
+          <div class="panel dashboard-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="section-kicker">Dispatch Brain</span>
+                <h2>Coverage</h2>
+              </div>
+              <span class="heading-chip">Skill + time</span>
+            </div>
+            <div id="dispatchBrainBoard" class="dispatch-grid"></div>
+          </div>
+
+          <div class="panel dashboard-panel wide">
+            <div class="panel-heading">
+              <div>
+                <span class="section-kicker">Today Movement</span>
+                <h2>Recent Activity</h2>
+              </div>
+              <span class="heading-chip">Latest 5</span>
+            </div>
+            <div id="dashboardActivityBoard" class="activity-list compact"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="manager" class="view">
+        <div class="panel intake-panel">
           <div class="panel-heading">
-            <h2>Create Ticket</h2>
-            <span>Under 10 seconds</span>
+            <div>
+              <span class="section-kicker">Manager Desk</span>
+              <h2>Create Ticket</h2>
+            </div>
+            <span id="managerScope" class="heading-chip">Auto dispatch ready</span>
           </div>
           <form id="ticketForm" class="ticket-form">
             <label>
               Outlet
               <select id="ticketOutlet" required></select>
+            </label>
+            <label>
+              Asset
+              <select id="ticketAsset"></select>
+            </label>
+            <label>
+              Area
+              <input id="ticketArea" placeholder="Kitchen, storage, rooftop">
             </label>
             <label>
               Category
@@ -62,16 +208,25 @@
             </label>
             <label>
               Issue note
-              <input id="ticketNote" placeholder="Example: Freezer not cooling">
+              <input id="ticketNote" required placeholder="Example: Freezer not cooling">
             </label>
-            <button type="submit" class="primary-button">Create Ticket</button>
+            <label class="photo-upload">
+              Issue photo
+              <input id="ticketPhoto" type="file" accept="image/*" capture="environment">
+            </label>
+            <div id="ticketPriorityPreview" class="ticket-priority-preview" aria-live="polite"></div>
+            <button type="submit" class="primary-button">Create + Auto Assign</button>
           </form>
+          <p id="ticketCreateResult" class="form-hint" aria-live="polite"></p>
         </div>
 
         <div class="panel">
           <div class="panel-heading">
-            <h2>Manager Verification</h2>
-            <span>Approve or reopen</span>
+            <div>
+              <span class="section-kicker">Quality Gate</span>
+              <h2>Manager Verification</h2>
+            </div>
+            <span class="heading-chip">Close or reopen</span>
           </div>
           <div id="managerTickets" class="card-list"></div>
         </div>
@@ -84,7 +239,7 @@
             <strong id="criticalCount">0</strong>
           </div>
           <div class="metric">
-            <span>Unassigned</span>
+            <span>Pending Tasks</span>
             <strong id="newCount">0</strong>
           </div>
           <div class="metric">
@@ -92,38 +247,200 @@
             <strong id="blockedCount">0</strong>
           </div>
           <div class="metric">
-            <span>Present Techs</span>
+            <span>Open Tickets</span>
             <strong id="presentCount">0</strong>
           </div>
         </div>
 
         <div class="panel">
           <div class="panel-heading">
-            <h2>Technician Attendance</h2>
-            <span>Assignment reads this live</span>
+            <div>
+              <span class="section-kicker">People Signal</span>
+              <h2>Technician Attendance</h2>
+            </div>
+            <span class="heading-chip">Dispatch-aware</span>
           </div>
           <div id="attendanceBoard" class="tech-grid"></div>
         </div>
 
         <div class="panel">
           <div class="panel-heading">
-            <h2>Admin Ticket Queue</h2>
-            <span>Assign, reassign, escalate</span>
+            <div>
+              <span class="section-kicker">Field Visibility</span>
+              <h2>Technician Dashboards</h2>
+            </div>
+            <span class="heading-chip">Today tasks + active jobs</span>
+          </div>
+          <div id="adminTechnicianDashboard" class="admin-tech-dashboard"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="section-kicker">Control Queue</span>
+              <h2>Admin Ticket Queue</h2>
+            </div>
+            <span class="heading-chip">Suggested technician</span>
           </div>
           <div id="adminTickets" class="card-list"></div>
+        </div>
+
+      </section>
+
+      <section id="scheduler" class="view">
+        <div class="panel scheduler-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="section-kicker">Maintenance Scheduler</span>
+              <h2>Checklist Rules</h2>
+            </div>
+            <span class="heading-chip">Daily / weekly generation</span>
+          </div>
+          <form id="maintenanceRuleForm" class="scheduler-form">
+            <label>
+              Category
+              <select id="ruleCategory" required></select>
+            </label>
+            <label>
+              Task title
+              <input id="ruleTitle" required placeholder="Example: Inspect gas valves">
+            </label>
+            <label>
+              Phase
+              <select id="rulePhase">
+                <option>Morning Opening</option>
+                <option>Mid-Day</option>
+                <option>Closing</option>
+                <option>Weekly</option>
+              </select>
+            </label>
+            <label>
+              Frequency
+              <select id="ruleFrequency">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </label>
+            <button type="submit" class="primary-button">Add Rule</button>
+          </form>
+          <p id="ruleCreateResult" class="form-hint" aria-live="polite"></p>
+          <div class="scheduler-layout">
+            <div>
+              <span class="section-kicker">Active Rules</span>
+              <div id="maintenanceRulesBoard" class="rule-list"></div>
+            </div>
+            <div>
+              <span class="section-kicker">Tomorrow Preview</span>
+              <div id="maintenancePreviewBoard" class="rule-list"></div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <section id="masters" class="view">
+        <div class="panel master-control-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="section-kicker">Master Control</span>
+              <h2>Masters</h2>
+            </div>
+            <span class="heading-chip">Outlet / category / asset / technician</span>
+          </div>
+          <div class="master-form-grid">
+            <form id="outletForm" class="master-form">
+              <strong>Outlet</strong>
+              <label>
+                Outlet name
+                <input id="outletName" required placeholder="Example: Aiko Vesu">
+              </label>
+              <button type="submit" class="primary-button">Add Outlet</button>
+            </form>
+
+            <form id="categoryForm" class="master-form">
+              <strong>Category</strong>
+              <label>
+                Category name
+                <input id="categoryName" required placeholder="Example: Gas">
+              </label>
+              <button type="submit" class="primary-button">Add Category</button>
+            </form>
+
+            <form id="assetForm" class="master-form">
+              <strong>Asset</strong>
+              <label>
+                Outlet
+                <select id="assetOutlet" required></select>
+              </label>
+              <label>
+                Category
+                <select id="assetCategory" required></select>
+              </label>
+              <label>
+                Asset name
+                <input id="assetName" required placeholder="Walk-in Freezer">
+              </label>
+              <label>
+                Asset code
+                <input id="assetCode" placeholder="AIKO-REF-01">
+              </label>
+              <button type="submit" class="primary-button">Add Asset</button>
+            </form>
+
+            <form id="technicianForm" class="master-form">
+              <strong>Technician</strong>
+              <label>
+                Name
+                <input id="technicianName" required placeholder="Example: Imran">
+              </label>
+              <label>
+                Skill
+                <select id="technicianSkill"></select>
+              </label>
+              <label>
+                Outlet
+                <select id="technicianOutlet"></select>
+              </label>
+              <button type="submit" class="primary-button">Add Technician</button>
+            </form>
+          </div>
+          <p id="masterCreateResult" class="form-hint" aria-live="polite"></p>
+          <div class="master-board">
+            <div>
+              <span class="section-kicker">Outlets</span>
+              <div id="outletBoard" class="master-list"></div>
+            </div>
+            <div>
+              <span class="section-kicker">Categories</span>
+              <div id="categoryBoard" class="master-list"></div>
+            </div>
+            <div>
+              <span class="section-kicker">Assets</span>
+              <div id="assetBoard" class="master-list"></div>
+            </div>
+            <div>
+              <span class="section-kicker">Technicians</span>
+              <div id="technicianMasterBoard" class="master-list"></div>
+            </div>
+          </div>
         </div>
       </section>
 
       <section id="technician" class="view">
         <div class="panel">
           <div class="panel-heading">
-            <h2>My Work</h2>
-            <span>Acknowledge, start, block, resolve</span>
+            <div>
+              <span class="section-kicker">Field Console</span>
+              <h2>My Work</h2>
+            </div>
+            <span class="heading-chip">Live assignment feed</span>
           </div>
-          <label class="inline-control">
+          <label id="activeTechnicianControl" class="inline-control">
             Technician
             <select id="activeTechnician"></select>
           </label>
+          <div id="technicianDashboard"></div>
+          <div id="technicianAttendanceTools"></div>
           <div id="technicianTickets" class="card-list"></div>
         </div>
       </section>
@@ -131,14 +448,78 @@
       <section id="reports" class="view">
         <div class="panel">
           <div class="panel-heading">
-            <h2>Business Reports</h2>
-            <span>Live demo metrics</span>
+            <div>
+              <span class="section-kicker">Executive Pulse</span>
+              <h2 id="reportsTitle">Business Reports</h2>
+            </div>
+            <span id="reportsScope" class="heading-chip">Live demo metrics</span>
           </div>
+          <div id="reportExportActions" class="export-actions"></div>
           <div id="reportsBoard" class="report-grid"></div>
+        </div>
+      </section>
+
+      <section id="settings" class="view">
+        <div class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="section-kicker">Control Preferences</span>
+              <h2>Settings</h2>
+            </div>
+            <span class="heading-chip">Workspace tools</span>
+          </div>
+          <div id="settingsBoard" class="settings-grid"></div>
+        </div>
+      </section>
+
+      <section id="directory" class="view">
+        <div class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="section-kicker">People & Posts</span>
+              <h2>Team Directory</h2>
+            </div>
+            <span class="heading-chip">Live role map</span>
+          </div>
+          <div id="directoryBoard" class="directory-grid"></div>
+        </div>
+      </section>
+
+      <section id="activity" class="view">
+        <div class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="section-kicker">Audit Trail</span>
+              <h2>Activity</h2>
+            </div>
+            <span class="heading-chip">Recent ticket movement</span>
+          </div>
+          <div id="activityBoard" class="activity-list"></div>
+        </div>
+      </section>
+
+      <section id="system" class="view">
+        <div class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="section-kicker">Deployment Readiness</span>
+              <h2>System</h2>
+            </div>
+            <span class="heading-chip">API and storage</span>
+          </div>
+          <div id="systemBoard" class="system-grid"></div>
         </div>
       </section>
     </main>
 
+    <div id="assetDetailOverlay" class="detail-overlay is-hidden" role="dialog" aria-modal="true" aria-labelledby="assetDetailTitle">
+      <section class="asset-detail-panel">
+        <button type="button" class="detail-close" data-close-asset-detail aria-label="Close asset detail">Close</button>
+        <div id="assetDetailContent"></div>
+      </section>
+    </div>
+
+    <script src="frontend-config.js"></script>
     <script src="app.js"></script>
     <script>
       if ("serviceWorker" in navigator) {

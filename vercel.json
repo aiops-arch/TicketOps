@@ -1,0 +1,33 @@
+{
+  "framework": null,
+  "installCommand": "npm install",
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "www",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/customer",
+      "destination": "/customer.html"
+    },
+    {
+      "source": "/app",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ]
+}

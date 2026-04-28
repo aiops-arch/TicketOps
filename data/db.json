@@ -1,44 +1,207 @@
 {
-  "outlets": [
-    "Outlet 1",
-    "Outlet 2",
-    "Outlet 3",
-    "Outlet 4"
+  "users": [
+    {
+      "id": "U-ADMIN-CHINTAN",
+      "username": "chintan.patel",
+      "name": "Chintan Patel",
+      "post": "Admin Control Panel Operator",
+      "role": "admin",
+      "defaultView": "dashboard",
+      "allowedViews": [
+        "dashboard",
+        "manager",
+        "admin",
+        "technician",
+        "reports"
+      ],
+      "passwordHash": "pbkdf2:120000:982c18b51e794bf4cb87e8642731c2cc:73c5cbd85cb7994067ded367b738fdb5ee55a4aa2c0a0d057d4a5553f2097b44"
+    },
+    {
+      "id": "U-ADMIN-MEET",
+      "username": "meet.patel",
+      "name": "Meet Patel",
+      "post": "Admin Control Panel Operator",
+      "role": "admin",
+      "defaultView": "dashboard",
+      "allowedViews": [
+        "dashboard",
+        "manager",
+        "admin",
+        "technician",
+        "reports"
+      ],
+      "passwordHash": "pbkdf2:120000:bbcdabab57be3c89299580e74f5bdfb5:f4bff0d92c29c9c5f8acb3f73bd2981549ea5e024f80c81590d5de198c10492b"
+    },
+    {
+      "id": "U-MGR-PRATIK",
+      "username": "pratik.patel",
+      "name": "Pratik Patel",
+      "post": "Outlet Manager",
+      "role": "manager",
+      "outlet": "aiko surat",
+      "defaultView": "dashboard",
+      "allowedViews": [
+        "dashboard",
+        "manager",
+        "reports"
+      ],
+      "passwordHash": "pbkdf2:120000:d9778cb8f2cacd1633eeb0239cd22d87:923afc6207abf49b386396850d5df74eda4166b1dfe40a1a97bc87a8a4b6023c"
+    },
+    {
+      "id": "U-MGR-HUSSAIN",
+      "username": "hussain.sheikh",
+      "name": "Hussain Sheikh",
+      "post": "Outlet Manager",
+      "role": "manager",
+      "outlet": "Capiche",
+      "defaultView": "dashboard",
+      "allowedViews": [
+        "dashboard",
+        "manager",
+        "reports"
+      ],
+      "passwordHash": "pbkdf2:120000:5542a0b2e59554516ae58e01deb207ac:52f76c3bf884aac40e9bbeae6bcd36d753cf1d38a15ae1ff45c3549ad24a23db"
+    },
+    {
+      "id": "U-TECH-VICKY",
+      "username": "vicky",
+      "name": "Vicky",
+      "post": "Technician",
+      "role": "technician",
+      "technicianId": "T1",
+      "defaultView": "dashboard",
+      "allowedViews": [
+        "dashboard",
+        "technician",
+        "reports"
+      ],
+      "passwordHash": "pbkdf2:120000:7bfc5ae8cbd0ebb81b40b6b588d26788:aa230c800b2e3483804198abee0567ee6fd021195cbaeabdf82d97725a51d44f"
+    },
+    {
+      "id": "U-TECH-RAHUL",
+      "username": "rahul.patil",
+      "name": "Rahul Patil",
+      "post": "Technician",
+      "role": "technician",
+      "technicianId": "T2",
+      "defaultView": "dashboard",
+      "allowedViews": [
+        "dashboard",
+        "technician",
+        "reports"
+      ],
+      "passwordHash": "pbkdf2:120000:968b19eef77ef131c769fb07e287f00c:cccd93f76578cf8cb992e67e6279b142b933fa89b9cb8a717c484666c61e8556"
+    },
+    {
+      "id": "U-TECH-ABRAR",
+      "username": "abrar",
+      "name": "Abrar",
+      "post": "Technician",
+      "role": "technician",
+      "technicianId": "T3",
+      "defaultView": "dashboard",
+      "allowedViews": [
+        "dashboard",
+        "technician",
+        "reports"
+      ],
+      "passwordHash": "pbkdf2:120000:88f7489f0b8b0ab0bb115b31b9ad9eba:0dbaba9c4c3a887788fed5cefb39ad5e74160eaf49c13a0689d25a69adc77497"
+    }
   ],
+  "outlets": [
+    "aiko surat",
+    "Capiche"
+  ],
+  "categories": [
+    {
+      "id": "C-AC",
+      "name": "AC",
+      "description": "Air conditioning and ventilation"
+    },
+    {
+      "id": "C-REF",
+      "name": "Refrigeration",
+      "description": "Freezers, chillers, cold rooms"
+    },
+    {
+      "id": "C-ELEC",
+      "name": "Electrical",
+      "description": "Power, panels, lighting"
+    },
+    {
+      "id": "C-PLUMB",
+      "name": "Plumbing",
+      "description": "Water supply, drains, dishwash area"
+    },
+    {
+      "id": "C-KITCHEN",
+      "name": "Kitchen Equipment",
+      "description": "Ovens, fryers, burners, dishwashers"
+    }
+  ],
+  "assets": [
+    {
+      "id": "A-1001",
+      "outlet": "aiko surat",
+      "category": "Refrigeration",
+      "name": "Walk-in Freezer",
+      "code": "AIKO-REF-01",
+      "status": "Active",
+      "notes": "Primary cold storage"
+    },
+    {
+      "id": "A-1002",
+      "outlet": "Capiche",
+      "category": "Plumbing",
+      "name": "Dishwash Drain Line",
+      "code": "CAP-PLUMB-01",
+      "status": "Active",
+      "notes": "Back-of-house wash area"
+    }
+  ],
+  "tasks": [],
+  "maintenanceRules": [],
   "technicians": [
     {
       "id": "T1",
-      "name": "Technician 1",
+      "name": "Vicky",
       "skill": "AC",
       "status": "Present",
-      "workload": 0
+      "workload": 0,
+      "quality": 92,
+      "serviceOutlets": [
+        "aiko surat",
+        "Capiche"
+      ]
     },
     {
       "id": "T2",
-      "name": "Technician 2",
+      "name": "Rahul Patil",
       "skill": "Refrigeration",
       "status": "Present",
-      "workload": 0
+      "workload": 0,
+      "quality": 95,
+      "serviceOutlets": [
+        "aiko surat"
+      ]
     },
     {
       "id": "T3",
-      "name": "Technician 3",
-      "skill": "Electrical",
-      "status": "Break",
-      "workload": 0
-    },
-    {
-      "id": "T4",
-      "name": "Technician 4",
+      "name": "Abrar",
       "skill": "Plumbing",
-      "status": "Absent",
-      "workload": 0
+      "status": "Break",
+      "workload": 0,
+      "quality": 89,
+      "serviceOutlets": [
+        "Capiche"
+      ]
     }
   ],
+  "attendancePlans": [],
   "tickets": [
     {
       "id": "TK-1001",
-      "outlet": "Outlet 1",
+      "outlet": "aiko surat",
       "category": "Refrigeration",
       "impact": "Food safety risk",
       "note": "Freezer temperature rising",
@@ -46,24 +209,26 @@
       "status": "New",
       "assignedTo": "",
       "latestDetail": "",
+      "createdBy": "U-MGR-PRATIK",
       "createdAt": "2026-04-25T00:00:00.000Z",
       "history": [
         {
           "at": "2026-04-25T00:00:00.000Z",
-          "action": "Ticket created by Outlet 1 manager"
+          "action": "Ticket created by Pratik Patel"
         }
       ]
     },
     {
       "id": "TK-1002",
-      "outlet": "Outlet 3",
+      "outlet": "Capiche",
       "category": "Plumbing",
       "impact": "Normal repair",
       "note": "Dishwash area drain slow",
       "priority": "P3",
       "status": "Assigned",
-      "assignedTo": "T4",
+      "assignedTo": "T3",
       "latestDetail": "",
+      "createdBy": "U-MGR-HUSSAIN",
       "createdAt": "2026-04-25T00:00:00.000Z",
       "history": [
         {
@@ -72,7 +237,7 @@
         },
         {
           "at": "2026-04-25T00:00:00.000Z",
-          "action": "Assigned to Technician 4"
+          "action": "Assigned to Abrar"
         }
       ]
     }
