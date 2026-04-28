@@ -1,0 +1,1210 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:ui';
+
+import 'package:flutter/material.dart';
+
+const defaultApiBase = String.fromEnvironment(
+  'TICKETOPS_API_BASE',
+  defaultValue: 'https://ticketops-api.onrender.com',
+);
+
+void main() {
+  runApp(const TicketOpsMobileApp());
+}
+
+class TicketOpsMobileApp extends StatelessWidget {
+  const TicketOpsMobileApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'TicketOps',
+      theme: ThemeData(
+        useMaterial3: true,
+        scaffoldBackgroundColor: AppColors.page,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppColors.accent,
+          brightness: Brightness.light,
+          surface: Colors.white,
+        ),
+        textTheme:
+            const TextTheme(
+              headlineLarge: TextStyle(
+                fontWeight: FontWeight.w800,
+                height: .95,
+              ),
+              headlineMedium: TextStyle(fontWeight: FontWeight.w800, height: 1),
+              titleLarge: TextStyle(fontWeight: FontWeight.w800),
+              titleMedium: TextStyle(fontWeight: FontWeight.w800),
+              bodyMedium: TextStyle(height: 1.35),
+            ).apply(
+              bodyColor: AppColors.ink,
+              displayColor: AppColors.ink,
+              fontFamily: 'Roboto',
+            ),
+      ),
+      home: const TicketOpsRoot(),
+    );
+  }
+}
+
+class AppColors {
+  static const page = Color(0xFFEEF7F8);
+  static const ink = Color(0xFF06121A);
+  static const muted = Color(0xFF5C7178);
+  static const accent = Color(0xFF4AC7E8);
+  static const accentStrong = Color(0xFF16798F);
+  static const teal = Color(0xFF147B74);
+  static const danger = Color(0xFFB95650);
+  static const warning = Color(0xFFB8892B);
+}
+
+class TicketOpsApi {
+  TicketOpsApi(this.baseUrl);
+
+  final String baseUrl;
+  final HttpClient _http = HttpClient();
+
+  Uri _uri(String path) => Uri.parse('$baseUrl$path');
+
+  Future<Map<String, dynamic>> getJson(
+    String path,
+    Map<String, dynamic>? user,
+  ) async {
+    final request = await _http.getUrl(_uri(path));
+    _addHeaders(request, user);
+    return _readJson(await request.close());
+  }
+
+  Future<Map<String, dynamic>> postJson(
+    String path,
+    Map<String, dynamic>? body,
+    Map<String, dynamic>? user,
+  ) async {
+    final request = await _http.postUrl(_uri(path));
+    _addHeaders(request, user);
+    request.headers.contentType = ContentType.json;
+    request.write(jsonEncode(body ?? const {}));
+    return _readJson(await request.close());
+  }
+
+  Future<Map<String, dynamic>> patchJson(
+    String path,
+    Map<String, dynamic>? body,
+    Map<String, dynamic>? user,
+  ) async {
+    final request = await _http.patchUrl(_uri(path));
+    _addHeaders(request, user);
+    request.headers.contentType = ContentType.json;
+    request.write(jsonEncode(body ?? const {}));
+    return _readJson(await request.close());
+  }
+
+  void _addHeaders(HttpClientRequest request, Map<String, dynamic>? user) {
+    request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+    if (user != null) {
+      request.headers.set('X-TicketOps-User', '${user['id']}');
+      request.headers.set('X-TicketOps-Role', '${user['role']}');
+    }
+  }
+
+  Future<Map<String, dynamic>> _readJson(HttpClientResponse response) async {
+    final text = await utf8.decodeStream(response);
+    final decoded = text.isEmpty ? <String, dynamic>{} : jsonDecode(text);
+    final body = decoded is Map<String, dynamic>
+        ? decoded
+        : <String, dynamic>{'data': decoded};
+    if (response.statusCode >= 400) {
+      throw Exception(
+        body['error'] ?? 'Request failed (${response.statusCode})',
+      );
+    }
+    return body;
+  }
+}
+
+class TicketOpsRoot extends StatefulWidget {
+  const TicketOpsRoot({super.key});
+
+  @override
+  State<TicketOpsRoot> createState() => _TicketOpsRootState();
+}
+
+class _TicketOpsRootState extends State<TicketOpsRoot> {
+  late String apiBase = defaultApiBase;
+  late TicketOpsApi api = TicketOpsApi(apiBase);
+  Map<String, dynamic>? user;
+  Map<String, dynamic>? data;
+  List<dynamic> todayTasks = [];
+  bool loading = false;
+  String error = '';
+  int tab = 0;
+
+  Future<void> login(String username, String password, String endpoint) async {
+    setState(() {
+      loading = true;
+      error = '';
+      apiBase = endpoint.trim().isEmpty ? defaultApiBase : endpoint.trim();
+      api = TicketOpsApi(apiBase);
+    });
+
+    try {
+      final result = await api.postJson('/api/auth/login', {
+        'username': username.trim(),
+        'password': password,
+      }, null);
+      user = result['user'] as Map<String, dynamic>;
+      await refresh();
+    } catch (exception) {
+      setState(() => error = cleanError(exception));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> refresh() async {
+    if (user == null) return;
+    final bootstrap = await api.getJson('/api/bootstrap', user);
+    List<dynamic> tasks = bootstrap['tasks'] as List<dynamic>? ?? [];
+    if (user?['role'] == 'technician') {
+      final taskResult = await api.getJson('/api/technician/tasks/today', user);
+      tasks = taskResult['data'] as List<dynamic>? ?? [];
+    }
+    setState(() {
+      data = bootstrap;
+      todayTasks = tasks;
+    });
+  }
+
+  Future<void> markTaskDone(String id) async {
+    if (user == null) return;
+    setState(() => loading = true);
+    try {
+      await api.postJson('/api/technician/tasks/$id/status', {
+        'status': 'done',
+      }, user);
+      await refresh();
+    } catch (exception) {
+      setState(() => error = cleanError(exception));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> advanceTicket(Map<String, dynamic> ticket) async {
+    final next = nextTicketStatus('${ticket['status']}');
+    if (next == null || user == null) return;
+    setState(() => loading = true);
+    try {
+      await api.patchJson('/api/tickets/${ticket['id']}/status', {
+        'status': next,
+        'detail': 'Updated from mobile app',
+      }, user);
+      await refresh();
+    } catch (exception) {
+      setState(() => error = cleanError(exception));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AmbientScaffold(
+      child: user == null
+          ? LoginScreen(
+              apiBase: apiBase,
+              loading: loading,
+              error: error,
+              onLogin: login,
+            )
+          : HomeScreen(
+              user: user!,
+              data: data ?? const {},
+              todayTasks: todayTasks,
+              tab: tab,
+              loading: loading,
+              error: error,
+              onTab: (value) => setState(() => tab = value),
+              onRefresh: refresh,
+              onLogout: () => setState(() {
+                user = null;
+                data = null;
+                todayTasks = [];
+                tab = 0;
+                error = '';
+              }),
+              onTaskDone: markTaskDone,
+              onTicketAdvance: advanceTicket,
+            ),
+    );
+  }
+}
+
+class AmbientScaffold extends StatelessWidget {
+  const AmbientScaffold({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFECF8FA),
+                  Color(0xFFFAFCFC),
+                  Color(0xFFE4F4F3),
+                ],
+              ),
+            ),
+          ),
+          const Positioned(
+            top: -80,
+            left: -40,
+            child: GlowOrb(size: 220, color: Color(0x664AC7E8)),
+          ),
+          const Positioned(
+            top: 120,
+            right: -70,
+            child: GlowOrb(size: 250, color: Color(0x55B7F1FF)),
+          ),
+          const Positioned(
+            bottom: -80,
+            left: 80,
+            child: GlowOrb(size: 220, color: Color(0x33147B74)),
+          ),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class GlowOrb extends StatelessWidget {
+  const GlowOrb({super.key, required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: 45, sigmaY: 45),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+    );
+  }
+}
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({
+    super.key,
+    required this.apiBase,
+    required this.loading,
+    required this.error,
+    required this.onLogin,
+  });
+
+  final String apiBase;
+  final bool loading;
+  final String error;
+  final Future<void> Function(String username, String password, String endpoint)
+  onLogin;
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  late final TextEditingController endpoint = TextEditingController(
+    text: widget.apiBase,
+  );
+  final username = TextEditingController(text: 'chintan.patel');
+  final password = TextEditingController(text: 'chintan123');
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 12),
+              const Text(
+                'TicketOps',
+                style: TextStyle(
+                  fontSize: 44,
+                  fontWeight: FontWeight.w900,
+                  height: .95,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Restaurant maintenance command for mobile teams.',
+                style: TextStyle(color: AppColors.muted, fontSize: 16),
+              ),
+              const SizedBox(height: 26),
+              GlassCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SectionLabel('Secure access'),
+                    const SizedBox(height: 12),
+                    AppInput(controller: endpoint, label: 'API endpoint'),
+                    const SizedBox(height: 12),
+                    AppInput(controller: username, label: 'Username'),
+                    const SizedBox(height: 12),
+                    AppInput(
+                      controller: password,
+                      label: 'Password',
+                      obscure: true,
+                    ),
+                    if (widget.error.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        widget.error,
+                        style: const TextStyle(
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 18),
+                    PrimaryButton(
+                      label: widget.loading
+                          ? 'Signing in...'
+                          : 'Enter mobile command',
+                      onPressed: widget.loading
+                          ? null
+                          : () => widget.onLogin(
+                              username.text,
+                              password.text,
+                              endpoint.text,
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  QuickLoginChip(
+                    'Admin',
+                    'chintan.patel',
+                    'chintan123',
+                    username,
+                    password,
+                  ),
+                  QuickLoginChip(
+                    'Manager',
+                    'pratik.patel',
+                    'pratik123',
+                    username,
+                    password,
+                  ),
+                  QuickLoginChip(
+                    'Tech',
+                    'rahul.patil',
+                    'rahul123',
+                    username,
+                    password,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class QuickLoginChip extends StatelessWidget {
+  const QuickLoginChip(
+    this.label,
+    this.user,
+    this.pass,
+    this.username,
+    this.password, {
+    super.key,
+  });
+
+  final String label;
+  final String user;
+  final String pass;
+  final TextEditingController username;
+  final TextEditingController password;
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      label: Text(label),
+      onPressed: () {
+        username.text = user;
+        password.text = pass;
+      },
+      backgroundColor: Colors.white.withValues(alpha: .55),
+      side: BorderSide(color: AppColors.accent.withValues(alpha: .28)),
+    );
+  }
+}
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({
+    super.key,
+    required this.user,
+    required this.data,
+    required this.todayTasks,
+    required this.tab,
+    required this.loading,
+    required this.error,
+    required this.onTab,
+    required this.onRefresh,
+    required this.onLogout,
+    required this.onTaskDone,
+    required this.onTicketAdvance,
+  });
+
+  final Map<String, dynamic> user;
+  final Map<String, dynamic> data;
+  final List<dynamic> todayTasks;
+  final int tab;
+  final bool loading;
+  final String error;
+  final ValueChanged<int> onTab;
+  final Future<void> Function() onRefresh;
+  final VoidCallback onLogout;
+  final Future<void> Function(String id) onTaskDone;
+  final Future<void> Function(Map<String, dynamic> ticket) onTicketAdvance;
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = [
+      DashboardPage(user: user, data: data, todayTasks: todayTasks),
+      WorkPage(
+        user: user,
+        data: data,
+        todayTasks: todayTasks,
+        onTaskDone: onTaskDone,
+      ),
+      TicketPage(user: user, data: data, onTicketAdvance: onTicketAdvance),
+      AccountPage(user: user, data: data, onLogout: onLogout),
+    ];
+
+    return SafeArea(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SectionLabel('Mobile command'),
+                      Text(
+                        roleTitle(user),
+                        style: const TextStyle(
+                          fontSize: 27,
+                          fontWeight: FontWeight.w900,
+                          height: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton.filledTonal(
+                  onPressed: onRefresh,
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
+              ],
+            ),
+          ),
+          if (loading) const LinearProgressIndicator(minHeight: 2),
+          if (error.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                error,
+                style: const TextStyle(
+                  color: AppColors.danger,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          Expanded(
+            child: RefreshIndicator(onRefresh: onRefresh, child: pages[tab]),
+          ),
+          NavigationBar(
+            selectedIndex: tab,
+            onDestinationSelected: onTab,
+            backgroundColor: Colors.white.withValues(alpha: .72),
+            indicatorColor: AppColors.accent.withValues(alpha: .22),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.space_dashboard_outlined),
+                label: 'Dashboard',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.task_alt_rounded),
+                label: 'Work',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.confirmation_number_outlined),
+                label: 'Tickets',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person_outline_rounded),
+                label: 'Account',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DashboardPage extends StatelessWidget {
+  const DashboardPage({
+    super.key,
+    required this.user,
+    required this.data,
+    required this.todayTasks,
+  });
+
+  final Map<String, dynamic> user;
+  final Map<String, dynamic> data;
+  final List<dynamic> todayTasks;
+
+  @override
+  Widget build(BuildContext context) {
+    final reports = mapOf(data['reports']);
+    final tickets = listOf(
+      data['tickets'],
+    ).where((ticket) => '${mapOf(ticket)['status']}' != 'Closed').toList();
+    final tasks = todayTasks;
+    final done = tasks.where((task) => isDone(mapOf(task))).length;
+    final pending = tasks.length - done;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionLabel('${user['post'] ?? 'TicketOps'}'),
+              const SizedBox(height: 8),
+              Text(
+                '${user['name'] ?? 'User'}',
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                dashboardCopy(user),
+                style: const TextStyle(color: AppColors.muted, fontSize: 15),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        GridView.count(
+          crossAxisCount: 2,
+          childAspectRatio: 1.35,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          children: [
+            StatCard(
+              label: 'Open tickets',
+              value: '${reports['open'] ?? tickets.length}',
+              meta: 'Live work',
+            ),
+            StatCard(
+              label: 'Critical',
+              value: '${reports['critical'] ?? 0}',
+              meta: 'Priority heat',
+            ),
+            StatCard(label: 'Done today', value: '$done', meta: 'Checklist'),
+            StatCard(label: 'Pending', value: '$pending', meta: 'Today tasks'),
+          ],
+        ),
+        const SizedBox(height: 14),
+        GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionLabel('Next action'),
+              const SizedBox(height: 10),
+              if (tasks.isNotEmpty)
+                TaskTile(task: mapOf(tasks.first), onDone: null)
+              else if (tickets.isNotEmpty)
+                TicketTile(ticket: mapOf(tickets.first), onAdvance: null)
+              else
+                const EmptyBlock('No active work right now.'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class WorkPage extends StatelessWidget {
+  const WorkPage({
+    super.key,
+    required this.user,
+    required this.data,
+    required this.todayTasks,
+    required this.onTaskDone,
+  });
+
+  final Map<String, dynamic> user;
+  final Map<String, dynamic> data;
+  final List<dynamic> todayTasks;
+  final Future<void> Function(String id) onTaskDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final role = '${user['role']}';
+    final tasks = role == 'technician' ? todayTasks : listOf(data['tasks']);
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const SectionLabel('Daily checklist'),
+        const SizedBox(height: 8),
+        if (tasks.isEmpty)
+          const GlassCard(child: EmptyBlock('No checklist tasks assigned.'))
+        else
+          ...tasks.map(
+            (task) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: TaskTile(
+                task: mapOf(task),
+                onDone: role == 'technician' && !isDone(mapOf(task))
+                    ? () => onTaskDone('${mapOf(task)['id']}')
+                    : null,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class TicketPage extends StatelessWidget {
+  const TicketPage({
+    super.key,
+    required this.user,
+    required this.data,
+    required this.onTicketAdvance,
+  });
+
+  final Map<String, dynamic> user;
+  final Map<String, dynamic> data;
+  final Future<void> Function(Map<String, dynamic> ticket) onTicketAdvance;
+
+  @override
+  Widget build(BuildContext context) {
+    final tickets = listOf(
+      data['tickets'],
+    ).map(mapOf).where((ticket) => '${ticket['status']}' != 'Closed').toList();
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const SectionLabel('Assigned tickets'),
+        const SizedBox(height: 8),
+        if (tickets.isEmpty)
+          const GlassCard(child: EmptyBlock('No active tickets.'))
+        else
+          ...tickets.map(
+            (ticket) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: TicketTile(
+                ticket: ticket,
+                onAdvance: nextTicketStatus('${ticket['status']}') == null
+                    ? null
+                    : () => onTicketAdvance(ticket),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class AccountPage extends StatelessWidget {
+  const AccountPage({
+    super.key,
+    required this.user,
+    required this.data,
+    required this.onLogout,
+  });
+
+  final Map<String, dynamic> user;
+  final Map<String, dynamic> data;
+  final VoidCallback onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionLabel('Signed in'),
+              Text(
+                '${user['name']}',
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${user['post']}',
+                style: const TextStyle(color: AppColors.muted),
+              ),
+              const SizedBox(height: 18),
+              InfoRow('Role', '${user['role']}'),
+              InfoRow('Storage', '${data['storage'] ?? 'supabase'}'),
+              InfoRow('Outlet', '${user['outlet'] ?? 'All allowed'}'),
+              const SizedBox(height: 18),
+              SecondaryButton(label: 'Logout', onPressed: onLogout),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class GlassCard extends StatelessWidget {
+  const GlassCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(18),
+  });
+
+  final Widget child;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            color: Colors.white.withValues(alpha: .48),
+            border: Border.all(color: Colors.white.withValues(alpha: .72)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF1F424B).withValues(alpha: .10),
+                blurRadius: 28,
+                offset: const Offset(0, 16),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class SectionLabel extends StatelessWidget {
+  const SectionLabel(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text.toUpperCase(),
+      style: const TextStyle(
+        color: AppColors.accentStrong,
+        fontSize: 11,
+        letterSpacing: 1.4,
+        fontWeight: FontWeight.w900,
+      ),
+    );
+  }
+}
+
+class StatCard extends StatelessWidget {
+  const StatCard({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.meta,
+  });
+
+  final String label;
+  final String value;
+  final String meta;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 29,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            meta,
+            style: const TextStyle(
+              color: AppColors.accentStrong,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TaskTile extends StatelessWidget {
+  const TaskTile({super.key, required this.task, required this.onDone});
+
+  final Map<String, dynamic> task;
+  final VoidCallback? onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final done = isDone(task);
+    return GlassCard(
+      child: Row(
+        children: [
+          Icon(
+            done
+                ? Icons.check_circle_rounded
+                : Icons.radio_button_unchecked_rounded,
+            color: done ? AppColors.teal : AppColors.muted,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${task['title'] ?? task['task'] ?? 'Checklist task'}',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${task['asset_name'] ?? task['assetName'] ?? task['asset'] ?? task['outlet'] ?? 'Asset'}',
+                  style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          if (onDone != null)
+            TextButton(onPressed: onDone, child: const Text('Done')),
+        ],
+      ),
+    );
+  }
+}
+
+class TicketTile extends StatelessWidget {
+  const TicketTile({super.key, required this.ticket, required this.onAdvance});
+
+  final Map<String, dynamic> ticket;
+  final VoidCallback? onAdvance;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = '${ticket['status'] ?? 'New'}';
+    final next = nextTicketStatus(status);
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  '${ticket['id'] ?? ''} ${ticket['note'] ?? ticket['description'] ?? ''}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              StatusPill(status),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${ticket['outlet'] ?? ''} / ${ticket['category'] ?? ''} / ${ticket['impact'] ?? ''}',
+            style: const TextStyle(color: AppColors.muted, fontSize: 13),
+          ),
+          if (onAdvance != null && next != null) ...[
+            const SizedBox(height: 14),
+            PrimaryButton(label: 'Move to $next', onPressed: onAdvance),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class StatusPill extends StatelessWidget {
+  const StatusPill(this.status, {super.key});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = status == 'Blocked'
+        ? AppColors.warning
+        : status == 'New'
+        ? AppColors.danger
+        : AppColors.teal;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class AppInput extends StatelessWidget {
+  const AppInput({
+    super.key,
+    required this.controller,
+    required this.label,
+    this.obscure = false,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final bool obscure;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: .55),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(
+            color: AppColors.accent.withValues(alpha: .24),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class PrimaryButton extends StatelessWidget {
+  const PrimaryButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(48),
+        backgroundColor: AppColors.teal,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w900)),
+    );
+  }
+}
+
+class SecondaryButton extends StatelessWidget {
+  const SecondaryButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(46),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w900)),
+    );
+  }
+}
+
+class InfoRow extends StatelessWidget {
+  const InfoRow(this.label, this.value, {super.key});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: const TextStyle(color: AppColors.muted)),
+          ),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
+        ],
+      ),
+    );
+  }
+}
+
+class EmptyBlock extends StatelessWidget {
+  const EmptyBlock(this.message, {super.key});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Center(
+        child: Text(
+          message,
+          style: const TextStyle(
+            color: AppColors.muted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Map<String, dynamic> mapOf(Object? value) =>
+    value is Map<String, dynamic> ? value : <String, dynamic>{};
+
+List<dynamic> listOf(Object? value) => value is List ? value : <dynamic>[];
+
+bool isDone(Map<String, dynamic> task) {
+  final status = '${task['status']}'.toLowerCase();
+  return status == 'done';
+}
+
+String? nextTicketStatus(String status) {
+  switch (status) {
+    case 'Assigned':
+      return 'Acknowledged';
+    case 'Acknowledged':
+      return 'In Progress';
+    case 'In Progress':
+    case 'Reopened':
+      return 'Resolved';
+    default:
+      return null;
+  }
+}
+
+String roleTitle(Map<String, dynamic> user) {
+  switch ('${user['role']}') {
+    case 'technician':
+      return 'Field Console';
+    case 'manager':
+      return '${user['outlet'] ?? 'Outlet'} Desk';
+    case 'admin':
+      return 'Control Room';
+    default:
+      return 'TicketOps';
+  }
+}
+
+String dashboardCopy(Map<String, dynamic> user) {
+  switch ('${user['role']}') {
+    case 'technician':
+      return 'Today checklist, assigned tickets, and status updates in one mobile surface.';
+    case 'manager':
+      return 'Outlet tickets and verification pressure without desktop noise.';
+    case 'admin':
+      return 'Live operational control across tickets, technicians, and maintenance work.';
+    default:
+      return 'Operational maintenance visibility.';
+  }
+}
+
+String cleanError(Object exception) {
+  return exception.toString().replaceFirst('Exception: ', '');
+}

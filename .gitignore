@@ -7,4 +7,8 @@ www/
 .vercel/
 .reference-git-recover/
 *.log
+mobile_flutter/.dart_tool/
+mobile_flutter/build/
+mobile_flutter/.flutter-plugins
+mobile_flutter/.flutter-plugins-dependencies
 .DS_Store
