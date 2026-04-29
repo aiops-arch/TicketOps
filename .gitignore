@@ -3,6 +3,7 @@
 node_modules/
 dist/
 www/
+output/
 .env
 .vercel/
 .reference-git-recover/
