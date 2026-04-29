@@ -210,6 +210,70 @@ class _TicketOpsRootState extends State<TicketOpsRoot> {
     }
   }
 
+  Future<void> acceptTicket(Map<String, dynamic> ticket) async {
+    if (user == null) return;
+    setState(() => loading = true);
+    try {
+      await api.postJson('/api/tickets/${ticket['id']}/accept', {}, user);
+      await refresh();
+    } catch (exception) {
+      setState(() => error = cleanError(exception));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> rejectTicket(Map<String, dynamic> ticket, String reason) async {
+    if (user == null) return;
+    setState(() => loading = true);
+    try {
+      await api.postJson('/api/tickets/${ticket['id']}/reject', {
+        'reason': reason,
+      }, user);
+      await refresh();
+    } catch (exception) {
+      setState(() => error = cleanError(exception));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> assignTicket(Map<String, dynamic> ticket, String technicianId) async {
+    if (user == null) return;
+    setState(() => loading = true);
+    try {
+      await api.patchJson('/api/tickets/${ticket['id']}/assign', {
+        'technicianId': technicianId,
+      }, user);
+      await refresh();
+    } catch (exception) {
+      setState(() => error = cleanError(exception));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> markAttendance(String status, String reason) async {
+    if (user == null || user?['role'] != 'technician') return;
+    final technicianId = '${user?['technicianId']}';
+    if (technicianId.isEmpty || technicianId == 'null') return;
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    setState(() => loading = true);
+    try {
+      await api.postJson('/api/technicians/$technicianId/attendance', {
+        'status': status,
+        'from': today,
+        'to': today,
+        'reason': reason,
+      }, user);
+      await refresh();
+    } catch (exception) {
+      setState(() => error = cleanError(exception));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AmbientScaffold(
@@ -238,6 +302,10 @@ class _TicketOpsRootState extends State<TicketOpsRoot> {
               }),
               onTaskDone: markTaskDone,
               onTicketAdvance: advanceTicket,
+              onTicketAccept: acceptTicket,
+              onTicketReject: rejectTicket,
+              onTicketAssign: assignTicket,
+              onAttendance: markAttendance,
             ),
     );
   }
@@ -478,6 +546,10 @@ class HomeScreen extends StatelessWidget {
     required this.onLogout,
     required this.onTaskDone,
     required this.onTicketAdvance,
+    required this.onTicketAccept,
+    required this.onTicketReject,
+    required this.onTicketAssign,
+    required this.onAttendance,
   });
 
   final Map<String, dynamic> user;
@@ -491,6 +563,10 @@ class HomeScreen extends StatelessWidget {
   final VoidCallback onLogout;
   final Future<void> Function(String id) onTaskDone;
   final Future<void> Function(Map<String, dynamic> ticket) onTicketAdvance;
+  final Future<void> Function(Map<String, dynamic> ticket) onTicketAccept;
+  final Future<void> Function(Map<String, dynamic> ticket, String reason) onTicketReject;
+  final Future<void> Function(Map<String, dynamic> ticket, String technicianId) onTicketAssign;
+  final Future<void> Function(String status, String reason) onAttendance;
 
   @override
   Widget build(BuildContext context) {
@@ -502,8 +578,20 @@ class HomeScreen extends StatelessWidget {
         todayTasks: todayTasks,
         onTaskDone: onTaskDone,
       ),
-      TicketPage(user: user, data: data, onTicketAdvance: onTicketAdvance),
-      AccountPage(user: user, data: data, onLogout: onLogout),
+      TicketPage(
+        user: user,
+        data: data,
+        onTicketAdvance: onTicketAdvance,
+        onTicketAccept: onTicketAccept,
+        onTicketReject: onTicketReject,
+        onTicketAssign: onTicketAssign,
+      ),
+      AccountPage(
+        user: user,
+        data: data,
+        onLogout: onLogout,
+        onAttendance: onAttendance,
+      ),
     ];
 
     return SafeArea(
@@ -661,7 +749,15 @@ class DashboardPage extends StatelessWidget {
               if (tasks.isNotEmpty)
                 TaskTile(task: mapOf(tasks.first), onDone: null)
               else if (tickets.isNotEmpty)
-                TicketTile(ticket: mapOf(tickets.first), onAdvance: null)
+                TicketTile(
+                  ticket: mapOf(tickets.first),
+                  user: user,
+                  technicians: const [],
+                  onAdvance: null,
+                  onAccept: null,
+                  onReject: null,
+                  onAssign: null,
+                )
               else
                 const EmptyBlock('No active work right now.'),
             ],
@@ -721,22 +817,32 @@ class TicketPage extends StatelessWidget {
     required this.user,
     required this.data,
     required this.onTicketAdvance,
+    required this.onTicketAccept,
+    required this.onTicketReject,
+    required this.onTicketAssign,
   });
 
   final Map<String, dynamic> user;
   final Map<String, dynamic> data;
   final Future<void> Function(Map<String, dynamic> ticket) onTicketAdvance;
+  final Future<void> Function(Map<String, dynamic> ticket) onTicketAccept;
+  final Future<void> Function(Map<String, dynamic> ticket, String reason)
+  onTicketReject;
+  final Future<void> Function(Map<String, dynamic> ticket, String technicianId)
+  onTicketAssign;
 
   @override
   Widget build(BuildContext context) {
+    final role = '${user['role']}';
     final tickets = listOf(
       data['tickets'],
     ).map(mapOf).where((ticket) => '${ticket['status']}' != 'Closed').toList();
+    final technicians = listOf(data['technicians']).map(mapOf).toList();
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const SectionLabel('Assigned tickets'),
+        SectionLabel(role == 'manager' ? 'Outlet assignment queue' : 'Assigned tickets'),
         const SizedBox(height: 8),
         if (tickets.isEmpty)
           const GlassCard(child: EmptyBlock('No active tickets.'))
@@ -746,7 +852,19 @@ class TicketPage extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 10),
               child: TicketTile(
                 ticket: ticket,
-                onAdvance: nextTicketStatus('${ticket['status']}') == null
+                user: user,
+                technicians: technicians,
+                onAccept: role == 'technician' && '${ticket['status']}' == 'Assigned'
+                    ? () => onTicketAccept(ticket)
+                    : null,
+                onReject: role == 'technician' && ['Assigned', 'Acknowledged'].contains('${ticket['status']}')
+                    ? (reason) => onTicketReject(ticket, reason)
+                    : null,
+                onAssign: role == 'manager' || role == 'admin'
+                    ? (technicianId) => onTicketAssign(ticket, technicianId)
+                    : null,
+                onAdvance: nextTicketStatus('${ticket['status']}') == null ||
+                        (role == 'technician' && '${ticket['status']}' == 'Assigned')
                     ? null
                     : () => onTicketAdvance(ticket),
               ),
@@ -763,11 +881,13 @@ class AccountPage extends StatelessWidget {
     required this.user,
     required this.data,
     required this.onLogout,
+    required this.onAttendance,
   });
 
   final Map<String, dynamic> user;
   final Map<String, dynamic> data;
   final VoidCallback onLogout;
+  final Future<void> Function(String status, String reason) onAttendance;
 
   @override
   Widget build(BuildContext context) {
@@ -795,6 +915,38 @@ class AccountPage extends StatelessWidget {
               InfoRow('Role', '${user['role']}'),
               InfoRow('Storage', '${data['storage'] ?? 'supabase'}'),
               InfoRow('Outlet', '${user['outlet'] ?? 'All allowed'}'),
+              if ('${user['role']}' == 'technician') ...[
+                const SizedBox(height: 18),
+                const SectionLabel('Attendance and availability'),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ActionChip(
+                      label: const Text('Present'),
+                      onPressed: () => onAttendance(
+                        'Present',
+                        'Available from mobile app',
+                      ),
+                    ),
+                    ActionChip(
+                      label: const Text('Absent today'),
+                      onPressed: () => onAttendance(
+                        'Absent',
+                        'Marked absent from mobile app',
+                      ),
+                    ),
+                    ActionChip(
+                      label: const Text('Emergency available'),
+                      onPressed: () => onAttendance(
+                        'Emergency Available',
+                        'Emergency available from mobile app',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 18),
               SecondaryButton(label: 'Logout', onPressed: onLogout),
             ],
@@ -954,16 +1106,80 @@ class TaskTile extends StatelessWidget {
   }
 }
 
-class TicketTile extends StatelessWidget {
-  const TicketTile({super.key, required this.ticket, required this.onAdvance});
+class TicketTile extends StatefulWidget {
+  const TicketTile({
+    super.key,
+    required this.ticket,
+    required this.user,
+    required this.technicians,
+    required this.onAdvance,
+    required this.onAccept,
+    required this.onReject,
+    required this.onAssign,
+  });
 
   final Map<String, dynamic> ticket;
+  final Map<String, dynamic> user;
+  final List<Map<String, dynamic>> technicians;
   final VoidCallback? onAdvance;
+  final VoidCallback? onAccept;
+  final Future<void> Function(String reason)? onReject;
+  final Future<void> Function(String technicianId)? onAssign;
+
+  @override
+  State<TicketTile> createState() => _TicketTileState();
+}
+
+class _TicketTileState extends State<TicketTile> {
+  late String selectedTechnician = firstAssignableTechnician(
+    widget.technicians,
+    widget.ticket,
+  );
+
+  Future<void> rejectWithReason() async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reject job'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          minLines: 2,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            labelText: 'Reason required',
+            hintText: 'Example: no tool kit available',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Reject'),
+          ),
+        ],
+      ),
+    );
+    if (reason == null || reason.isEmpty) return;
+    await widget.onReject?.call(reason);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final ticket = widget.ticket;
     final status = '${ticket['status'] ?? 'New'}';
     final next = nextTicketStatus(status);
+    final role = '${widget.user['role']}';
+    final assignableTechnicians = widget.technicians
+        .where((tech) => canMobileAssignTech(tech, ticket, role))
+        .toList();
+    if (selectedTechnician.isEmpty && assignableTechnicians.isNotEmpty) {
+      selectedTechnician = '${assignableTechnicians.first['id']}';
+    }
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -988,9 +1204,46 @@ class TicketTile extends StatelessWidget {
             '${ticket['outlet'] ?? ''} / ${ticket['category'] ?? ''} / ${ticket['impact'] ?? ''}',
             style: const TextStyle(color: AppColors.muted, fontSize: 13),
           ),
-          if (onAdvance != null && next != null) ...[
+          if (widget.onAssign != null &&
+              assignableTechnicians.isNotEmpty &&
+              !['Closed', 'Cancelled', 'Resolved', 'Verification Pending'].contains(status)) ...[
             const SizedBox(height: 14),
-            PrimaryButton(label: 'Move to $next', onPressed: onAdvance),
+            DropdownButtonFormField<String>(
+              initialValue: selectedTechnician,
+              items: assignableTechnicians
+                  .map(
+                    (tech) => DropdownMenuItem(
+                      value: '${tech['id']}',
+                      child: Text(
+                        '${tech['name']} / ${tech['status']} / ${tech['skill']}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) =>
+                  setState(() => selectedTechnician = value ?? ''),
+              decoration: const InputDecoration(labelText: 'Assign technician'),
+            ),
+            const SizedBox(height: 10),
+            PrimaryButton(
+              label: 'Assign',
+              onPressed: selectedTechnician.isEmpty
+                  ? null
+                  : () => widget.onAssign?.call(selectedTechnician),
+            ),
+          ],
+          if (widget.onAccept != null) ...[
+            const SizedBox(height: 14),
+            PrimaryButton(label: 'Accept job', onPressed: widget.onAccept),
+          ],
+          if (widget.onReject != null) ...[
+            const SizedBox(height: 10),
+            SecondaryButton(label: 'Reject with reason', onPressed: rejectWithReason),
+          ],
+          if (widget.onAdvance != null && next != null) ...[
+            const SizedBox(height: 14),
+            PrimaryButton(label: 'Move to $next', onPressed: widget.onAdvance),
           ],
         ],
       ),
@@ -1159,6 +1412,36 @@ Map<String, dynamic> mapOf(Object? value) =>
     value is Map<String, dynamic> ? value : <String, dynamic>{};
 
 List<dynamic> listOf(Object? value) => value is List ? value : <dynamic>[];
+
+bool canMobileAssignTech(
+  Map<String, dynamic> technician,
+  Map<String, dynamic> ticket,
+  String role,
+) {
+  final status = '${technician['status']}';
+  final outlets = listOf(technician['serviceOutlets']).map((item) => '$item');
+  final servesOutlet = outlets.contains('${ticket['outlet']}');
+  final available = ['Present', 'Busy', 'Emergency Available'].contains(status);
+  if (role == 'manager') return available && servesOutlet;
+  return true;
+}
+
+String firstAssignableTechnician(
+  List<Map<String, dynamic>> technicians,
+  Map<String, dynamic> ticket,
+) {
+  if (technicians.isEmpty) return '';
+  final preferred = '${ticket['suggestedTechnician'] is Map ? mapOf(ticket['suggestedTechnician'])['id'] : ''}';
+  if (preferred.isNotEmpty &&
+      technicians.any((tech) => '${tech['id']}' == preferred)) {
+    return preferred;
+  }
+  final assigned = '${ticket['assignedTo'] ?? ''}';
+  if (assigned.isNotEmpty && technicians.any((tech) => '${tech['id']}' == assigned)) {
+    return assigned;
+  }
+  return '${technicians.first['id']}';
+}
 
 bool isDone(Map<String, dynamic> task) {
   final status = '${task['status']}'.toLowerCase();

@@ -225,7 +225,7 @@ function ticketNextAction(ticket, assigned, suggested) {
   if (ticket.status === "Blocked") return "Admin: unblock part, vendor, or decision";
   if (["Resolved", "Verification Pending"].includes(ticket.status)) return "Manager: verify and close";
   if (!ticket.assignedTo) {
-    return suggested ? `Admin: assign ${suggested.name}` : "Admin: assign technician";
+    return suggested ? `Manager/Admin: assign ${suggested.name}` : "Manager/Admin: assign technician";
   }
   if (ticket.status === "Assigned") return `${assigned?.name || "Technician"}: acknowledge job`;
   if (ticket.status === "Acknowledged") return `${assigned?.name || "Technician"}: start work`;
@@ -527,17 +527,23 @@ function detailForStatus(status) {
 }
 
 async function assignTicket(ticketId, technicianId) {
-  if (!canUseView("admin")) return;
+  if (!["admin", "manager"].includes(currentUser?.role)) return;
 
   const technician = technicianById(technicianId);
   const ticket = (state.tickets || []).find((item) => item.id === ticketId);
   const summary = technician && ticket ? technicianAssignmentSummary(technician, ticket) : null;
   const payload = { technicianId };
+  const hardRisk = summary?.risk.filter((item) => item !== "backup skill") || [];
 
-  if (summary?.risk.length) {
+  if (currentUser?.role === "manager" && hardRisk.length) {
+    window.alert("Manager can only assign technicians who are available and serve this outlet.");
+    return;
+  }
+
+  if (currentUser?.role === "admin" && hardRisk.length) {
     const overrideReason = window.prompt(
       `Override needed for ${technician.name}`,
-      `${summary.risk.join(", ")}. Admin approved because `
+      `${hardRisk.join(", ")}. Admin approved because `
     );
     if (!overrideReason?.trim()) return;
     payload.overrideReason = overrideReason.trim();
@@ -546,6 +552,21 @@ async function assignTicket(ticketId, technicianId) {
   await api(`/api/tickets/${ticketId}/assign`, {
     method: "PATCH",
     body: JSON.stringify(payload)
+  });
+  await loadState();
+}
+
+async function acceptTicket(ticketId) {
+  await api(`/api/tickets/${ticketId}/accept`, { method: "POST" });
+  await loadState();
+}
+
+async function rejectTicket(ticketId) {
+  const reason = window.prompt("Reject job reason", "I cannot take this job because ");
+  if (!reason?.trim()) return;
+  await api(`/api/tickets/${ticketId}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason: reason.trim() })
   });
   await loadState();
 }
@@ -943,19 +964,22 @@ function renderSelects() {
 
 function renderActionButtons(ticket, mode, canVerify, canWork) {
   const canDeleteAssignment = Boolean(ticket.assignedTo) && (currentUser?.role === "admin" || ticket.createdBy === currentUser?.id);
+  const canAssignFromRole = ["admin", "manager"].includes(currentUser?.role);
+  const assignableForRole = state.technicians
+    .filter((tech) => currentUser?.role !== "manager" || ((tech.serviceOutlets || []).includes(ticket.outlet) && ["Present", "Busy", "Emergency Available"].includes(tech.status)));
+  const assignmentOptions = assignableForRole
+    .map((tech) => {
+      const selected = tech.id === ((ticket.suggestedTechnician && assignableForRole.some((item) => item.id === ticket.suggestedTechnician.id) ? ticket.suggestedTechnician.id : "") || ticket.assignedTo) ? "selected" : "";
+      const summary = technicianAssignmentSummary(tech, ticket);
+      const hardRisk = summary.risk.filter((item) => item !== "backup skill");
+      const warning = hardRisk.length ? " [override]" : summary.skillMatch ? "" : " [backup]";
+      return `<option value="${escapeHtml(tech.id)}" ${selected}>${escapeHtml(summary.label)}${escapeHtml(warning)}</option>`;
+    })
+    .join("");
 
   if (mode === "admin" && canUseView("admin")) {
-    const suggested = ticket.suggestedTechnician;
-    const options = state.technicians
-      .map((tech) => {
-        const selected = tech.id === (suggested?.id || ticket.assignedTo) ? "selected" : "";
-        const summary = technicianAssignmentSummary(tech, ticket);
-        const warning = summary.risk.length ? " [override]" : "";
-        return `<option value="${escapeHtml(tech.id)}" ${selected}>${escapeHtml(summary.label)}${escapeHtml(warning)}</option>`;
-      })
-      .join("");
     return `
-      <select data-assign="${escapeHtml(ticket.id)}" aria-label="Assign ${escapeHtml(ticket.id)}">${options}</select>
+      <select data-assign="${escapeHtml(ticket.id)}" aria-label="Assign ${escapeHtml(ticket.id)}">${assignmentOptions}</select>
       <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign</button>
       ${canDeleteAssignment ? `<button class="small-button danger" data-delete-assignment="${escapeHtml(ticket.id)}">Delete</button>` : ""}
       <button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Blocked">Blocked</button>
@@ -964,6 +988,10 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
 
   if (mode === "manager" && canUseView("manager")) {
     return `
+      ${canAssignFromRole && !["Closed", "Cancelled", "Resolved", "Verification Pending"].includes(ticket.status) && assignmentOptions ? `
+        <select data-assign="${escapeHtml(ticket.id)}" aria-label="Assign ${escapeHtml(ticket.id)}">${assignmentOptions}</select>
+        <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign</button>
+      ` : ""}
       ${canVerify ? `<button class="small-button success" data-status="${escapeHtml(ticket.id)}:Closed">Approve</button>` : ""}
       ${canVerify ? `<button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Reopened">Reject / Reopen</button>` : ""}
       ${canDeleteAssignment ? `<button class="small-button danger" data-delete-assignment="${escapeHtml(ticket.id)}">Delete</button>` : ""}
@@ -972,8 +1000,9 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
 
   if (mode === "technician" && canWork && canUseView("technician")) {
     return `
-      <button class="small-button primary" data-status="${escapeHtml(ticket.id)}:Acknowledged">Acknowledge</button>
-      <button class="small-button primary" data-status="${escapeHtml(ticket.id)}:In Progress">Start</button>
+      ${ticket.status === "Assigned" ? `<button class="small-button primary" data-accept-ticket="${escapeHtml(ticket.id)}">Accept Job</button>` : ""}
+      ${["Assigned", "Acknowledged"].includes(ticket.status) ? `<button class="small-button danger" data-reject-ticket="${escapeHtml(ticket.id)}">Reject with reason</button>` : ""}
+      ${ticket.status === "Acknowledged" ? `<button class="small-button primary" data-status="${escapeHtml(ticket.id)}:In Progress">Start</button>` : ""}
       <button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Blocked">Need Part/Vendor</button>
       <button class="small-button success" data-status="${escapeHtml(ticket.id)}:Resolved">Resolve</button>
     `;
@@ -2435,6 +2464,18 @@ document.addEventListener("click", async (event) => {
     const assignId = assignButton.dataset.assignButton;
     const select = document.querySelector(`[data-assign="${assignId}"]`);
     await assignTicket(assignId, select.value);
+    return;
+  }
+
+  const acceptButton = event.target.closest?.("[data-accept-ticket]");
+  if (acceptButton) {
+    await acceptTicket(acceptButton.dataset.acceptTicket);
+    return;
+  }
+
+  const rejectButton = event.target.closest?.("[data-reject-ticket]");
+  if (rejectButton) {
+    await rejectTicket(rejectButton.dataset.rejectTicket);
     return;
   }
 

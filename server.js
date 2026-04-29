@@ -1186,7 +1186,7 @@ async function createTechnician(payload) {
     quality: 90,
     serviceOutlets: outlet ? [outlet] : [...db.outlets]
   };
-  const username = makeUniqueUsername(db.users || DEMO_USERS, slugUsername(name));
+  const username = makeUniqueUsername(await allUsers(), slugUsername(name));
   const password = `${slugUsername(name).split(".")[0] || "tech"}123`;
   const loginUser = {
     id: `U-TECH-${technician.id}`,
@@ -1334,24 +1334,33 @@ async function updateTaskStatus(taskId, status, user, evidence = {}) {
   return { status: 200, body: task };
 }
 
-async function assignTicket(ticketId, technicianId, overrideReason) {
+async function assignTicket(ticketId, technicianId, overrideReason, user) {
   const db = await loadDb();
   const ticket = db.tickets.find((item) => item.id === ticketId);
   const technician = db.technicians.find((tech) => tech.id === technicianId);
   if (!ticket) return { status: 404, body: { error: "Ticket not found" } };
   if (!technician) return { status: 404, body: { error: "Technician not found" } };
+  if (!user || !["admin", "manager"].includes(user.role)) {
+    return { status: 403, body: { error: "Only admin or manager can assign technicians" } };
+  }
+  if (user.role === "manager" && ticket.outlet !== user.outlet) {
+    return { status: 403, body: { error: "Managers can only assign tickets from their outlet" } };
+  }
 
   const effectiveTechnician = technicianWithAttendance(db, technician);
   const servesOutlet = (effectiveTechnician.serviceOutlets || []).includes(ticket.outlet);
   const skillMatch = effectiveTechnician.skill === ticket.category;
   const needsOverride = !ASSIGNABLE_STATUSES.includes(effectiveTechnician.status) || !servesOutlet;
+  if (user.role === "manager" && needsOverride) {
+    return { status: 403, body: { error: "Manager can only assign available technicians who serve this outlet" } };
+  }
   if (needsOverride && !overrideReason) {
     return { status: 409, body: { error: "Override reason required for unavailable or out-of-coverage technician" } };
   }
 
   const action = needsOverride
     ? `Admin override assigned to ${technician.name}: ${overrideReason}`
-    : `Assigned to ${technician.name}${skillMatch ? "" : " as backup skill"}`;
+    : `${user.role === "manager" ? "Manager" : "Admin"} assigned to ${technician.name}${skillMatch ? "" : " as backup skill"}`;
 
   if (useSupabase) {
     await requireSupabase(
@@ -1366,6 +1375,75 @@ async function assignTicket(ticketId, technicianId, overrideReason) {
 
   ticket.assignedTo = technician.id;
   ticket.status = "Assigned";
+  ticket.latestDetail = action;
+  ticket.history.push({ at: new Date().toISOString(), action });
+  writeJsonDb(db);
+  return { status: 200, body: ticket };
+}
+
+async function acceptTicket(ticketId, user) {
+  const db = await loadDb();
+  const ticket = db.tickets.find((item) => item.id === ticketId);
+  if (!ticket) return { status: 404, body: { error: "Ticket not found" } };
+  if (!user || user.role !== "technician" || ticket.assignedTo !== user.technicianId) {
+    return { status: 403, body: { error: "Technicians can only accept their assigned jobs" } };
+  }
+  if (ticket.status !== "Assigned") {
+    return { status: 409, body: { error: "Only newly assigned jobs can be accepted" } };
+  }
+  const action = `${user.name} accepted the job`;
+
+  if (useSupabase) {
+    await requireSupabase(
+      await supabase
+        .from("tickets")
+        .update({ status: "Acknowledged", latest_detail: action, updated_at: new Date().toISOString() })
+        .eq("id", ticketId)
+    );
+    await addSupabaseHistory(ticketId, action);
+    return { status: 200, body: { ok: true } };
+  }
+
+  ticket.status = "Acknowledged";
+  ticket.latestDetail = action;
+  ticket.history.push({ at: new Date().toISOString(), action });
+  writeJsonDb(db);
+  return { status: 200, body: ticket };
+}
+
+async function rejectTicket(ticketId, reason, user) {
+  const db = await loadDb();
+  const ticket = db.tickets.find((item) => item.id === ticketId);
+  if (!ticket) return { status: 404, body: { error: "Ticket not found" } };
+  if (!user || user.role !== "technician" || ticket.assignedTo !== user.technicianId) {
+    return { status: 403, body: { error: "Technicians can only reject their assigned jobs" } };
+  }
+  if (!["Assigned", "Acknowledged"].includes(ticket.status)) {
+    return { status: 409, body: { error: "Only assigned or accepted jobs can be rejected before work starts" } };
+  }
+  const cleanReason = String(reason || "").trim().slice(0, 500);
+  if (!cleanReason) return { status: 400, body: { error: "Rejection reason is required" } };
+  const action = `${user.name} rejected the job: ${cleanReason}`;
+
+  if (useSupabase) {
+    await requireSupabase(
+      await supabase
+        .from("tickets")
+        .update({
+          assigned_to: null,
+          status: "New",
+          latest_detail: action,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", ticketId)
+    );
+    await addSupabaseHistory(ticketId, action);
+    return { status: 200, body: { ok: true } };
+  }
+
+  ticket.assignedTo = "";
+  ticket.status = "New";
+  ticket.latestDetail = action;
   ticket.history.push({ at: new Date().toISOString(), action });
   writeJsonDb(db);
   return { status: 200, body: ticket };
@@ -1603,6 +1681,21 @@ function publicUser(user) {
   return safeUser;
 }
 
+function mapSupabaseUser(row) {
+  return {
+    id: row.id,
+    username: row.username,
+    passwordHash: row.password_hash,
+    name: row.display_name,
+    post: row.post,
+    role: row.role,
+    outlet: row.outlet || "",
+    technicianId: row.technician_id || "",
+    defaultView: row.default_view,
+    allowedViews: row.allowed_views || []
+  };
+}
+
 function allUsersFromJson() {
   ensureDb();
   try {
@@ -1614,9 +1707,20 @@ function allUsersFromJson() {
   }
 }
 
-function userFromRequest(req) {
+async function allUsers() {
+  if (useSupabase) {
+    const result = await supabase
+      .from("app_users")
+      .select("id,username,display_name,password_hash,post,role,outlet,technician_id,default_view,allowed_views")
+      .order("username");
+    return (await requireSupabase(result)).map(mapSupabaseUser);
+  }
+  return allUsersFromJson();
+}
+
+async function userFromRequest(req) {
   const userId = req.get("X-TicketOps-User");
-  return allUsersFromJson().find((user) => user.id === userId) || null;
+  return (await allUsers()).find((user) => user.id === userId) || null;
 }
 
 function scopedDbForUser(db, user) {
@@ -1644,30 +1748,36 @@ function scopedDbForUser(db, user) {
   return db;
 }
 
-app.get("/api/auth/demo-users", (req, res) => {
-  res.json({
-    users: allUsersFromJson().map(publicUser)
-  });
-});
+app.get(
+  "/api/auth/demo-users",
+  asyncRoute(async (req, res) => {
+    res.json({
+      users: (await allUsers()).map(publicUser)
+    });
+  })
+);
 
-app.post("/api/auth/login", (req, res) => {
-  const username = String(req.body.username || "").trim().toLowerCase();
-  const password = String(req.body.password || "");
-  const user = allUsersFromJson().find((item) =>
-    item.username === username && verifyPassword(password, item.passwordHash, item.password)
-  );
+app.post(
+  "/api/auth/login",
+  asyncRoute(async (req, res) => {
+    const username = String(req.body.username || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+    const user = (await allUsers()).find((item) =>
+      item.username === username && verifyPassword(password, item.passwordHash, item.password)
+    );
 
-  if (!user) {
-    return res.status(401).json({ error: "Invalid username or password" });
-  }
+    if (!user) {
+      return res.status(401).json({ error: "Invalid username or password" });
+    }
 
-  res.json({ user: publicUser(user) });
-});
+    res.json({ user: publicUser(user) });
+  })
+);
 
 app.get(
   "/api/bootstrap",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user) return res.status(401).json({ error: "Login required" });
     res.json(withSuggestions(scopedDbForUser(await loadDb(), user)));
   })
@@ -1676,7 +1786,7 @@ app.get(
 app.get(
   "/api/reports/export/:type",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user || user.role !== "admin") {
       return res.status(403).json({ error: "Only admin can export reports" });
     }
@@ -1691,7 +1801,7 @@ app.get(
 app.get(
   "/api/technician/dashboard",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user || user.role !== "technician") {
       return res.status(403).json({ error: "Technician dashboard is only available for technicians" });
     }
@@ -1702,7 +1812,7 @@ app.get(
 app.get(
   "/api/technician/tasks/today",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user || user.role !== "technician") {
       return res.status(403).json({ error: "Technician access only" });
     }
@@ -1713,7 +1823,7 @@ app.get(
 app.post(
   "/api/technician/tasks/:id/status",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user || user.role !== "technician") {
       return res.status(403).json({ error: "Technician access only" });
     }
@@ -1734,7 +1844,7 @@ app.post(
 app.patch(
   "/api/tasks/:id/status",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user || !["admin", "technician"].includes(user.role)) {
       return res.status(403).json({ error: "Task update is not allowed for this role" });
     }
@@ -1749,7 +1859,7 @@ app.patch(
 app.post(
   "/api/assets",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user || user.role !== "admin") {
       return res.status(403).json({ error: "Only admin can create assets" });
     }
@@ -1761,7 +1871,7 @@ app.post(
 app.post(
   "/api/outlets",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user || user.role !== "admin") {
       return res.status(403).json({ error: "Only admin can create outlets" });
     }
@@ -1773,7 +1883,7 @@ app.post(
 app.post(
   "/api/categories",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user || user.role !== "admin") {
       return res.status(403).json({ error: "Only admin can create categories" });
     }
@@ -1785,7 +1895,7 @@ app.post(
 app.post(
   "/api/technicians",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user || user.role !== "admin") {
       return res.status(403).json({ error: "Only admin can create technicians" });
     }
@@ -1797,7 +1907,7 @@ app.post(
 app.post(
   "/api/maintenance-rules",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user || user.role !== "admin") {
       return res.status(403).json({ error: "Only admin can create maintenance rules" });
     }
@@ -1809,7 +1919,7 @@ app.post(
 app.patch(
   "/api/maintenance-rules/:id",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user || user.role !== "admin") {
       return res.status(403).json({ error: "Only admin can update maintenance rules" });
     }
@@ -1821,7 +1931,7 @@ app.patch(
 app.post(
   "/api/tickets",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user || !["admin", "manager"].includes(user.role)) {
       return res.status(403).json({ error: "Only managers or admin can issue tickets" });
     }
@@ -1848,11 +1958,27 @@ app.post(
 app.patch(
   "/api/tickets/:id/assign",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
-    if (!user || user.role !== "admin") {
-      return res.status(403).json({ error: "Only admin can assign technicians" });
+    const user = await userFromRequest(req);
+    if (!user || !["admin", "manager"].includes(user.role)) {
+      return res.status(403).json({ error: "Only admin or manager can assign technicians" });
     }
-    const result = await assignTicket(req.params.id, req.body.technicianId, req.body.overrideReason);
+    const result = await assignTicket(req.params.id, req.body.technicianId, req.body.overrideReason, user);
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.post(
+  "/api/tickets/:id/accept",
+  asyncRoute(async (req, res) => {
+    const result = await acceptTicket(req.params.id, await userFromRequest(req));
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.post(
+  "/api/tickets/:id/reject",
+  asyncRoute(async (req, res) => {
+    const result = await rejectTicket(req.params.id, req.body.reason, await userFromRequest(req));
     res.status(result.status).json(result.body);
   })
 );
@@ -1860,7 +1986,7 @@ app.patch(
 app.delete(
   "/api/tickets/:id/assignment",
   asyncRoute(async (req, res) => {
-    const result = await deleteAssignment(req.params.id, userFromRequest(req));
+    const result = await deleteAssignment(req.params.id, await userFromRequest(req));
     res.status(result.status).json(result.body);
   })
 );
@@ -1868,7 +1994,7 @@ app.delete(
 app.patch(
   "/api/tickets/:id/status",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user) return res.status(401).json({ error: "Login required" });
     if (!req.body.status) return res.status(400).json({ error: "status is required" });
     const result = await updateTicketStatus(req.params.id, req.body.status, req.body.detail, user);
@@ -1879,7 +2005,7 @@ app.patch(
 app.patch(
   "/api/technicians/:id/status",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user || user.role !== "admin") {
       return res.status(403).json({ error: "Only admin can update technician status" });
     }
@@ -1892,7 +2018,7 @@ app.patch(
 app.post(
   "/api/technicians/:id/attendance",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (user?.role === "technician" && user.technicianId !== req.params.id) {
       return res.status(403).json({ error: "Technicians can only update their own attendance" });
     }
@@ -1908,7 +2034,7 @@ app.post(
 app.post(
   "/api/reset",
   asyncRoute(async (req, res) => {
-    const user = userFromRequest(req);
+    const user = await userFromRequest(req);
     if (!user || user.role !== "admin") {
       return res.status(403).json({ error: "Only admin can reset demo data" });
     }
