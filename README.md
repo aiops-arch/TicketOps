@@ -6,6 +6,7 @@ The product replaces WhatsApp-based maintenance communication with a structured 
 
 ## Current Status
 
+- Start with `docs/README.md` for the documentation map.
 - `docs/PLAN.md` contains the business and developer-ready plan.
 - `docs/WORKFLOW.md` explains how the maintenance problem starts and how the system handles it end to end.
 - `docs/API.md` contains REST API rules.
