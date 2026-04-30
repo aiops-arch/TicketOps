@@ -1681,6 +1681,40 @@ function publicUser(user) {
   return safeUser;
 }
 
+async function updateStoredPassword(userId, newPassword) {
+  const passwordHash = hashPassword(newPassword);
+
+  if (useSupabase) {
+    await requireSupabase(
+      await supabase
+        .from("app_users")
+        .update({
+          password_hash: passwordHash,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", userId)
+    );
+    return passwordHash;
+  }
+
+  const db = readJsonDb();
+  db.users = (db.users || []).map((user) =>
+    user.id === userId
+      ? {
+          ...user,
+          passwordHash,
+          updatedAt: new Date().toISOString()
+        }
+      : user
+  );
+  writeJsonDb(db);
+  return passwordHash;
+}
+
+function generateTemporaryPassword() {
+  return `Tmp-${crypto.randomBytes(4).toString("hex")}`;
+}
+
 function mapSupabaseUser(row) {
   return {
     id: row.id,
@@ -1771,6 +1805,62 @@ app.post(
     }
 
     res.json({ user: publicUser(user) });
+  })
+);
+
+app.post(
+  "/api/auth/change-password",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user) return res.status(401).json({ error: "Login required" });
+
+    const currentPassword = String(req.body.currentPassword || "");
+    const newPassword = String(req.body.newPassword || "");
+    const confirmPassword = String(req.body.confirmPassword || "");
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "New password must be at least 8 characters" });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: "New password confirmation does not match" });
+    }
+
+    if (!verifyPassword(currentPassword, user.passwordHash, user.password || "")) {
+      return res.status(403).json({ error: "Current password is incorrect" });
+    }
+
+    await updateStoredPassword(user.id, newPassword);
+    res.json({ ok: true });
+  })
+);
+
+app.post(
+  "/api/admin/users/:id/reset-password",
+  asyncRoute(async (req, res) => {
+    const admin = await userFromRequest(req);
+    if (!admin || admin.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can reset passwords" });
+    }
+
+    const userId = String(req.params.id || "").trim();
+    const targetUser = (await allUsers()).find((item) => item.id === userId);
+    if (!targetUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const requestedPassword = String(req.body.newPassword || "").trim();
+    const temporaryPassword = requestedPassword || generateTemporaryPassword();
+    if (temporaryPassword.length < 8) {
+      return res.status(400).json({ error: "Reset password must be at least 8 characters" });
+    }
+
+    await updateStoredPassword(userId, temporaryPassword);
+    res.json({
+      ok: true,
+      username: targetUser.username,
+      temporaryPassword
+    });
   })
 );
 

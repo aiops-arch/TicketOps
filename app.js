@@ -36,13 +36,29 @@ function ticketRequiresPhoto({ impact = "", category = "", note = "" } = {}) {
 }
 
 const ROLE_DEFAULT_VIEWS = {
-  admin: ["dashboard", "manager", "admin", "scheduler", "masters", "technician", "reports"],
+  admin: ["dashboard", "admin", "masters", "scheduler", "reports"],
   manager: ["dashboard", "manager", "reports"],
   technician: ["dashboard", "technician", "reports"],
   auditor: ["dashboard", "reports"]
 };
 
 const UTILITY_VIEWS = [];
+const ROLE_VIEW_ALLOWLIST = {
+  admin: ["dashboard", "admin", "masters", "scheduler", "reports"],
+  manager: ["dashboard", "manager", "reports"],
+  technician: ["dashboard", "technician", "reports"],
+  auditor: ["dashboard", "reports"]
+};
+
+const VIEW_COPY = {
+  dashboard: { index: "01", label: "Overview" },
+  manager: { index: "02", label: "Manager Desk" },
+  admin: { index: "02", label: "Admin Control" },
+  masters: { index: "03", label: "Masters" },
+  scheduler: { index: "04", label: "Scheduler" },
+  technician: { index: "02", label: "Technician Work" },
+  reports: { index: "05", label: "Reports" }
+};
 
 let state = {
   outlets: [],
@@ -308,26 +324,14 @@ function assetCurrentTechnicians(assetId) {
 }
 
 function allowedViews() {
-  const views = currentUser?.allowedViews?.length
+  const baseViews = currentUser?.allowedViews?.length
     ? [...currentUser.allowedViews]
     : [...(ROLE_DEFAULT_VIEWS[currentUser?.role] || [])];
+  const roleAllowlist = ROLE_VIEW_ALLOWLIST[currentUser?.role] || baseViews;
+  const views = baseViews.filter((view) => roleAllowlist.includes(view));
 
   if (!views.includes("dashboard")) {
     views.unshift("dashboard");
-  }
-
-  if (currentUser?.role === "technician" && !views.includes("reports")) {
-    views.push("reports");
-  }
-
-  if (currentUser?.role === "admin" && !views.includes("masters")) {
-    const adminIndex = views.indexOf("admin");
-    views.splice(adminIndex >= 0 ? adminIndex + 1 : views.length, 0, "masters");
-  }
-
-  if (currentUser?.role === "admin" && !views.includes("scheduler")) {
-    const adminIndex = views.indexOf("admin");
-    views.splice(adminIndex >= 0 ? adminIndex + 1 : views.length, 0, "scheduler");
   }
 
   return views;
@@ -426,7 +430,10 @@ function renderAuthChrome() {
   document.querySelector("#resetData").classList.toggle("is-hidden", currentUser?.role !== "admin");
 
   document.querySelectorAll(".tab[data-view]").forEach((button) => {
-    button.hidden = !canUseView(button.dataset.view);
+    const view = button.dataset.view;
+    const copy = VIEW_COPY[view] || { index: "00", label: view };
+    button.hidden = !canUseView(view);
+    button.innerHTML = `<span>${escapeHtml(copy.index)}</span>${escapeHtml(copy.label)}`;
   });
 }
 
@@ -1077,9 +1084,9 @@ function ticketCard(ticket, mode) {
 }
 
 function dashboardTitle() {
-  if (currentUser?.role === "manager") return `${currentUser.outlet} Command`;
-  if (currentUser?.role === "technician") return "My Field Dashboard";
-  if (currentUser?.role === "admin") return "Operations Command";
+  if (currentUser?.role === "manager") return `${currentUser.outlet} Workspace`;
+  if (currentUser?.role === "technician") return "Field Workspace";
+  if (currentUser?.role === "admin") return "Admin Workspace";
   return "Business Dashboard";
 }
 
@@ -2067,6 +2074,22 @@ function renderSettings() {
         <button class="small-button" data-menu-action="logout">Logout</button>
       </div>
     </article>
+    <article class="settings-card wide">
+      <div class="password-copy">
+        <span class="section-kicker">Security</span>
+        <strong>Change password</strong>
+        <p>Update your login password for both web and mobile access. Current password is required.</p>
+      </div>
+      <div class="password-stack">
+        <form id="passwordChangeForm" class="password-form">
+          <input id="passwordCurrent" type="password" autocomplete="current-password" placeholder="Current password" required>
+          <input id="passwordNew" type="password" autocomplete="new-password" placeholder="New password" minlength="8" required>
+          <input id="passwordConfirm" type="password" autocomplete="new-password" placeholder="Confirm new password" minlength="8" required>
+          <button class="small-button primary" type="submit">Update Password</button>
+        </form>
+        <p class="password-feedback" id="passwordChangeStatus">Keep the new password at least 8 characters long.</p>
+      </div>
+    </article>
     <article class="settings-card">
       <span>Default Workspace</span>
       <strong>${escapeHtml(currentUser?.defaultView || allowedViews()[0] || "None")}</strong>
@@ -2087,6 +2110,26 @@ function renderSettings() {
       <strong>${escapeHtml(currentUser?.outlet || currentUser?.technicianId || "All allowed data")}</strong>
       <p>Reports and lists stay scoped to the logged-in post.</p>
     </article>
+    ${currentUser?.role === "admin" ? `
+      <article class="settings-card wide">
+        <div class="password-copy">
+          <span class="section-kicker">Recovery</span>
+          <strong>Reset user password</strong>
+          <p>Use this when someone forgets a password. A temporary password can be auto-generated or set manually.</p>
+        </div>
+        <div class="password-stack">
+          <form id="passwordResetForm" class="password-form">
+            <select id="passwordResetUser" required>
+              <option value="">Choose user</option>
+              ${directoryUsers.map((user) => `<option value="${escapeHtml(user.id)}">${escapeHtml(user.name)} / ${escapeHtml(user.role)}</option>`).join("")}
+            </select>
+            <input id="passwordResetValue" type="text" placeholder="Temporary password (optional)" minlength="8">
+            <button class="small-button warning" type="submit">Reset Password</button>
+          </form>
+          <p class="password-feedback" id="passwordResetStatus">Leave the password field blank to auto-generate a temporary password.</p>
+        </div>
+      </article>
+    ` : ""}
     ${currentUser?.role === "admin" ? `
       <article class="settings-card danger">
         <span>Demo Data</span>
@@ -2541,6 +2584,71 @@ document.addEventListener("submit", async (event) => {
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = "Save Attendance";
+  }
+});
+
+document.addEventListener("submit", async (event) => {
+  if (event.target.id !== "passwordChangeForm") return;
+  event.preventDefault();
+
+  const status = document.querySelector("#passwordChangeStatus");
+  const currentPassword = document.querySelector("#passwordCurrent").value;
+  const newPassword = document.querySelector("#passwordNew").value;
+  const confirmPassword = document.querySelector("#passwordConfirm").value;
+  const submitButton = event.target.querySelector("button[type='submit']");
+
+  status.textContent = "";
+  submitButton.disabled = true;
+  submitButton.textContent = "Updating...";
+
+  try {
+    await api("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
+    });
+
+    clearUser();
+    showLogin();
+    document.querySelector("#loginError").textContent = "Password updated. Please sign in again.";
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = "Update Password";
+  }
+});
+
+document.addEventListener("submit", async (event) => {
+  if (event.target.id !== "passwordResetForm") return;
+  event.preventDefault();
+  if (currentUser?.role !== "admin") return;
+
+  const status = document.querySelector("#passwordResetStatus");
+  const submitButton = event.target.querySelector("button[type='submit']");
+  const userId = document.querySelector("#passwordResetUser").value;
+  const requestedPassword = document.querySelector("#passwordResetValue").value.trim();
+
+  if (!userId) {
+    status.textContent = "Choose a user first.";
+    return;
+  }
+
+  submitButton.disabled = true;
+  submitButton.textContent = "Resetting...";
+  status.textContent = "";
+
+  try {
+    const result = await api(`/api/admin/users/${encodeURIComponent(userId)}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ newPassword: requestedPassword })
+    });
+    status.textContent = `${result.username} reset. Temporary password: ${result.temporaryPassword}`;
+    document.querySelector("#passwordResetValue").value = "";
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = "Reset Password";
   }
 });
 

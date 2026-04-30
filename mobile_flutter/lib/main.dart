@@ -159,6 +159,7 @@ class _TicketOpsRootState extends State<TicketOpsRoot> {
       await refresh();
     } catch (exception) {
       setState(() => error = cleanError(exception));
+      throw Exception(cleanError(exception));
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -238,7 +239,10 @@ class _TicketOpsRootState extends State<TicketOpsRoot> {
     }
   }
 
-  Future<void> assignTicket(Map<String, dynamic> ticket, String technicianId) async {
+  Future<void> assignTicket(
+    Map<String, dynamic> ticket,
+    String technicianId,
+  ) async {
     if (user == null) return;
     setState(() => loading = true);
     try {
@@ -267,6 +271,36 @@ class _TicketOpsRootState extends State<TicketOpsRoot> {
         'reason': reason,
       }, user);
       await refresh();
+    } catch (exception) {
+      setState(() => error = cleanError(exception));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword,
+    String confirmPassword,
+  ) async {
+    if (user == null) return;
+    setState(() {
+      loading = true;
+      error = '';
+    });
+    try {
+      await api.postJson('/api/auth/change-password', {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      }, user);
+      setState(() {
+        user = null;
+        data = null;
+        todayTasks = [];
+        tab = 0;
+        error = 'Password updated. Please sign in again.';
+      });
     } catch (exception) {
       setState(() => error = cleanError(exception));
     } finally {
@@ -306,6 +340,7 @@ class _TicketOpsRootState extends State<TicketOpsRoot> {
               onTicketReject: rejectTicket,
               onTicketAssign: assignTicket,
               onAttendance: markAttendance,
+              onPasswordChange: changePassword,
             ),
     );
   }
@@ -550,6 +585,7 @@ class HomeScreen extends StatelessWidget {
     required this.onTicketReject,
     required this.onTicketAssign,
     required this.onAttendance,
+    required this.onPasswordChange,
   });
 
   final Map<String, dynamic> user;
@@ -564,12 +600,21 @@ class HomeScreen extends StatelessWidget {
   final Future<void> Function(String id) onTaskDone;
   final Future<void> Function(Map<String, dynamic> ticket) onTicketAdvance;
   final Future<void> Function(Map<String, dynamic> ticket) onTicketAccept;
-  final Future<void> Function(Map<String, dynamic> ticket, String reason) onTicketReject;
-  final Future<void> Function(Map<String, dynamic> ticket, String technicianId) onTicketAssign;
+  final Future<void> Function(Map<String, dynamic> ticket, String reason)
+  onTicketReject;
+  final Future<void> Function(Map<String, dynamic> ticket, String technicianId)
+  onTicketAssign;
   final Future<void> Function(String status, String reason) onAttendance;
+  final Future<void> Function(
+    String currentPassword,
+    String newPassword,
+    String confirmPassword,
+  )
+  onPasswordChange;
 
   @override
   Widget build(BuildContext context) {
+    final destinations = mobileDestinations(user);
     final pages = [
       DashboardPage(user: user, data: data, todayTasks: todayTasks),
       WorkPage(
@@ -591,6 +636,7 @@ class HomeScreen extends StatelessWidget {
         data: data,
         onLogout: onLogout,
         onAttendance: onAttendance,
+        onPasswordChange: onPasswordChange,
       ),
     ];
 
@@ -644,24 +690,7 @@ class HomeScreen extends StatelessWidget {
             onDestinationSelected: onTab,
             backgroundColor: Colors.white.withValues(alpha: .72),
             indicatorColor: AppColors.accent.withValues(alpha: .22),
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.space_dashboard_outlined),
-                label: 'Dashboard',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.task_alt_rounded),
-                label: 'Work',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.confirmation_number_outlined),
-                label: 'Tickets',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.person_outline_rounded),
-                label: 'Account',
-              ),
-            ],
+            destinations: destinations,
           ),
         ],
       ),
@@ -694,6 +723,8 @@ class DashboardPage extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        RoleBriefCard(user: user),
+        const SizedBox(height: 14),
         GlassCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -786,14 +817,17 @@ class WorkPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final role = '${user['role']}';
     final tasks = role == 'technician' ? todayTasks : listOf(data['tasks']);
+    final copy = workPageCopy(role);
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const SectionLabel('Daily checklist'),
+        SectionLabel(copy.$1),
+        const SizedBox(height: 4),
+        Text(copy.$2, style: const TextStyle(color: AppColors.muted)),
         const SizedBox(height: 8),
         if (tasks.isEmpty)
-          const GlassCard(child: EmptyBlock('No checklist tasks assigned.'))
+          GlassCard(child: EmptyBlock(copy.$3))
         else
           ...tasks.map(
             (task) => Padding(
@@ -842,7 +876,12 @@ class TicketPage extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        SectionLabel(role == 'manager' ? 'Outlet assignment queue' : 'Assigned tickets'),
+        SectionLabel(ticketPageTitle(role)),
+        const SizedBox(height: 4),
+        Text(
+          ticketPageCopy(role),
+          style: const TextStyle(color: AppColors.muted),
+        ),
         const SizedBox(height: 8),
         if (tickets.isEmpty)
           const GlassCard(child: EmptyBlock('No active tickets.'))
@@ -854,17 +893,25 @@ class TicketPage extends StatelessWidget {
                 ticket: ticket,
                 user: user,
                 technicians: technicians,
-                onAccept: role == 'technician' && '${ticket['status']}' == 'Assigned'
+                onAccept:
+                    role == 'technician' && '${ticket['status']}' == 'Assigned'
                     ? () => onTicketAccept(ticket)
                     : null,
-                onReject: role == 'technician' && ['Assigned', 'Acknowledged'].contains('${ticket['status']}')
+                onReject:
+                    role == 'technician' &&
+                        [
+                          'Assigned',
+                          'Acknowledged',
+                        ].contains('${ticket['status']}')
                     ? (reason) => onTicketReject(ticket, reason)
                     : null,
                 onAssign: role == 'manager' || role == 'admin'
                     ? (technicianId) => onTicketAssign(ticket, technicianId)
                     : null,
-                onAdvance: nextTicketStatus('${ticket['status']}') == null ||
-                        (role == 'technician' && '${ticket['status']}' == 'Assigned')
+                onAdvance:
+                    nextTicketStatus('${ticket['status']}') == null ||
+                        (role == 'technician' &&
+                            '${ticket['status']}' == 'Assigned')
                     ? null
                     : () => onTicketAdvance(ticket),
               ),
@@ -882,12 +929,19 @@ class AccountPage extends StatelessWidget {
     required this.data,
     required this.onLogout,
     required this.onAttendance,
+    required this.onPasswordChange,
   });
 
   final Map<String, dynamic> user;
   final Map<String, dynamic> data;
   final VoidCallback onLogout;
   final Future<void> Function(String status, String reason) onAttendance;
+  final Future<void> Function(
+    String currentPassword,
+    String newPassword,
+    String confirmPassword,
+  )
+  onPasswordChange;
 
   @override
   Widget build(BuildContext context) {
@@ -915,6 +969,8 @@ class AccountPage extends StatelessWidget {
               InfoRow('Role', '${user['role']}'),
               InfoRow('Storage', '${data['storage'] ?? 'supabase'}'),
               InfoRow('Outlet', '${user['outlet'] ?? 'All allowed'}'),
+              const SizedBox(height: 18),
+              PasswordChangeCard(onPasswordChange: onPasswordChange),
               if ('${user['role']}' == 'technician') ...[
                 const SizedBox(height: 18),
                 const SectionLabel('Attendance and availability'),
@@ -925,10 +981,8 @@ class AccountPage extends StatelessWidget {
                   children: [
                     ActionChip(
                       label: const Text('Present'),
-                      onPressed: () => onAttendance(
-                        'Present',
-                        'Available from mobile app',
-                      ),
+                      onPressed: () =>
+                          onAttendance('Present', 'Available from mobile app'),
                     ),
                     ActionChip(
                       label: const Text('Absent today'),
@@ -953,6 +1007,175 @@ class AccountPage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class RoleBriefCard extends StatelessWidget {
+  const RoleBriefCard({super.key, required this.user});
+
+  final Map<String, dynamic> user;
+
+  @override
+  Widget build(BuildContext context) {
+    final role = '${user['role']}';
+    final items = roleResponsibilities(role);
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionLabel(
+            role == 'admin'
+                ? 'Control responsibility'
+                : role == 'manager'
+                ? 'Outlet responsibility'
+                : 'Field responsibility',
+          ),
+          const SizedBox(height: 10),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 17,
+                    color: AppColors.teal.withValues(alpha: .82),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class PasswordChangeCard extends StatefulWidget {
+  const PasswordChangeCard({super.key, required this.onPasswordChange});
+
+  final Future<void> Function(
+    String currentPassword,
+    String newPassword,
+    String confirmPassword,
+  )
+  onPasswordChange;
+
+  @override
+  State<PasswordChangeCard> createState() => _PasswordChangeCardState();
+}
+
+class _PasswordChangeCardState extends State<PasswordChangeCard> {
+  final currentPassword = TextEditingController();
+  final newPassword = TextEditingController();
+  final confirmPassword = TextEditingController();
+  String status = 'Current password is required to change credentials.';
+  bool saving = false;
+
+  @override
+  void dispose() {
+    currentPassword.dispose();
+    newPassword.dispose();
+    confirmPassword.dispose();
+    super.dispose();
+  }
+
+  Future<void> submit() async {
+    if (saving) return;
+    setState(() {
+      saving = true;
+      status = '';
+    });
+    try {
+      await widget.onPasswordChange(
+        currentPassword.text,
+        newPassword.text,
+        confirmPassword.text,
+      );
+      if (mounted) {
+        setState(() {
+          status = 'Password updated. Sign in again with the new password.';
+          currentPassword.clear();
+          newPassword.clear();
+          confirmPassword.clear();
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => status = error.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionLabel('Security'),
+          const SizedBox(height: 8),
+          const Text(
+            'Change password',
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Update your login password for web and mobile access.',
+            style: TextStyle(color: AppColors.muted),
+          ),
+          const SizedBox(height: 14),
+          AppInput(
+            controller: currentPassword,
+            label: 'Current password',
+            obscure: true,
+          ),
+          const SizedBox(height: 10),
+          AppInput(
+            controller: newPassword,
+            label: 'New password',
+            obscure: true,
+          ),
+          const SizedBox(height: 10),
+          AppInput(
+            controller: confirmPassword,
+            label: 'Confirm new password',
+            obscure: true,
+          ),
+          const SizedBox(height: 10),
+          if (status.isNotEmpty) ...[
+            Text(
+              status,
+              style: const TextStyle(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          PrimaryButton(
+            label: saving ? 'Updating...' : 'Update Password',
+            onPressed: saving ? null : submit,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1206,7 +1429,12 @@ class _TicketTileState extends State<TicketTile> {
           ),
           if (widget.onAssign != null &&
               assignableTechnicians.isNotEmpty &&
-              !['Closed', 'Cancelled', 'Resolved', 'Verification Pending'].contains(status)) ...[
+              ![
+                'Closed',
+                'Cancelled',
+                'Resolved',
+                'Verification Pending',
+              ].contains(status)) ...[
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
               initialValue: selectedTechnician,
@@ -1239,7 +1467,10 @@ class _TicketTileState extends State<TicketTile> {
           ],
           if (widget.onReject != null) ...[
             const SizedBox(height: 10),
-            SecondaryButton(label: 'Reject with reason', onPressed: rejectWithReason),
+            SecondaryButton(
+              label: 'Reject with reason',
+              onPressed: rejectWithReason,
+            ),
           ],
           if (widget.onAdvance != null && next != null) ...[
             const SizedBox(height: 14),
@@ -1431,13 +1662,15 @@ String firstAssignableTechnician(
   Map<String, dynamic> ticket,
 ) {
   if (technicians.isEmpty) return '';
-  final preferred = '${ticket['suggestedTechnician'] is Map ? mapOf(ticket['suggestedTechnician'])['id'] : ''}';
+  final preferred =
+      '${ticket['suggestedTechnician'] is Map ? mapOf(ticket['suggestedTechnician'])['id'] : ''}';
   if (preferred.isNotEmpty &&
       technicians.any((tech) => '${tech['id']}' == preferred)) {
     return preferred;
   }
   final assigned = '${ticket['assignedTo'] ?? ''}';
-  if (assigned.isNotEmpty && technicians.any((tech) => '${tech['id']}' == assigned)) {
+  if (assigned.isNotEmpty &&
+      technicians.any((tech) => '${tech['id']}' == assigned)) {
     return assigned;
   }
   return '${technicians.first['id']}';
@@ -1472,6 +1705,160 @@ String roleTitle(Map<String, dynamic> user) {
       return 'Control Room';
     default:
       return 'TicketOps';
+  }
+}
+
+List<NavigationDestination> mobileDestinations(Map<String, dynamic> user) {
+  switch ('${user['role']}') {
+    case 'technician':
+      return const [
+        NavigationDestination(icon: Icon(Icons.today_outlined), label: 'Today'),
+        NavigationDestination(
+          icon: Icon(Icons.checklist_rounded),
+          label: 'Checklist',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.engineering_outlined),
+          label: 'Jobs',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.event_available_outlined),
+          label: 'Availability',
+        ),
+      ];
+    case 'manager':
+      return const [
+        NavigationDestination(
+          icon: Icon(Icons.insights_outlined),
+          label: 'Outlet',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.task_alt_rounded),
+          label: 'Tasks',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.assignment_ind_outlined),
+          label: 'Assign',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.person_outline_rounded),
+          label: 'Account',
+        ),
+      ];
+    case 'admin':
+      return const [
+        NavigationDestination(
+          icon: Icon(Icons.space_dashboard_outlined),
+          label: 'Control',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.rule_folder_outlined),
+          label: 'Rules',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.admin_panel_settings_outlined),
+          label: 'Tickets',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.manage_accounts_outlined),
+          label: 'Profile',
+        ),
+      ];
+    default:
+      return const [
+        NavigationDestination(
+          icon: Icon(Icons.space_dashboard_outlined),
+          label: 'Overview',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.task_alt_rounded),
+          label: 'Tasks',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.confirmation_number_outlined),
+          label: 'Tickets',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.person_outline_rounded),
+          label: 'Account',
+        ),
+      ];
+  }
+}
+
+List<String> roleResponsibilities(String role) {
+  switch (role) {
+    case 'technician':
+      return const [
+        'Mark attendance and live availability before work is assigned.',
+        'Complete today checklist for assigned assets.',
+        'Accept or reject issue jobs with a clear reason.',
+      ];
+    case 'manager':
+      return const [
+        'Create outlet issue tickets with clear asset and priority context.',
+        'Assign work to available technicians for the outlet.',
+        'Track pending, blocked, and resolved work without admin controls.',
+      ];
+    case 'admin':
+      return const [
+        'Maintain users, outlets, assets, categories, and checklist rules.',
+        'Monitor queues and override assignment only when operations require it.',
+        'Keep the system structure clean instead of doing technician work.',
+      ];
+    default:
+      return const ['View operational status and assigned work.'];
+  }
+}
+
+(String, String, String) workPageCopy(String role) {
+  switch (role) {
+    case 'technician':
+      return (
+        'Today checklist',
+        'Only the tasks assigned to you for today. Finish these before closing the shift.',
+        'No checklist tasks assigned for today.',
+      );
+    case 'manager':
+      return (
+        'Outlet task visibility',
+        'Read-only view of maintenance pressure for your outlet. Assignment happens in Assign.',
+        'No outlet checklist pressure right now.',
+      );
+    case 'admin':
+      return (
+        'Checklist rules preview',
+        'System-level task visibility. Edit real rules from Scheduler on the web portal.',
+        'No generated checklist tasks are visible.',
+      );
+    default:
+      return ('Tasks', 'Assigned task visibility.', 'No tasks assigned.');
+  }
+}
+
+String ticketPageTitle(String role) {
+  switch (role) {
+    case 'manager':
+      return 'Outlet assignment queue';
+    case 'admin':
+      return 'Control ticket queue';
+    case 'technician':
+      return 'My issue jobs';
+    default:
+      return 'Tickets';
+  }
+}
+
+String ticketPageCopy(String role) {
+  switch (role) {
+    case 'manager':
+      return 'Assign outlet issues to the best available technician.';
+    case 'admin':
+      return 'Monitor escalations and override only when manager routing is insufficient.';
+    case 'technician':
+      return 'Accept jobs you can handle, or reject with a reason so dispatch can reassign.';
+    default:
+      return 'Open issue work.';
   }
 }
 

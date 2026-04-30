@@ -7,9 +7,13 @@
     <meta name="theme-color" content="#12211f">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
   </head>
-  <body>
+  <body class="ops-portal">
+    <div class="portal-ambient" aria-hidden="true"></div>
     <header class="topbar">
       <div class="nav-ambient" aria-hidden="true"></div>
       <div class="brand-lockup">
@@ -26,7 +30,6 @@
         <button class="tab" data-view="masters"><span>05</span>Masters</button>
         <button class="tab" data-view="technician"><span>06</span>Technician</button>
         <button class="tab" data-view="reports"><span>07</span>Reports</button>
-        <a class="tab portal-tab" href="customer.html"><span>08</span>Customer Portal</a>
       </nav>
       <div class="topbar-actions" aria-label="Account controls">
         <div class="account-dock">
