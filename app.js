@@ -79,6 +79,8 @@ let editingUserAccessId = "";
 let editingCategoryId = "";
 let editingTechnicianId = "";
 let editingOutletName = "";
+let editingAssetId = "";
+let activeMasterTab = "outlets";
 
 function readStoredUser() {
   try {
@@ -697,19 +699,19 @@ async function deleteAssignment(ticketId) {
   await loadState();
 }
 
-async function createAsset(event) {
+async function saveAssetMaster(event) {
   event.preventDefault();
   if (!canUseView("masters")) return;
 
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
   const resultBox = document.querySelector("#masterCreateResult");
   submitButton.disabled = true;
-  submitButton.textContent = "Adding...";
+  submitButton.textContent = editingAssetId ? "Updating..." : "Adding...";
   resultBox.textContent = "";
 
   try {
-    const asset = await api("/api/assets", {
-      method: "POST",
+    const asset = await api(editingAssetId ? `/api/assets/${editingAssetId}` : "/api/assets", {
+      method: editingAssetId ? "PATCH" : "POST",
       body: JSON.stringify({
         outlet: document.querySelector("#assetOutlet").value,
         category: document.querySelector("#assetCategory").value,
@@ -718,16 +720,33 @@ async function createAsset(event) {
         status: document.querySelector("#assetStatus")?.value || "Active"
       })
     });
-    document.querySelector("#assetName").value = "";
-    document.querySelector("#assetCode").value = "";
-    resultBox.textContent = `${asset.id} added to ${asset.outlet}.`;
+    const wasEditing = Boolean(editingAssetId);
+    resetAssetForm();
+    resultBox.textContent = `${asset.id} ${wasEditing ? "updated" : "added"} for ${asset.outlet}.`;
     await loadState();
   } catch (error) {
     resultBox.textContent = error.message;
   } finally {
     submitButton.disabled = false;
-    submitButton.textContent = "Add Asset";
+    submitButton.textContent = editingAssetId ? "Update Asset" : "Add Asset";
   }
+}
+
+function resetAssetForm() {
+  editingAssetId = "";
+  document.querySelector("#assetForm")?.reset();
+  document.querySelector("#assetSubmit").textContent = "Add Asset";
+}
+
+function fillAssetForm(assetId) {
+  const asset = (state.assets || []).find((item) => item.id === assetId);
+  if (!asset) return;
+  editingAssetId = asset.id;
+  document.querySelector("#assetOutlet").value = asset.outlet || "";
+  document.querySelector("#assetCategory").value = asset.category || "";
+  document.querySelector("#assetName").value = asset.name || "";
+  document.querySelector("#assetCode").value = asset.code || "";
+  document.querySelector("#assetSubmit").textContent = "Update Asset";
 }
 
 async function createOutlet(event) {
@@ -741,6 +760,7 @@ async function createOutlet(event) {
   try {
     const payload = {
       name: document.querySelector("#outletName").value,
+      branch: document.querySelector("#outletBranch").value,
       address: document.querySelector("#outletAddress").value,
       latitude: "",
       longitude: ""
@@ -768,6 +788,7 @@ function resetOutletForm() {
   editingOutletName = "";
   document.querySelector("#outletName").value = "";
   document.querySelector("#outletName").disabled = false;
+  document.querySelector("#outletBranch").value = "";
   document.querySelector("#outletAddress").value = "";
   document.querySelector("#outletSubmit").textContent = "Add Outlet";
 }
@@ -777,6 +798,7 @@ function fillOutletForm(outletName) {
   editingOutletName = outletName;
   document.querySelector("#outletName").value = outletName;
   document.querySelector("#outletName").disabled = true;
+  document.querySelector("#outletBranch").value = location.branch || "";
   document.querySelector("#outletAddress").value = location.address || "";
   document.querySelector("#outletSubmit").textContent = "Update Outlet";
 }
@@ -935,6 +957,30 @@ async function saveUserAccess(event) {
   } finally {
     submitButton.disabled = false;
   }
+}
+
+async function deleteMasterRecord(type, id, label) {
+  if (!canUseView("masters")) return;
+  if (!window.confirm(`Delete ${label}?`)) return;
+  const resultBox = document.querySelector("#masterCreateResult");
+  try {
+    await api(`/api/${type}/${encodeURIComponent(id)}`, { method: "DELETE" });
+    resultBox.textContent = `${label} deleted.`;
+    await loadState();
+  } catch (error) {
+    resultBox.textContent = error.message;
+    window.alert(error.message);
+  }
+}
+
+function switchMasterTab(tabName) {
+  activeMasterTab = tabName || "outlets";
+  document.querySelectorAll("[data-master-tab]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.masterTab === activeMasterTab);
+  });
+  document.querySelectorAll("[data-master-panel]").forEach((panel) => {
+    panel.classList.toggle("is-active", panel.dataset.masterPanel === activeMasterTab);
+  });
 }
 
 async function createMaintenanceRule(event) {
@@ -1511,6 +1557,7 @@ function renderManager() {
 }
 
 function renderMasters() {
+  switchMasterTab(activeMasterTab);
   document.querySelector("#outletBoard").innerHTML = state.outlets.length
     ? state.outlets.map((outlet) => {
       const location = state.outletLocations?.[outlet] || {};
@@ -1520,8 +1567,9 @@ function renderMasters() {
       return `
         <button type="button" class="master-row" data-edit-outlet="${escapeHtml(outlet)}">
           <strong>${escapeHtml(outlet)}</strong>
-          <span>${escapeHtml(location.address || coordinates || "Location pending")} / Edit</span>
+          <span>${escapeHtml([location.branch, location.address || coordinates || "Location pending"].filter(Boolean).join(" / "))} / Edit</span>
         </button>
+        <button type="button" class="small-button danger master-delete-button" data-delete-master="outlets:${escapeHtml(outlet)}:${escapeHtml(outlet)}">Delete</button>
       `;
     }).join("")
     : `<div class="empty mini">No outlets yet.</div>`;
@@ -1532,15 +1580,17 @@ function renderMasters() {
         <strong>${escapeHtml(category.name)}</strong>
         <span>${escapeHtml(category.description || "Category")} / Edit</span>
       </button>
+      <button type="button" class="small-button danger master-delete-button" data-delete-master="categories:${escapeHtml(category.id)}:${escapeHtml(category.name)}">Delete</button>
     `).join("")
     : `<div class="empty mini">No categories yet.</div>`;
 
   document.querySelector("#assetBoard").innerHTML = (state.assets || []).length
     ? state.assets.map((asset) => `
-      <button type="button" class="master-row asset-row status-${token(asset.status)}" data-asset-detail="${escapeHtml(asset.id)}">
+      <button type="button" class="master-row asset-row status-${token(asset.status)}" data-edit-asset="${escapeHtml(asset.id)}">
         <strong>${escapeHtml(asset.name)}</strong>
-        <span>${escapeHtml(asset.outlet)} / ${escapeHtml(asset.category)} / ${escapeHtml(asset.code || "No code")}</span>
+        <span>${escapeHtml(asset.outlet)} / ${escapeHtml(asset.category)} / ${escapeHtml(asset.code || "No code")} / Edit</span>
       </button>
+      <button type="button" class="small-button danger master-delete-button" data-delete-master="assets:${escapeHtml(asset.id)}:${escapeHtml(asset.name)}">Delete</button>
     `).join("")
     : `<div class="empty mini">No assets yet.</div>`;
 
@@ -1550,6 +1600,7 @@ function renderMasters() {
         <strong>${escapeHtml(tech.name)}</strong>
         <span>${escapeHtml(tech.skill)} / ${escapeHtml(serviceAreaLabel(tech))} / Edit outlets</span>
       </button>
+      <button type="button" class="small-button danger master-delete-button" data-delete-master="technicians:${escapeHtml(tech.id)}:${escapeHtml(tech.name)}">Delete</button>
     `).join("")
     : `<div class="empty mini">No technicians yet.</div>`;
 
@@ -1561,6 +1612,7 @@ function renderMasters() {
           <strong>${escapeHtml(user.name)} / ${escapeHtml(user.role)}</strong>
           <span>${escapeHtml(user.username)} / ${escapeHtml(userOutletLabel(user))}${user.address ? ` / ${escapeHtml(user.address)}` : ""}</span>
         </button>
+        <button type="button" class="small-button danger master-delete-button" data-delete-master="admin/users:${escapeHtml(user.id)}:${escapeHtml(user.username)}">Delete</button>
       `).join("")
       : `<div class="empty mini">No users yet.</div>`;
   }
@@ -2787,7 +2839,8 @@ document.querySelector("#ticketForm").addEventListener("submit", createTicket);
 document.querySelector("#ticketImpact").addEventListener("change", updateTicketPriorityPreview);
 document.querySelector("#ticketCategory").addEventListener("change", updateTicketPriorityPreview);
 document.querySelector("#ticketNote").addEventListener("input", updateTicketPriorityPreview);
-document.querySelector("#assetForm").addEventListener("submit", createAsset);
+document.querySelector("#assetForm").addEventListener("submit", saveAssetMaster);
+document.querySelector("#assetCancel").addEventListener("click", resetAssetForm);
 document.querySelector("#outletForm").addEventListener("submit", createOutlet);
 document.querySelector("#outletCancel").addEventListener("click", resetOutletForm);
 document.querySelector("#categoryForm").addEventListener("submit", createCategory);
@@ -2798,6 +2851,9 @@ document.querySelector("#userAccessForm").addEventListener("submit", saveUserAcc
 document.querySelector("#userAccessCancel").addEventListener("click", resetUserAccessForm);
 document.querySelector("#maintenanceRuleForm").addEventListener("submit", createMaintenanceRule);
 document.querySelector("#activeTechnician").addEventListener("change", renderTechnician);
+document.querySelectorAll("[data-master-tab]").forEach((button) => {
+  button.addEventListener("click", () => switchMasterTab(button.dataset.masterTab));
+});
 document.querySelector("#logoutButton").addEventListener("click", () => {
   clearUser();
   showLogin();
@@ -2832,6 +2888,12 @@ document.addEventListener("click", async (event) => {
     return;
   }
 
+  const editAsset = event.target.closest?.("[data-edit-asset]");
+  if (editAsset) {
+    fillAssetForm(editAsset.dataset.editAsset);
+    return;
+  }
+
   const editCategory = event.target.closest?.("[data-edit-category]");
   if (editCategory) {
     fillCategoryForm(editCategory.dataset.editCategory);
@@ -2841,6 +2903,13 @@ document.addEventListener("click", async (event) => {
   const editTechnician = event.target.closest?.("[data-edit-technician]");
   if (editTechnician) {
     fillTechnicianForm(editTechnician.dataset.editTechnician);
+    return;
+  }
+
+  const deleteMaster = event.target.closest?.("[data-delete-master]");
+  if (deleteMaster) {
+    const [type, id, label] = deleteMaster.dataset.deleteMaster.split(":");
+    await deleteMasterRecord(type, id, label || id);
     return;
   }
 

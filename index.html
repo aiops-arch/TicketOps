@@ -362,8 +362,15 @@
             <span class="heading-chip">Outlet / category / asset / technician</span>
           </div>
           <p id="masterCreateResult" class="form-hint" aria-live="polite"></p>
+          <div class="master-tabs" role="tablist" aria-label="Master sections">
+            <button type="button" class="master-tab is-active" data-master-tab="outlets">Outlets</button>
+            <button type="button" class="master-tab" data-master-tab="categories">Categories</button>
+            <button type="button" class="master-tab" data-master-tab="assets">Assets</button>
+            <button type="button" class="master-tab" data-master-tab="technicians">Technicians</button>
+            <button type="button" class="master-tab" data-master-tab="users">Users</button>
+          </div>
           <div class="master-sections">
-            <section class="master-section">
+            <section class="master-section is-active" data-master-panel="outlets">
               <div class="master-section-heading">
                 <div>
                   <span class="section-kicker">Outlets</span>
@@ -376,6 +383,10 @@
                   <input id="outletName" required placeholder="Example: Aiko Vesu">
                 </label>
                 <label>
+                  Branch
+                  <input id="outletBranch" placeholder="Example: Vesu, Adajan, Citylight">
+                </label>
+                <label>
                   Location / address
                   <input id="outletAddress" placeholder="Street, area, city">
                 </label>
@@ -385,7 +396,7 @@
               <div id="outletBoard" class="master-list"></div>
             </section>
 
-            <section class="master-section compact-master-section">
+            <section class="master-section compact-master-section" data-master-panel="categories">
               <div class="master-section-heading">
                 <div>
                   <span class="section-kicker">Categories</span>
@@ -403,7 +414,7 @@
               <div id="categoryBoard" class="master-list"></div>
             </section>
 
-            <section class="master-section">
+            <section class="master-section" data-master-panel="assets">
               <div class="master-section-heading">
                 <div>
                   <span class="section-kicker">Assets</span>
@@ -427,12 +438,13 @@
                   Asset code
                   <input id="assetCode" placeholder="AIKO-REF-01">
                 </label>
-                <button type="submit" class="primary-button">Add Asset</button>
+                <button id="assetSubmit" type="submit" class="primary-button">Add Asset</button>
+                <button id="assetCancel" type="button" class="small-button">Clear</button>
               </form>
               <div id="assetBoard" class="master-list"></div>
             </section>
 
-            <section class="master-section">
+            <section class="master-section" data-master-panel="technicians">
               <div class="master-section-heading">
                 <div>
                   <span class="section-kicker">Technicians</span>
@@ -458,7 +470,7 @@
               <div id="technicianMasterBoard" class="master-list"></div>
             </section>
 
-            <section class="master-section wide-master-section">
+            <section class="master-section wide-master-section" data-master-panel="users">
               <div class="master-section-heading">
                 <div>
                   <span class="section-kicker">People Access</span>

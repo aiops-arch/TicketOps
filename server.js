@@ -1065,7 +1065,7 @@ async function requireSupabase(result) {
 
 async function loadSupabaseDb() {
   const [outletsResult, categoriesResult, assetsResult, tasksResult, techniciansResult, ticketsResult, historyResult, attendancePlansResult, maintenanceRulesResult] = await Promise.all([
-    supabase.from("outlets").select("name,address,latitude,longitude").order("name"),
+    supabase.from("outlets").select("name,branch,address,latitude,longitude").order("name"),
     supabase.from("categories").select("id,name,description").order("name"),
     supabase.from("assets").select("id,outlet,category,name,code,status,notes,created_at").order("created_at", { ascending: false }),
     supabase.from("tasks").select("id,title,asset_id,outlet,assigned_to,status,task_date,completed_at,evidence_comment,evidence_photo_url,evidence_at,notes").order("task_date", { ascending: false }),
@@ -1092,6 +1092,7 @@ async function loadSupabaseDb() {
       outlet.name,
       {
         address: outlet.address || "",
+        branch: outlet.branch || "",
         latitude: outlet.latitude === null ? null : Number(outlet.latitude),
         longitude: outlet.longitude === null ? null : Number(outlet.longitude)
       }
@@ -1282,9 +1283,44 @@ async function createAsset(payload, user) {
   return { status: 201, body: asset };
 }
 
+async function updateAsset(assetId, payload, user) {
+  const db = await loadDb();
+  const existing = db.assets.find((asset) => asset.id === assetId);
+  if (!existing) return { status: 404, body: { error: "Asset not found" } };
+  const outlet = String(payload.outlet || existing.outlet).trim();
+  const category = String(payload.category || existing.category).trim();
+  const name = String(payload.name || existing.name).trim();
+  const code = String(payload.code ?? existing.code ?? "").trim();
+  const status = String(payload.status || existing.status || "Active").trim();
+  const notes = String(payload.notes ?? existing.notes ?? "").trim();
+  if (!db.outlets.includes(outlet)) return { status: 400, body: { error: "Outlet is invalid" } };
+  if (!db.categories.some((item) => item.name === category)) return { status: 400, body: { error: "Category is invalid" } };
+  if (!name) return { status: 400, body: { error: "Asset name is required" } };
+  if (code && db.assets.some((asset) => asset.id !== assetId && String(asset.code).toLowerCase() === code.toLowerCase())) {
+    return { status: 409, body: { error: "Asset code already exists" } };
+  }
+  const updated = { ...existing, outlet, category, name, code, status, notes, updatedBy: user?.id || "" };
+  if (useSupabase) {
+    await requireSupabase(await supabase.from("assets").update({
+      outlet,
+      category,
+      name,
+      code: code || null,
+      status,
+      notes,
+      updated_at: new Date().toISOString()
+    }).eq("id", assetId));
+    return { status: 200, body: updated };
+  }
+  db.assets = db.assets.map((asset) => asset.id === assetId ? updated : asset);
+  writeJsonDb(db);
+  return { status: 200, body: updated };
+}
+
 async function createOutlet(payload) {
   const db = await loadDb();
   const name = String(payload.name || "").trim();
+  const branch = String(payload.branch || "").trim();
   const address = String(payload.address || "").trim();
   const latitude = payload.latitude === "" || payload.latitude === null || payload.latitude === undefined ? null : Number(payload.latitude);
   const longitude = payload.longitude === "" || payload.longitude === null || payload.longitude === undefined ? null : Number(payload.longitude);
@@ -1297,17 +1333,17 @@ async function createOutlet(payload) {
   }
 
   if (useSupabase) {
-    await requireSupabase(await supabase.from("outlets").insert({ name, address: address || null, latitude, longitude }));
-    return { status: 201, body: { name, address, latitude, longitude } };
+    await requireSupabase(await supabase.from("outlets").insert({ name, branch: branch || null, address: address || null, latitude, longitude }));
+    return { status: 201, body: { name, branch, address, latitude, longitude } };
   }
 
   db.outlets.push(name);
   db.outletLocations = {
     ...(db.outletLocations || {}),
-    [name]: { address, latitude, longitude }
+    [name]: { branch, address, latitude, longitude }
   };
   writeJsonDb(db);
-  return { status: 201, body: { name, address, latitude, longitude } };
+  return { status: 201, body: { name, branch, address, latitude, longitude } };
 }
 
 async function updateOutlet(oldName, payload) {
@@ -1315,6 +1351,7 @@ async function updateOutlet(oldName, payload) {
   const existing = db.outlets.find((outlet) => outlet === oldName);
   if (!existing) return { status: 404, body: { error: "Outlet not found" } };
   const name = String(payload.name || oldName).trim();
+  const branch = String(payload.branch || "").trim();
   const address = String(payload.address || "").trim();
   if (!name) return { status: 400, body: { error: "Outlet name is required" } };
   if (db.outlets.some((outlet) => outlet !== oldName && outlet.toLowerCase() === name.toLowerCase())) {
@@ -1326,8 +1363,8 @@ async function updateOutlet(oldName, payload) {
 
   if (useSupabase) {
     if (name !== oldName) return { status: 400, body: { error: "Outlet name cannot be changed after creation. Update the location or add a new outlet." } };
-    await requireSupabase(await supabase.from("outlets").update({ name, address: address || null, latitude, longitude }).eq("name", oldName));
-    return { status: 200, body: { name, address, latitude, longitude } };
+    await requireSupabase(await supabase.from("outlets").update({ name, branch: branch || null, address: address || null, latitude, longitude }).eq("name", oldName));
+    return { status: 200, body: { name, branch, address, latitude, longitude } };
   }
 
   db.outlets = db.outlets.map((outlet) => outlet === oldName ? name : outlet);
@@ -1344,9 +1381,9 @@ async function updateOutlet(oldName, payload) {
     allowedOutlets: (user.allowedOutlets || []).map((outlet) => outlet === oldName ? name : outlet)
   }));
   const { [oldName]: _oldLocation, ...locations } = db.outletLocations || {};
-  db.outletLocations = { ...locations, [name]: { address, latitude, longitude } };
+  db.outletLocations = { ...locations, [name]: { branch, address, latitude, longitude } };
   writeJsonDb(db);
-  return { status: 200, body: { name, address, latitude, longitude } };
+  return { status: 200, body: { name, branch, address, latitude, longitude } };
 }
 
 async function createCategory(payload) {
@@ -1384,12 +1421,83 @@ async function updateCategory(categoryId, payload) {
   const updated = { ...existing, name, description };
   if (useSupabase) {
     await requireSupabase(await supabase.from("categories").update({ name, description }).eq("id", categoryId));
+    if (name !== existing.name) {
+      await requireSupabase(await supabase.from("assets").update({ category: name, updated_at: new Date().toISOString() }).eq("category", existing.name));
+      await requireSupabase(await supabase.from("tickets").update({ category: name, updated_at: new Date().toISOString() }).eq("category", existing.name));
+      await requireSupabase(await supabase.from("technicians").update({ skill: name, updated_at: new Date().toISOString() }).eq("skill", existing.name));
+      await requireSupabase(await supabase.from("maintenance_rules").update({ category: name, updated_at: new Date().toISOString() }).eq("category", existing.name));
+    }
     return { status: 200, body: updated };
   }
 
   db.categories = db.categories.map((category) => category.id === categoryId ? updated : category);
+  if (name !== existing.name) {
+    db.assets = (db.assets || []).map((asset) => asset.category === existing.name ? { ...asset, category: name } : asset);
+    db.tickets = (db.tickets || []).map((ticket) => ticket.category === existing.name ? { ...ticket, category: name } : ticket);
+    db.technicians = (db.technicians || []).map((tech) => tech.skill === existing.name ? { ...tech, skill: name } : tech);
+    db.maintenanceRules = (db.maintenanceRules || []).map((rule) => rule.category === existing.name ? { ...rule, category: name } : rule);
+  }
   writeJsonDb(db);
   return { status: 200, body: updated };
+}
+
+async function deleteOutlet(name) {
+  const db = await loadDb();
+  if (!db.outlets.includes(name)) return { status: 404, body: { error: "Outlet not found" } };
+  const inUse = [
+    (db.assets || []).some((asset) => asset.outlet === name) && "assets",
+    (db.tasks || []).some((task) => task.outlet === name) && "tasks",
+    (db.tickets || []).some((ticket) => ticket.outlet === name) && "tickets",
+    (db.technicians || []).some((tech) => (tech.serviceOutlets || []).includes(name)) && "technicians",
+    (await allUsers()).some((user) => user.outlet === name || (user.allowedOutlets || []).includes(name)) && "users"
+  ].filter(Boolean);
+  if (inUse.length) return { status: 409, body: { error: `Outlet is used by ${inUse.join(", ")}. Remove those links first.` } };
+  if (useSupabase) {
+    await requireSupabase(await supabase.from("outlets").delete().eq("name", name));
+    return { status: 200, body: { ok: true } };
+  }
+  db.outlets = db.outlets.filter((outlet) => outlet !== name);
+  const { [name]: _removed, ...locations } = db.outletLocations || {};
+  db.outletLocations = locations;
+  writeJsonDb(db);
+  return { status: 200, body: { ok: true } };
+}
+
+async function deleteCategory(categoryId) {
+  const db = await loadDb();
+  const category = (db.categories || []).find((item) => item.id === categoryId);
+  if (!category) return { status: 404, body: { error: "Category not found" } };
+  const inUse = [
+    (db.assets || []).some((asset) => asset.category === category.name) && "assets",
+    (db.tickets || []).some((ticket) => ticket.category === category.name) && "tickets",
+    (db.technicians || []).some((tech) => tech.skill === category.name) && "technicians",
+    (db.maintenanceRules || []).some((rule) => rule.category === category.name) && "scheduler rules"
+  ].filter(Boolean);
+  if (inUse.length) return { status: 409, body: { error: `Category is used by ${inUse.join(", ")}. Remove those links first.` } };
+  if (useSupabase) {
+    await requireSupabase(await supabase.from("categories").delete().eq("id", categoryId));
+    return { status: 200, body: { ok: true } };
+  }
+  db.categories = db.categories.filter((item) => item.id !== categoryId);
+  writeJsonDb(db);
+  return { status: 200, body: { ok: true } };
+}
+
+async function deleteAsset(assetId) {
+  const db = await loadDb();
+  if (!db.assets.some((asset) => asset.id === assetId)) return { status: 404, body: { error: "Asset not found" } };
+  const inUse = [
+    (db.tasks || []).some((task) => task.assetId === assetId) && "tasks",
+    (db.tickets || []).some((ticket) => ticket.assetId === assetId) && "tickets"
+  ].filter(Boolean);
+  if (inUse.length) return { status: 409, body: { error: `Asset is used by ${inUse.join(", ")}. Remove those links first.` } };
+  if (useSupabase) {
+    await requireSupabase(await supabase.from("assets").delete().eq("id", assetId));
+    return { status: 200, body: { ok: true } };
+  }
+  db.assets = db.assets.filter((asset) => asset.id !== assetId);
+  writeJsonDb(db);
+  return { status: 200, body: { ok: true } };
 }
 
 async function createTechnician(payload) {
@@ -1512,6 +1620,43 @@ async function updateTechnicianMaster(technicianId, payload) {
   } : user);
   writeJsonDb(db);
   return { status: 200, body: updated };
+}
+
+async function deleteTechnicianMaster(technicianId) {
+  const db = await loadDb();
+  if (!db.technicians.some((tech) => tech.id === technicianId)) return { status: 404, body: { error: "Technician not found" } };
+  const inUse = [
+    (db.tasks || []).some((task) => task.assignedTo === technicianId) && "tasks",
+    (db.tickets || []).some((ticket) => ticket.assignedTo === technicianId) && "tickets"
+  ].filter(Boolean);
+  if (inUse.length) return { status: 409, body: { error: `Technician is used by ${inUse.join(", ")}. Reassign or close those records first.` } };
+  if (useSupabase) {
+    await requireSupabase(await supabase.from("app_users").delete().eq("technician_id", technicianId));
+    await requireSupabase(await supabase.from("technicians").delete().eq("id", technicianId));
+    return { status: 200, body: { ok: true } };
+  }
+  db.users = (db.users || []).filter((user) => user.technicianId !== technicianId);
+  db.technicians = db.technicians.filter((tech) => tech.id !== technicianId);
+  writeJsonDb(db);
+  return { status: 200, body: { ok: true } };
+}
+
+async function deleteAdminUser(userId, actingUser) {
+  if (actingUser?.id === userId) return { status: 400, body: { error: "You cannot delete your own active login" } };
+  const users = await allUsers();
+  const user = users.find((item) => item.id === userId);
+  if (!user) return { status: 404, body: { error: "User not found" } };
+  if (user.role === "admin" && users.filter((item) => item.role === "admin").length <= 1) {
+    return { status: 409, body: { error: "At least one admin login is required" } };
+  }
+  if (useSupabase) {
+    await requireSupabase(await supabase.from("app_users").delete().eq("id", userId));
+    return { status: 200, body: { ok: true } };
+  }
+  const db = readJsonDb();
+  db.users = (db.users || []).filter((item) => item.id !== userId);
+  writeJsonDb(db);
+  return { status: 200, body: { ok: true } };
 }
 
 function buildUserAccessPayload(payload, db, existingUser = null) {
@@ -2451,6 +2596,30 @@ app.post(
   })
 );
 
+app.patch(
+  "/api/assets/:id",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can update assets" });
+    }
+    const result = await updateAsset(req.params.id, req.body, user);
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.delete(
+  "/api/assets/:id",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can delete assets" });
+    }
+    const result = await deleteAsset(req.params.id);
+    res.status(result.status).json(result.body);
+  })
+);
+
 app.post(
   "/api/outlets",
   asyncRoute(async (req, res) => {
@@ -2471,6 +2640,18 @@ app.patch(
       return res.status(403).json({ error: "Only admin can update outlets" });
     }
     const result = await updateOutlet(decodeURIComponent(req.params.name), req.body);
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.delete(
+  "/api/outlets/:name",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can delete outlets" });
+    }
+    const result = await deleteOutlet(decodeURIComponent(req.params.name));
     res.status(result.status).json(result.body);
   })
 );
@@ -2499,6 +2680,18 @@ app.patch(
   })
 );
 
+app.delete(
+  "/api/categories/:id",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can delete categories" });
+    }
+    const result = await deleteCategory(req.params.id);
+    res.status(result.status).json(result.body);
+  })
+);
+
 app.post(
   "/api/technicians",
   asyncRoute(async (req, res) => {
@@ -2523,6 +2716,18 @@ app.patch(
   })
 );
 
+app.delete(
+  "/api/technicians/:id",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can delete technicians" });
+    }
+    const result = await deleteTechnicianMaster(req.params.id);
+    res.status(result.status).json(result.body);
+  })
+);
+
 app.post(
   "/api/admin/users",
   asyncRoute(async (req, res) => {
@@ -2543,6 +2748,18 @@ app.patch(
       return res.status(403).json({ error: "Only admin can update users" });
     }
     const result = await updateAdminUser(req.params.id, req.body);
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.delete(
+  "/api/admin/users/:id",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can delete users" });
+    }
+    const result = await deleteAdminUser(req.params.id, user);
     res.status(result.status).json(result.body);
   })
 );

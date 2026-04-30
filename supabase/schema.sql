@@ -3,12 +3,14 @@ create extension if not exists pgcrypto;
 create table if not exists outlets (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
+  branch text,
   address text,
   latitude numeric,
   longitude numeric,
   created_at timestamptz not null default now()
 );
 
+alter table outlets add column if not exists branch text;
 alter table outlets add column if not exists address text;
 alter table outlets add column if not exists latitude numeric;
 alter table outlets add column if not exists longitude numeric;

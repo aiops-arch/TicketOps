@@ -1269,9 +1269,32 @@ body.has-session .topbar:focus-within .tabs {
 }
 
 .master-sections {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   align-items: start;
   margin-top: 12px;
+}
+
+.master-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.master-tab {
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+  padding: 9px 12px;
+}
+
+.master-tab.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #08100f;
 }
 
 .master-section {
@@ -1281,6 +1304,10 @@ body.has-session .topbar:focus-within .tabs {
   border: 2px solid var(--glass-border);
   border-radius: 8px;
   background: color-mix(in srgb, var(--panel) 76%, transparent);
+}
+
+.master-section:not(.is-active) {
+  display: none;
 }
 
 .master-section-heading {
@@ -1296,7 +1323,7 @@ body.has-session .topbar:focus-within .tabs {
 }
 
 .wide-master-section {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 
 .compact-master-section .master-form {
@@ -1341,6 +1368,11 @@ body.has-session .topbar:focus-within .tabs {
 .user-access-form {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: end;
+}
+
+.master-delete-button {
+  justify-self: start;
+  margin: -4px 0 8px;
 }
 
 .user-access-form .checkline,
