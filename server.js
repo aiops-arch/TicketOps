@@ -161,6 +161,10 @@ app.use(express.static(__dirname));
 const seed = {
   users: DEMO_USERS,
   outlets: ["aiko surat", "Capiche"],
+  outletLocations: {
+    "aiko surat": { address: "Surat", latitude: null, longitude: null },
+    Capiche: { address: "Surat", latitude: null, longitude: null }
+  },
   categories: [
     { id: "C-AC", name: "AC", description: "Air conditioning and ventilation" },
     { id: "C-REF", name: "Refrigeration", description: "Freezers, chillers, cold rooms" },
@@ -990,7 +994,7 @@ async function requireSupabase(result) {
 
 async function loadSupabaseDb() {
   const [outletsResult, categoriesResult, assetsResult, tasksResult, techniciansResult, ticketsResult, historyResult, attendancePlansResult, maintenanceRulesResult] = await Promise.all([
-    supabase.from("outlets").select("name").order("name"),
+    supabase.from("outlets").select("name,address,latitude,longitude").order("name"),
     supabase.from("categories").select("id,name,description").order("name"),
     supabase.from("assets").select("id,outlet,category,name,code,status,notes,created_at").order("created_at", { ascending: false }),
     supabase.from("tasks").select("id,title,asset_id,outlet,assigned_to,status,task_date,completed_at,evidence_comment,evidence_photo_url,evidence_at,notes").order("task_date", { ascending: false }),
@@ -1013,6 +1017,14 @@ async function loadSupabaseDb() {
 
   return {
     outlets: outlets.map((outlet) => outlet.name),
+    outletLocations: Object.fromEntries(outlets.map((outlet) => [
+      outlet.name,
+      {
+        address: outlet.address || "",
+        latitude: outlet.latitude === null ? null : Number(outlet.latitude),
+        longitude: outlet.longitude === null ? null : Number(outlet.longitude)
+      }
+    ])),
     categories,
     assets: assets.map(mapAsset),
     tasks: tasks.map(mapTask),
@@ -1198,19 +1210,29 @@ async function createAsset(payload, user) {
 async function createOutlet(payload) {
   const db = await loadDb();
   const name = String(payload.name || "").trim();
+  const address = String(payload.address || "").trim();
+  const latitude = payload.latitude === "" || payload.latitude === null || payload.latitude === undefined ? null : Number(payload.latitude);
+  const longitude = payload.longitude === "" || payload.longitude === null || payload.longitude === undefined ? null : Number(payload.longitude);
   if (!name) return { status: 400, body: { error: "Outlet name is required" } };
   if (db.outlets.some((outlet) => outlet.toLowerCase() === name.toLowerCase())) {
     return { status: 409, body: { error: "Outlet already exists" } };
   }
+  if ((latitude !== null && !Number.isFinite(latitude)) || (longitude !== null && !Number.isFinite(longitude))) {
+    return { status: 400, body: { error: "Latitude and longitude must be valid numbers" } };
+  }
 
   if (useSupabase) {
-    await requireSupabase(await supabase.from("outlets").insert({ name }));
-    return { status: 201, body: { name } };
+    await requireSupabase(await supabase.from("outlets").insert({ name, address: address || null, latitude, longitude }));
+    return { status: 201, body: { name, address, latitude, longitude } };
   }
 
   db.outlets.push(name);
+  db.outletLocations = {
+    ...(db.outletLocations || {}),
+    [name]: { address, latitude, longitude }
+  };
   writeJsonDb(db);
-  return { status: 201, body: { name } };
+  return { status: 201, body: { name, address, latitude, longitude } };
 }
 
 async function createCategory(payload) {
@@ -1416,12 +1438,15 @@ async function assignTicket(ticketId, technicianId, overrideReason, user) {
   const effectiveTechnician = technicianWithAttendance(db, technician);
   const servesOutlet = (effectiveTechnician.serviceOutlets || []).includes(ticket.outlet);
   const skillMatch = effectiveTechnician.skill === ticket.category;
-  const needsOverride = !ASSIGNABLE_STATUSES.includes(effectiveTechnician.status) || !servesOutlet;
+  if (!servesOutlet) {
+    return { status: 403, body: { error: "Technician is not registered for this outlet" } };
+  }
+  const needsOverride = !ASSIGNABLE_STATUSES.includes(effectiveTechnician.status);
   if (user.role === "manager" && needsOverride) {
     return { status: 403, body: { error: "Manager can only assign available technicians who serve this outlet" } };
   }
   if (needsOverride && !overrideReason) {
-    return { status: 409, body: { error: "Override reason required for unavailable or out-of-coverage technician" } };
+    return { status: 409, body: { error: "Override reason required for unavailable technician" } };
   }
 
   const action = needsOverride
@@ -2120,8 +2145,8 @@ app.post(
       if (user.role === "manager" && (!servesOutlet || !ASSIGNABLE_STATUSES.includes(effectiveTechnician.status))) {
         return res.status(403).json({ error: "Managers can only assign available technicians who serve this outlet" });
       }
-      if (user.role === "technician" && !servesOutlet) {
-        return res.status(403).json({ error: "Technicians can only assign tickets within technician service coverage" });
+      if (!servesOutlet) {
+        return res.status(403).json({ error: "Technician is not registered for this outlet" });
       }
     }
     const ticket = await createTicket({ outlet, category, assetId, impact, note, photoUrl, photoUrls, area, unknownAsset, assignedTo }, user);

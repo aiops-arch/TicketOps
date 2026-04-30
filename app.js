@@ -65,6 +65,7 @@ const VIEW_COPY = {
 
 let state = {
   outlets: [],
+  outletLocations: {},
   categories: [],
   assets: [],
   technicians: [],
@@ -294,7 +295,7 @@ function technicianAssignmentSummary(tech, ticket) {
   const pendingTasks = technicianPendingTasks(tech?.id);
   const risk = [
     !assignable ? `${tech?.status || "Unavailable"}` : "",
-    !servesOutlet ? "outside outlet" : "",
+    !servesOutlet ? "not registered for outlet" : "",
     !skillMatch ? "backup skill" : ""
   ].filter(Boolean);
 
@@ -306,7 +307,7 @@ function technicianAssignmentSummary(tech, ticket) {
     pendingTasks,
     risk,
     label: `${tech?.name || "Technician"} - ${tech?.status || "Unknown"} / ${tech?.skill || "No skill"} / ${openJobs} jobs / ${pendingTasks} tasks`,
-    reason: `${skillMatch ? "Skill match" : "Backup skill"} / ${servesOutlet ? `serves ${ticket.outlet}` : `outside ${ticket.outlet}`} / ${openJobs} active / ${pendingTasks} pending / ${tech?.quality || 90}% quality`
+    reason: `${skillMatch ? "Skill match" : "Backup skill"} / ${servesOutlet ? `serves ${ticket.outlet}` : `not registered for ${ticket.outlet}`} / ${openJobs} active / ${pendingTasks} pending / ${tech?.quality || 90}% quality`
   };
 }
 
@@ -619,6 +620,10 @@ async function assignTicket(ticketId, technicianId) {
   const summary = technician && ticket ? technicianAssignmentSummary(technician, ticket) : null;
   const payload = { technicianId };
   const hardRisk = summary?.risk.filter((item) => item !== "backup skill") || [];
+  if (hardRisk.includes("not registered for outlet")) {
+    window.alert("This technician is not registered for this outlet. Add the outlet to the technician service area first.");
+    return;
+  }
 
   if (currentUser?.role === "manager" && hardRisk.length) {
     window.alert("Manager can only assign technicians who are available and serve this outlet.");
@@ -707,10 +712,18 @@ async function createOutlet(event) {
   try {
     const outlet = await api("/api/outlets", {
       method: "POST",
-      body: JSON.stringify({ name: document.querySelector("#outletName").value })
+      body: JSON.stringify({
+        name: document.querySelector("#outletName").value,
+        address: document.querySelector("#outletAddress").value,
+        latitude: document.querySelector("#outletLatitude").value,
+        longitude: document.querySelector("#outletLongitude").value
+      })
     });
     document.querySelector("#outletName").value = "";
-    resultBox.textContent = `${outlet.name} outlet added.`;
+    document.querySelector("#outletAddress").value = "";
+    document.querySelector("#outletLatitude").value = "";
+    document.querySelector("#outletLongitude").value = "";
+    resultBox.textContent = `${outlet.name} outlet added${outlet.address ? ` at ${outlet.address}` : ""}.`;
     await loadState();
   } catch (error) {
     resultBox.textContent = error.message;
@@ -1054,7 +1067,7 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
       const selected = tech.id === ((ticket.suggestedTechnician && assignableForRole.some((item) => item.id === ticket.suggestedTechnician.id) ? ticket.suggestedTechnician.id : "") || ticket.assignedTo) ? "selected" : "";
       const summary = technicianAssignmentSummary(tech, ticket);
       const hardRisk = summary.risk.filter((item) => item !== "backup skill");
-      const warning = hardRisk.length ? " [override]" : summary.skillMatch ? "" : " [backup]";
+      const warning = hardRisk.includes("not registered for outlet") ? " [blocked]" : hardRisk.length ? " [override]" : summary.skillMatch ? "" : " [backup]";
       return `<option value="${escapeHtml(tech.id)}" ${selected}>${escapeHtml(summary.label)}${escapeHtml(warning)}</option>`;
     })
     .join("");
@@ -1149,7 +1162,7 @@ function ticketCard(ticket, mode) {
       ${mode === "admin" && selectedSummary ? `
         <div class="assignment-signal">
           <span>${selectedSummary.skillMatch ? "Skill match" : "Backup skill"}</span>
-          <span>${selectedSummary.servesOutlet ? "Outlet covered" : "Outside outlet"}</span>
+          <span>${selectedSummary.servesOutlet ? "Outlet covered" : "Not registered for outlet"}</span>
           <span>${selectedSummary.openJobs} active jobs</span>
           <span>${selectedSummary.pendingTasks} pending tasks</span>
         </div>
@@ -1311,7 +1324,13 @@ function renderManager() {
 
 function renderMasters() {
   document.querySelector("#outletBoard").innerHTML = state.outlets.length
-    ? state.outlets.map((outlet) => `<article class="master-row"><strong>${escapeHtml(outlet)}</strong><span>Outlet</span></article>`).join("")
+    ? state.outlets.map((outlet) => {
+      const location = state.outletLocations?.[outlet] || {};
+      const coordinates = location.latitude !== null && location.latitude !== undefined && location.longitude !== null && location.longitude !== undefined
+        ? `${location.latitude}, ${location.longitude}`
+        : "";
+      return `<article class="master-row"><strong>${escapeHtml(outlet)}</strong><span>${escapeHtml(location.address || coordinates || "Location pending")}</span></article>`;
+    }).join("")
     : `<div class="empty mini">No outlets yet.</div>`;
 
   document.querySelector("#categoryBoard").innerHTML = (state.categories || []).length
@@ -1663,6 +1682,12 @@ function renderTechnician() {
     : nextTicket
       ? `${nextTicket.outlet} / ${nextTicket.category} / ${nextTicket.status}`
       : "Technician is clear for new assignment.";
+  const technicianOutlets = activeTech
+    ? (activeTech.serviceOutlets || state.outlets).map((outlet) => ({
+      name: outlet,
+      location: state.outletLocations?.[outlet] || {}
+    }))
+    : [];
   const tasksByPhase = todayTasks.reduce((groups, task) => {
     const phase = taskPhase(task.title);
     groups[phase] = groups[phase] || [];
@@ -1778,6 +1803,7 @@ function renderTechnician() {
         </div>
         <div class="field-summary">
           <p>Service coverage: ${escapeHtml(serviceAreaLabel(activeTech))}</p>
+          ${technicianOutlets.length ? `<p>${escapeHtml(technicianOutlets.map((item) => `${item.name}${item.location.address ? ` - ${item.location.address}` : ""}`).join(" / "))}</p>` : ""}
           <p>Today active: ${escapeHtml(activeOutlets.join(", ") || "No outlet assigned")}</p>
         </div>
       </section>

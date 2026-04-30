@@ -1293,6 +1293,17 @@ body.has-session .topbar:focus-within .tabs {
   min-height: 150px;
 }
 
+#outletForm {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#outletForm strong,
+#outletForm .primary-button,
+#outletForm label:first-of-type,
+#outletForm label:nth-of-type(2) {
+  grid-column: 1 / -1;
+}
+
 #masters .master-form input,
 #masters .master-form select {
   min-height: 39px;
