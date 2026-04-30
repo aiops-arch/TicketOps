@@ -785,17 +785,13 @@ async function createOutlet(event) {
   try {
     const payload = {
       name: document.querySelector("#outletName").value,
-      branch: document.querySelector("#outletBranch").value,
       address: document.querySelector("#outletAddress").value,
       latitude: "",
       longitude: ""
     };
     const outlet = await api(editingOutletName ? `/api/outlets/${encodeURIComponent(editingOutletName)}` : "/api/outlets", {
       method: editingOutletName ? "PATCH" : "POST",
-      body: JSON.stringify({
-        ...payload,
-        name: editingOutletName || payload.name
-      })
+      body: JSON.stringify(payload)
     });
     const wasEditing = Boolean(editingOutletName);
     resetOutletForm();
@@ -813,7 +809,6 @@ function resetOutletForm() {
   editingOutletName = "";
   document.querySelector("#outletName").value = "";
   document.querySelector("#outletName").disabled = false;
-  document.querySelector("#outletBranch").value = "";
   document.querySelector("#outletAddress").value = "";
   document.querySelector("#outletSubmit").textContent = "Add Outlet";
 }
@@ -822,8 +817,7 @@ function fillOutletForm(outletName) {
   const location = state.outletLocations?.[outletName] || {};
   editingOutletName = outletName;
   document.querySelector("#outletName").value = outletName;
-  document.querySelector("#outletName").disabled = true;
-  document.querySelector("#outletBranch").value = location.branch || "";
+  document.querySelector("#outletName").disabled = false;
   document.querySelector("#outletAddress").value = location.address || "";
   document.querySelector("#outletSubmit").textContent = "Update Outlet";
 }
@@ -1623,7 +1617,7 @@ function renderMasters() {
       return masterEntry({
         editAttr: `data-edit-outlet="${escapeHtml(outlet)}"`,
         title: escapeHtml(outlet),
-        detail: escapeHtml([location.branch, location.address || coordinates || "Location pending"].filter(Boolean).join(" / ")),
+        detail: escapeHtml(location.address || coordinates || "Location pending"),
         deleteValue: `outlets:${escapeHtml(outlet)}:${escapeHtml(outlet)}`
       });
     }).join("")

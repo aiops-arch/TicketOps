@@ -1357,7 +1357,6 @@ async function updateOutlet(oldName, payload) {
   const existing = db.outlets.find((outlet) => outlet === oldName);
   if (!existing) return { status: 404, body: { error: "Outlet not found" } };
   const name = String(payload.name || oldName).trim();
-  const branch = String(payload.branch || "").trim();
   const address = String(payload.address || "").trim();
   if (!name) return { status: 400, body: { error: "Outlet name is required" } };
   if (db.outlets.some((outlet) => outlet !== oldName && outlet.toLowerCase() === name.toLowerCase())) {
@@ -1368,9 +1367,34 @@ async function updateOutlet(oldName, payload) {
   const longitude = parseNullableNumber(payload.longitude ?? currentLocation.longitude);
 
   if (useSupabase) {
-    if (name !== oldName) return { status: 400, body: { error: "Outlet name cannot be changed after creation. Update the location or add a new outlet." } };
-    await requireSupabase(await supabase.from("outlets").update({ name, branch: branch || null, address: address || null, latitude, longitude }).eq("name", oldName));
-    return { status: 200, body: { name, branch, address, latitude, longitude } };
+    if (name !== oldName) {
+      const users = await requireSupabase(await supabase.from("app_users").select("id,outlet,allowed_outlets"));
+      const technicians = await requireSupabase(await supabase.from("technicians").select("id,service_outlets"));
+      await requireSupabase(await supabase.from("outlets").insert({ name, branch: null, address: address || null, latitude, longitude }));
+      await requireSupabase(await supabase.from("assets").update({ outlet: name, updated_at: new Date().toISOString() }).eq("outlet", oldName));
+      await requireSupabase(await supabase.from("tasks").update({ outlet: name, updated_at: new Date().toISOString() }).eq("outlet", oldName));
+      await requireSupabase(await supabase.from("tickets").update({ outlet: name, updated_at: new Date().toISOString() }).eq("outlet", oldName));
+      await Promise.all(technicians
+        .filter((tech) => (tech.service_outlets || []).includes(oldName))
+        .map(async (tech) => requireSupabase(await supabase
+          .from("technicians")
+          .update({ service_outlets: (tech.service_outlets || []).map((outlet) => outlet === oldName ? name : outlet), updated_at: new Date().toISOString() })
+          .eq("id", tech.id))));
+      await Promise.all(users
+        .filter((user) => user.outlet === oldName || (user.allowed_outlets || []).includes(oldName))
+        .map(async (user) => requireSupabase(await supabase
+          .from("app_users")
+          .update({
+            outlet: user.outlet === oldName ? name : user.outlet,
+            allowed_outlets: (user.allowed_outlets || []).map((outlet) => outlet === oldName ? name : outlet),
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", user.id))));
+      await requireSupabase(await supabase.from("outlets").delete().eq("name", oldName));
+      return { status: 200, body: { name, branch: "", address, latitude, longitude } };
+    }
+    await requireSupabase(await supabase.from("outlets").update({ name, branch: null, address: address || null, latitude, longitude }).eq("name", oldName));
+    return { status: 200, body: { name, branch: "", address, latitude, longitude } };
   }
 
   db.outlets = db.outlets.map((outlet) => outlet === oldName ? name : outlet);
@@ -1387,9 +1411,9 @@ async function updateOutlet(oldName, payload) {
     allowedOutlets: (user.allowedOutlets || []).map((outlet) => outlet === oldName ? name : outlet)
   }));
   const { [oldName]: _oldLocation, ...locations } = db.outletLocations || {};
-  db.outletLocations = { ...locations, [name]: { branch, address, latitude, longitude } };
+  db.outletLocations = { ...locations, [name]: { branch: "", address, latitude, longitude } };
   writeJsonDb(db);
-  return { status: 200, body: { name, branch, address, latitude, longitude } };
+  return { status: 200, body: { name, branch: "", address, latitude, longitude } };
 }
 
 async function createCategory(payload) {
