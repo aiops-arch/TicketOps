@@ -361,151 +361,153 @@
             </div>
             <span class="heading-chip">Outlet / category / asset / technician</span>
           </div>
-          <div class="master-form-grid">
-            <form id="outletForm" class="master-form">
-              <strong>Outlet</strong>
-              <label>
-                Outlet name
-                <input id="outletName" required placeholder="Example: Aiko Vesu">
-              </label>
-              <label>
-                Address / area
-                <input id="outletAddress" placeholder="Street, area, city">
-              </label>
-              <label>
-                Latitude
-                <input id="outletLatitude" inputmode="decimal" placeholder="21.1702">
-              </label>
-              <label>
-                Longitude
-                <input id="outletLongitude" inputmode="decimal" placeholder="72.8311">
-              </label>
-              <button type="submit" class="primary-button">Add Outlet</button>
-            </form>
-
-            <form id="categoryForm" class="master-form">
-              <strong>Category</strong>
-              <label>
-                Category name
-                <input id="categoryName" required placeholder="Example: Gas">
-              </label>
-              <button type="submit" class="primary-button">Add Category</button>
-            </form>
-
-            <form id="assetForm" class="master-form">
-              <strong>Asset</strong>
-              <label>
-                Outlet
-                <select id="assetOutlet" required></select>
-              </label>
-              <label>
-                Category
-                <select id="assetCategory" required></select>
-              </label>
-              <label>
-                Asset name
-                <input id="assetName" required placeholder="Walk-in Freezer">
-              </label>
-              <label>
-                Asset code
-                <input id="assetCode" placeholder="AIKO-REF-01">
-              </label>
-              <button type="submit" class="primary-button">Add Asset</button>
-            </form>
-
-            <form id="technicianForm" class="master-form">
-              <strong>Technician</strong>
-              <label>
-                Name
-                <input id="technicianName" required placeholder="Example: Imran">
-              </label>
-              <label>
-                Skill
-                <select id="technicianSkill"></select>
-              </label>
-              <label>
-                Outlet
-                <select id="technicianOutlet"></select>
-              </label>
-              <button type="submit" class="primary-button">Add Technician</button>
-            </form>
-
-            <form id="userAccessForm" class="master-form user-access-form">
-              <strong>People Access</strong>
-              <label>
-                Role
-                <select id="accessRole">
-                  <option value="manager">Manager</option>
-                  <option value="technician">Technician</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </label>
-              <label>
-                Name
-                <input id="accessName" required placeholder="Full name">
-              </label>
-              <label>
-                Username
-                <input id="accessUsername" placeholder="Required for new user">
-              </label>
-              <label>
-                Password
-                <input id="accessPassword" type="password" required placeholder="Required for new user">
-              </label>
-              <label>
-                Post
-                <input id="accessPost" placeholder="Outlet Manager, Admin, Technician">
-              </label>
-              <label>
-                Technician skill
-                <select id="accessSkill"></select>
-              </label>
-              <label class="checkline">
-                <input id="accessAllOutlets" type="checkbox">
-                <span>Access all outlets</span>
-              </label>
-              <label>
-                Outlet access
-                <select id="accessOutlets" multiple size="4"></select>
-              </label>
-              <label>
-                Person location / base
-                <input id="accessAddress" placeholder="Home base, area, city">
-              </label>
-              <label>
-                Latitude
-                <input id="accessLatitude" inputmode="decimal" placeholder="21.1702">
-              </label>
-              <label>
-                Longitude
-                <input id="accessLongitude" inputmode="decimal" placeholder="72.8311">
-              </label>
-              <button id="userAccessSubmit" type="submit" class="primary-button">Add User</button>
-              <button id="userAccessCancel" type="button" class="small-button">Clear</button>
-            </form>
-          </div>
           <p id="masterCreateResult" class="form-hint" aria-live="polite"></p>
-          <div class="master-board">
-            <div>
-              <span class="section-kicker">Outlets</span>
+          <div class="master-sections">
+            <section class="master-section">
+              <div class="master-section-heading">
+                <div>
+                  <span class="section-kicker">Outlets</span>
+                  <h3>Outlet Master</h3>
+                </div>
+              </div>
+              <form id="outletForm" class="master-form">
+                <label>
+                  Outlet name
+                  <input id="outletName" required placeholder="Example: Aiko Vesu">
+                </label>
+                <label>
+                  Location / address
+                  <input id="outletAddress" placeholder="Street, area, city">
+                </label>
+                <button type="submit" class="primary-button">Add Outlet</button>
+              </form>
               <div id="outletBoard" class="master-list"></div>
-            </div>
-            <div>
-              <span class="section-kicker">Categories</span>
+            </section>
+
+            <section class="master-section compact-master-section">
+              <div class="master-section-heading">
+                <div>
+                  <span class="section-kicker">Categories</span>
+                  <h3>Category Master</h3>
+                </div>
+              </div>
+              <form id="categoryForm" class="master-form">
+                <label>
+                  Category name
+                  <input id="categoryName" required placeholder="Example: Gas">
+                </label>
+                <button type="submit" class="primary-button">Add Category</button>
+              </form>
               <div id="categoryBoard" class="master-list"></div>
-            </div>
-            <div>
-              <span class="section-kicker">Assets</span>
+            </section>
+
+            <section class="master-section">
+              <div class="master-section-heading">
+                <div>
+                  <span class="section-kicker">Assets</span>
+                  <h3>Asset Master</h3>
+                </div>
+              </div>
+              <form id="assetForm" class="master-form">
+                <label>
+                  Outlet
+                  <select id="assetOutlet" required></select>
+                </label>
+                <label>
+                  Category
+                  <select id="assetCategory" required></select>
+                </label>
+                <label>
+                  Asset name
+                  <input id="assetName" required placeholder="Walk-in Freezer">
+                </label>
+                <label>
+                  Asset code
+                  <input id="assetCode" placeholder="AIKO-REF-01">
+                </label>
+                <button type="submit" class="primary-button">Add Asset</button>
+              </form>
               <div id="assetBoard" class="master-list"></div>
-            </div>
-            <div>
-              <span class="section-kicker">Technicians</span>
+            </section>
+
+            <section class="master-section">
+              <div class="master-section-heading">
+                <div>
+                  <span class="section-kicker">Technicians</span>
+                  <h3>Technician Master</h3>
+                </div>
+              </div>
+              <form id="technicianForm" class="master-form">
+                <label>
+                  Name
+                  <input id="technicianName" required placeholder="Example: Imran">
+                </label>
+                <label>
+                  Skill
+                  <select id="technicianSkill"></select>
+                </label>
+                <label>
+                  Outlet
+                  <select id="technicianOutlet"></select>
+                </label>
+                <button type="submit" class="primary-button">Add Technician</button>
+              </form>
               <div id="technicianMasterBoard" class="master-list"></div>
-            </div>
-            <div>
-              <span class="section-kicker">People Access</span>
+            </section>
+
+            <section class="master-section wide-master-section">
+              <div class="master-section-heading">
+                <div>
+                  <span class="section-kicker">People Access</span>
+                  <h3>User + Outlet Access</h3>
+                </div>
+              </div>
+              <form id="userAccessForm" class="master-form user-access-form">
+                <label>
+                  Role
+                  <select id="accessRole">
+                    <option value="manager">Manager</option>
+                    <option value="technician">Technician</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </label>
+                <label>
+                  Name
+                  <input id="accessName" required placeholder="Full name">
+                </label>
+                <label>
+                  Username
+                  <input id="accessUsername" placeholder="Required for new user">
+                </label>
+                <label>
+                  Password
+                  <input id="accessPassword" type="password" required placeholder="Required for new user">
+                </label>
+                <label>
+                  Post
+                  <input id="accessPost" placeholder="Outlet Manager, Admin, Technician">
+                </label>
+                <label>
+                  Technician skill
+                  <select id="accessSkill"></select>
+                </label>
+                <label class="checkline">
+                  <input id="accessAllOutlets" type="checkbox">
+                  <span>Access all outlets</span>
+                </label>
+                <label>
+                  Outlet access
+                  <select id="accessOutlets" multiple size="4"></select>
+                </label>
+                <label>
+                  Person location / base
+                  <input id="accessAddress" placeholder="Home base, area, city">
+                </label>
+                <button id="userAccessSubmit" type="submit" class="primary-button">Add User</button>
+                <button id="userAccessCancel" type="button" class="small-button">Clear</button>
+              </form>
               <div id="peopleAccessBoard" class="master-list"></div>
-            </div>
+            </section>
           </div>
         </div>
       </section>

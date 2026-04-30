@@ -737,14 +737,12 @@ async function createOutlet(event) {
       body: JSON.stringify({
         name: document.querySelector("#outletName").value,
         address: document.querySelector("#outletAddress").value,
-        latitude: document.querySelector("#outletLatitude").value,
-        longitude: document.querySelector("#outletLongitude").value
+        latitude: "",
+        longitude: ""
       })
     });
     document.querySelector("#outletName").value = "";
     document.querySelector("#outletAddress").value = "";
-    document.querySelector("#outletLatitude").value = "";
-    document.querySelector("#outletLongitude").value = "";
     resultBox.textContent = `${outlet.name} outlet added${outlet.address ? ` at ${outlet.address}` : ""}.`;
     await loadState();
   } catch (error) {
@@ -831,8 +829,6 @@ function fillUserAccessForm(userId) {
   document.querySelector("#accessPost").value = user.post || "";
   document.querySelector("#accessAllOutlets").checked = Boolean(user.accessAllOutlets);
   document.querySelector("#accessAddress").value = user.address || "";
-  document.querySelector("#accessLatitude").value = user.latitude ?? "";
-  document.querySelector("#accessLongitude").value = user.longitude ?? "";
   const tech = state.technicians.find((item) => item.id === user.technicianId);
   if (tech && document.querySelector("#accessSkill")) document.querySelector("#accessSkill").value = tech.skill;
   const outlets = Array.isArray(user.allowedOutlets) && user.allowedOutlets.length ? user.allowedOutlets : user.outlet ? [user.outlet] : [];
@@ -860,8 +856,8 @@ async function saveUserAccess(event) {
       accessAllOutlets: document.querySelector("#accessAllOutlets").checked,
       allowedOutlets: selectedOptionValues(document.querySelector("#accessOutlets")),
       address: document.querySelector("#accessAddress").value,
-      latitude: document.querySelector("#accessLatitude").value,
-      longitude: document.querySelector("#accessLongitude").value
+      latitude: "",
+      longitude: ""
     };
     const path = editingUserAccessId ? `/api/admin/users/${editingUserAccessId}` : "/api/admin/users";
     const method = editingUserAccessId ? "PATCH" : "POST";

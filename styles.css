@@ -1242,7 +1242,8 @@ body.has-session .topbar:focus-within .tabs {
 }
 
 .master-form-grid,
-.master-board {
+.master-board,
+.master-sections {
   display: grid;
   gap: 12px;
 }
@@ -1267,6 +1268,42 @@ body.has-session .topbar:focus-within .tabs {
   margin-top: 8px;
 }
 
+.master-sections {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  margin-top: 12px;
+}
+
+.master-section {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 2px solid var(--glass-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 76%, transparent);
+}
+
+.master-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.master-section-heading h3 {
+  margin: 2px 0 0;
+  font-size: 18px;
+}
+
+.wide-master-section {
+  grid-column: 1 / -1;
+}
+
+.compact-master-section .master-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
 .master-form {
   display: grid;
   align-content: start;
@@ -1277,12 +1314,15 @@ body.has-session .topbar:focus-within .tabs {
 
 #masters .master-form {
   min-height: 0;
-  padding: 10px;
+  padding: 0;
   gap: 8px;
+  border: 0;
+  background: transparent;
 }
 
 #assetForm,
-#technicianForm {
+#technicianForm,
+#outletForm {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: end;
 }
@@ -1294,20 +1334,18 @@ body.has-session .topbar:focus-within .tabs {
   grid-column: 1 / -1;
 }
 
-#outletForm,
-#categoryForm {
-  min-height: 150px;
-}
-
-#outletForm {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-#outletForm strong,
-#outletForm .primary-button,
-#outletForm label:first-of-type,
-#outletForm label:nth-of-type(2) {
+#outletForm .primary-button {
   grid-column: 1 / -1;
+}
+
+.user-access-form {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+}
+
+.user-access-form .checkline,
+.user-access-form label:has(select[multiple]) {
+  grid-row: span 2;
 }
 
 #masters .master-form input,
@@ -3237,6 +3275,7 @@ button.master-row:hover {
   .command-grid,
   .report-card-grid,
   .master-form-grid,
+  .master-sections,
   .scheduler-form,
   .scheduler-layout,
   .master-board,
@@ -3356,6 +3395,7 @@ button.master-row:hover {
   .outlet-health-grid,
   .outlet-stats,
   .master-form-grid,
+  .master-sections,
   .master-board,
   .ticket-form,
   .attendance-form,
@@ -3861,6 +3901,7 @@ button.master-row:hover {
   .outlet-health-grid,
   .outlet-stats,
   .master-form-grid,
+  .master-sections,
   .master-board,
   .ticket-form,
   .scheduler-form,
