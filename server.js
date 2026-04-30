@@ -372,6 +372,13 @@ function sanitizePhotoUrls(value, limit = 5) {
     .slice(0, limit);
 }
 
+function normalizeScheduledAt(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+}
+
 function taskRequiresEvidence(task) {
   const text = `${task.title || ""} ${task.notes || ""}`.toLowerCase();
   return /(temperature|freezer|refrigerator|gas|fire|extinguisher|leak|pest|safety)/.test(text);
@@ -724,7 +731,11 @@ function notificationsForUser(db, user) {
   const openTickets = (db.tickets || []).filter((ticket) => !["Closed", "Cancelled"].includes(ticket.status));
   if (user.role === "technician") {
     return openTickets
-      .filter((ticket) => ticket.assignedTo === user.technicianId && ["Assigned", "Reopened", "Blocked"].includes(ticket.status))
+    .filter((ticket) => {
+      if (ticket.assignedTo !== user.technicianId || !["Assigned", "Reopened", "Blocked"].includes(ticket.status)) return false;
+      if (!ticket.scheduledAt) return true;
+      return new Date(ticket.scheduledAt).getTime() <= Date.now();
+    })
       .map((ticket) => ({
         type: ticket.status === "Assigned" ? "assigned" : token(ticket.status),
         ticketId: ticket.id,
@@ -934,6 +945,7 @@ function mapTicket(row, history = []) {
     priority: row.priority,
     status: row.status,
     assignedTo: row.assigned_to || "",
+    scheduledAt: row.scheduled_at || "",
     latestDetail: row.latest_detail || "",
     photoUrl: row.photo_url || "",
     photoUrls: row.photo_urls?.length ? row.photo_urls : (row.photo_url ? [row.photo_url] : []),
@@ -1074,6 +1086,7 @@ async function createTicket(payload, user) {
   const cleanArea = String(payload.area || "").trim();
   const unknownAsset = Boolean(payload.unknownAsset);
   const requestedTechnician = payload.assignedTo ? db.technicians.find((tech) => tech.id === payload.assignedTo) : null;
+  const scheduledAt = normalizeScheduledAt(payload.scheduledAt);
   const effectiveCategory = selectedAsset?.category || payload.category;
   const effectiveImpact = payload.impact;
   if (ticketRequiresPhoto({ impact: effectiveImpact, category: effectiveCategory, note: cleanNote }) && !cleanPhotoUrl) {
@@ -1091,6 +1104,7 @@ async function createTicket(payload, user) {
     priority: priorityForImpact(effectiveImpact),
     status: "New",
     assignedTo: "",
+    scheduledAt: "",
     createdBy: user?.id || "",
     photoUrl: cleanPhotoUrl,
     photoUrls: cleanPhotoUrls,
@@ -1105,6 +1119,7 @@ async function createTicket(payload, user) {
   if (autoAssignedTechnician) {
     ticket.status = "Assigned";
     ticket.assignedTo = autoAssignedTechnician.id;
+    ticket.scheduledAt = scheduledAt;
     ticket.latestDetail = requestedTechnician
       ? `${ticket.latestDetail ? `${ticket.latestDetail}. ` : ""}Assigned to ${autoAssignedTechnician.name} by ${user?.name || user?.role || "user"}`
       : `${ticket.latestDetail ? `${ticket.latestDetail}. ` : ""}Auto assigned to ${autoAssignedTechnician.name}: ${autoAssignedTechnician.dispatchReason}`;
@@ -1123,6 +1138,7 @@ async function createTicket(payload, user) {
         priority: ticket.priority,
         status: ticket.status,
         assigned_to: ticket.assignedTo || null,
+        scheduled_at: ticket.scheduledAt || null,
         latest_detail: ticket.latestDetail || "",
         photo_url: ticket.photoUrl || null,
         photo_urls: ticket.photoUrls,
@@ -1422,7 +1438,7 @@ async function updateTaskStatus(taskId, status, user, evidence = {}) {
   return { status: 200, body: task };
 }
 
-async function assignTicket(ticketId, technicianId, overrideReason, user) {
+async function assignTicket(ticketId, technicianId, overrideReason, user, scheduledAtValue = "") {
   const db = await loadDb();
   const ticket = db.tickets.find((item) => item.id === ticketId);
   const technician = db.technicians.find((tech) => tech.id === technicianId);
@@ -1449,15 +1465,17 @@ async function assignTicket(ticketId, technicianId, overrideReason, user) {
     return { status: 409, body: { error: "Override reason required for unavailable technician" } };
   }
 
+  const scheduledAt = normalizeScheduledAt(scheduledAtValue);
+  const scheduledCopy = scheduledAt ? ` for ${new Date(scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}` : "";
   const action = needsOverride
-    ? `Admin override assigned to ${technician.name}: ${overrideReason}`
-    : `${user.role === "manager" ? "Manager" : "Admin"} assigned to ${technician.name}${skillMatch ? "" : " as backup skill"}`;
+    ? `Admin override assigned to ${technician.name}${scheduledCopy}: ${overrideReason}`
+    : `${user.role === "manager" ? "Manager" : "Admin"} assigned to ${technician.name}${skillMatch ? "" : " as backup skill"}${scheduledCopy}`;
 
   if (useSupabase) {
     await requireSupabase(
       await supabase
         .from("tickets")
-        .update({ assigned_to: technician.id, status: "Assigned", updated_at: new Date().toISOString() })
+        .update({ assigned_to: technician.id, status: "Assigned", scheduled_at: scheduledAt || null, updated_at: new Date().toISOString() })
         .eq("id", ticketId)
     );
     await addSupabaseHistory(ticketId, action);
@@ -1466,6 +1484,7 @@ async function assignTicket(ticketId, technicianId, overrideReason, user) {
 
   ticket.assignedTo = technician.id;
   ticket.status = "Assigned";
+  ticket.scheduledAt = scheduledAt;
   ticket.latestDetail = action;
   ticket.history.push({ at: new Date().toISOString(), action });
   writeJsonDb(db);
@@ -2123,7 +2142,7 @@ app.post(
     if (!user || !["admin", "manager", "technician"].includes(user.role)) {
       return res.status(403).json({ error: "Only authenticated operations users can issue tickets" });
     }
-    const { outlet, category, impact, note, photoUrl, photoUrls, area, unknownAsset, assignedTo } = req.body;
+    const { outlet, category, impact, note, photoUrl, photoUrls, area, unknownAsset, assignedTo, scheduledAt } = req.body;
     const assetId = req.body.assetId === "__other" ? "" : req.body.assetId;
     if (!outlet || !category || !impact) {
       return res.status(400).json({ error: "outlet, category and impact are required" });
@@ -2149,7 +2168,7 @@ app.post(
         return res.status(403).json({ error: "Technician is not registered for this outlet" });
       }
     }
-    const ticket = await createTicket({ outlet, category, assetId, impact, note, photoUrl, photoUrls, area, unknownAsset, assignedTo }, user);
+    const ticket = await createTicket({ outlet, category, assetId, impact, note, photoUrl, photoUrls, area, unknownAsset, assignedTo, scheduledAt }, user);
     if (ticket.status && ticket.body) return res.status(ticket.status).json(ticket.body);
     res.status(201).json(ticket);
   })
@@ -2162,7 +2181,7 @@ app.patch(
     if (!user || !["admin", "manager"].includes(user.role)) {
       return res.status(403).json({ error: "Only admin or manager can assign technicians" });
     }
-    const result = await assignTicket(req.params.id, req.body.technicianId, req.body.overrideReason, user);
+    const result = await assignTicket(req.params.id, req.body.technicianId, req.body.overrideReason, user, req.body.scheduledAt);
     res.status(result.status).json(result.body);
   })
 );

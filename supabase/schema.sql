@@ -74,6 +74,7 @@ create table if not exists tickets (
   priority text not null,
   status text not null,
   assigned_to text references technicians(id),
+  scheduled_at timestamptz,
   latest_detail text,
   photo_url text,
   photo_urls text[] not null default '{}',
@@ -84,6 +85,7 @@ create table if not exists tickets (
 );
 
 alter table tickets add column if not exists created_by text;
+alter table tickets add column if not exists scheduled_at timestamptz;
 alter table tickets add column if not exists photo_url text;
 alter table tickets add column if not exists photo_urls text[] not null default '{}';
 alter table tickets add column if not exists resolution_photo_urls text[] not null default '{}';

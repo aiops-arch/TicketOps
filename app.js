@@ -618,7 +618,8 @@ async function assignTicket(ticketId, technicianId) {
   const technician = technicianById(technicianId);
   const ticket = (state.tickets || []).find((item) => item.id === ticketId);
   const summary = technician && ticket ? technicianAssignmentSummary(technician, ticket) : null;
-  const payload = { technicianId };
+  const scheduledInput = document.querySelector(`[data-assign-time="${ticketId}"]`);
+  const payload = { technicianId, scheduledAt: scheduledInput?.value || "" };
   const hardRisk = summary?.risk.filter((item) => item !== "backup skill") || [];
   if (hardRisk.includes("not registered for outlet")) {
     window.alert("This technician is not registered for this outlet. Add the outlet to the technician service area first.");
@@ -1075,6 +1076,7 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
   if (mode === "admin" && canUseView("admin")) {
     return `
       <select data-assign="${escapeHtml(ticket.id)}" aria-label="Assign ${escapeHtml(ticket.id)}">${assignmentOptions}</select>
+      <input class="assign-time-input" data-assign-time="${escapeHtml(ticket.id)}" type="datetime-local" aria-label="Scheduled time for ${escapeHtml(ticket.id)}">
       <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign</button>
       ${canDeleteAssignment ? `<button class="small-button danger" data-delete-assignment="${escapeHtml(ticket.id)}">Delete</button>` : ""}
       <button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Blocked">Blocked</button>
@@ -1085,6 +1087,7 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
     return `
       ${canAssignFromRole && !["Closed", "Cancelled", "Resolved", "Verification Pending"].includes(ticket.status) && assignmentOptions ? `
         <select data-assign="${escapeHtml(ticket.id)}" aria-label="Assign ${escapeHtml(ticket.id)}">${assignmentOptions}</select>
+        <input class="assign-time-input" data-assign-time="${escapeHtml(ticket.id)}" type="datetime-local" aria-label="Scheduled time for ${escapeHtml(ticket.id)}">
         <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign</button>
       ` : ""}
       ${canVerify ? `<button class="small-button success" data-status="${escapeHtml(ticket.id)}:Closed">Approve</button>` : ""}
@@ -1146,6 +1149,7 @@ function ticketCard(ticket, mode) {
       <div class="badge-row">
         <span class="badge ${statusClass}">${escapeHtml(ticket.status)}</span>
         <span class="badge">${escapeHtml(assigned ? assigned.name : "Unassigned")}</span>
+        ${ticket.scheduledAt ? `<span class="badge">Scheduled ${escapeHtml(formatDateTime(ticket.scheduledAt))}</span>` : ""}
         ${photoUrls.length ? `<span class="badge photo-badge">${photoUrls.length} Photo${photoUrls.length === 1 ? "" : "s"}</span>` : ""}
         ${resolutionPhotoUrls.length ? `<span class="badge status-closed">Completion Photo</span>` : ""}
         ${suggested ? `<span class="badge confidence">Score ${escapeHtml(suggested.dispatchScore || "OK")}: ${escapeHtml(suggested.name)}</span>` : ""}

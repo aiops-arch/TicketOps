@@ -1235,6 +1235,12 @@ body.has-session .topbar:focus-within .tabs {
   color: var(--coral);
 }
 
+.assign-time-input {
+  min-height: 34px;
+  min-width: 190px;
+  border-radius: 8px;
+}
+
 .master-form-grid,
 .master-board {
   display: grid;
