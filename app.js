@@ -1596,6 +1596,22 @@ function masterEntry({ className = "", editAttr, title, detail, deleteValue }) {
   `;
 }
 
+function renderAssignmentTimeRow(ticket) {
+  const assigned = technicianById(ticket.assignedTo);
+  return `
+    <div class="master-row master-entry time-master-row priority-${token(ticket.priority)}">
+      <div class="master-row-main">
+        <strong>${escapeHtml(ticket.id)} / ${escapeHtml(ticket.outlet)} / ${escapeHtml(ticket.category)}</strong>
+        <span>${escapeHtml(ticket.status)} / ${escapeHtml(assigned?.name || "Unassigned")} / ${ticket.scheduledAt ? `Allowed at ${escapeHtml(formatDateTime(ticket.scheduledAt))}` : "No time set"}</span>
+      </div>
+      <div class="master-row-actions time-master-actions">
+        <input class="assign-time-input" data-assign-time="${escapeHtml(ticket.id)}" type="datetime-local" value="${escapeHtml(dateTimeInputValue(ticket.scheduledAt))}" aria-label="Admin assignment time for ${escapeHtml(ticket.id)}">
+        <button type="button" class="small-button" data-schedule-button="${escapeHtml(ticket.id)}">Set Time</button>
+      </div>
+    </div>
+  `;
+}
+
 function renderMasters() {
   switchMasterTab(activeMasterTab);
   document.querySelector("#outletBoard").innerHTML = state.outlets.length
@@ -1652,6 +1668,16 @@ function renderMasters() {
         deleteValue: `admin/users:${escapeHtml(user.id)}:${escapeHtml(user.username)}`
       })).join("")
       : `<div class="empty mini">No users yet.</div>`;
+  }
+
+  const assignmentTimeBoard = document.querySelector("#assignmentTimeBoard");
+  if (assignmentTimeBoard) {
+    const timeTickets = (state.tickets || [])
+      .filter((ticket) => !["Closed", "Cancelled"].includes(ticket.status))
+      .sort((a, b) => String(a.scheduledAt || "9999").localeCompare(String(b.scheduledAt || "9999")) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    assignmentTimeBoard.innerHTML = timeTickets.length
+      ? timeTickets.map(renderAssignmentTimeRow).join("")
+      : `<div class="empty mini">No active tickets need assignment timing.</div>`;
   }
 }
 

@@ -1241,6 +1241,14 @@ body.has-session .topbar:focus-within .tabs {
   border-radius: 8px;
 }
 
+.time-master-row {
+  grid-template-columns: minmax(0, 1fr) minmax(270px, auto);
+}
+
+.time-master-actions {
+  align-items: center;
+}
+
 .master-form-grid,
 .master-board,
 .master-sections {
