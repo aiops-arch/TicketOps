@@ -111,8 +111,8 @@ const DEMO_USERS = [
     post: "Outlet Manager",
     role: "manager",
     outlet: "aiko surat",
-    accessAllOutlets: false,
-    allowedOutlets: ["aiko surat"],
+    accessAllOutlets: true,
+    allowedOutlets: [],
     defaultView: "dashboard",
     allowedViews: ["dashboard", "manager", "reports"]
   },
@@ -124,8 +124,8 @@ const DEMO_USERS = [
     post: "Outlet Manager",
     role: "manager",
     outlet: "Capiche",
-    accessAllOutlets: false,
-    allowedOutlets: ["Capiche"],
+    accessAllOutlets: true,
+    allowedOutlets: [],
     defaultView: "dashboard",
     allowedViews: ["dashboard", "manager", "reports"]
   },
@@ -1331,6 +1331,28 @@ async function createCategory(payload) {
   return { status: 201, body: category };
 }
 
+async function updateCategory(categoryId, payload) {
+  const db = await loadDb();
+  const existing = (db.categories || []).find((category) => category.id === categoryId);
+  if (!existing) return { status: 404, body: { error: "Category not found" } };
+  const name = String(payload.name || "").trim();
+  const description = String(payload.description ?? existing.description ?? "").trim();
+  if (!name) return { status: 400, body: { error: "Category name is required" } };
+  if (db.categories.some((category) => category.id !== categoryId && category.name.toLowerCase() === name.toLowerCase())) {
+    return { status: 409, body: { error: "Category already exists" } };
+  }
+
+  const updated = { ...existing, name, description };
+  if (useSupabase) {
+    await requireSupabase(await supabase.from("categories").update({ name, description }).eq("id", categoryId));
+    return { status: 200, body: updated };
+  }
+
+  db.categories = db.categories.map((category) => category.id === categoryId ? updated : category);
+  writeJsonDb(db);
+  return { status: 200, body: updated };
+}
+
 async function createTechnician(payload) {
   const db = await loadDb();
   const name = String(payload.name || "").trim();
@@ -1410,6 +1432,47 @@ async function createTechnician(payload) {
   db.users = [...(db.users || DEMO_USERS), loginUser];
   writeJsonDb(db);
   return { status: 201, body: { ...technician, login: publicUser(loginUser), temporaryPassword: password } };
+}
+
+async function updateTechnicianMaster(technicianId, payload) {
+  const db = await loadDb();
+  const technician = db.technicians.find((tech) => tech.id === technicianId);
+  if (!technician) return { status: 404, body: { error: "Technician not found" } };
+  const name = String(payload.name || technician.name || "").trim();
+  const skill = String(payload.skill || technician.skill || "").trim();
+  const serviceOutlets = normalizeOutletList(payload.serviceOutlets?.length ? payload.serviceOutlets : payload.allowedOutlets?.length ? payload.allowedOutlets : technician.serviceOutlets || [], db);
+  if (!name) return { status: 400, body: { error: "Technician name is required" } };
+  if (!db.categories.some((category) => category.name === skill)) return { status: 400, body: { error: "Skill category is invalid" } };
+  if (!serviceOutlets.length) return { status: 400, body: { error: "At least one outlet is required" } };
+
+  const updated = { ...technician, name, skill, serviceOutlets };
+  if (useSupabase) {
+    await requireSupabase(await supabase.from("technicians").update({
+      name,
+      skill,
+      service_outlets: serviceOutlets,
+      updated_at: new Date().toISOString()
+    }).eq("id", technicianId));
+    await requireSupabase(await supabase.from("app_users").update({
+      display_name: name,
+      outlet: serviceOutlets[0] || null,
+      access_all_outlets: false,
+      allowed_outlets: serviceOutlets,
+      updated_at: new Date().toISOString()
+    }).eq("technician_id", technicianId));
+    return { status: 200, body: updated };
+  }
+
+  db.technicians = db.technicians.map((tech) => tech.id === technicianId ? updated : tech);
+  db.users = (db.users || []).map((user) => user.technicianId === technicianId ? {
+    ...user,
+    name,
+    outlet: serviceOutlets[0] || "",
+    accessAllOutlets: false,
+    allowedOutlets: serviceOutlets
+  } : user);
+  writeJsonDb(db);
+  return { status: 200, body: updated };
 }
 
 function buildUserAccessPayload(payload, db, existingUser = null) {
@@ -2373,6 +2436,18 @@ app.post(
   })
 );
 
+app.patch(
+  "/api/categories/:id",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can update categories" });
+    }
+    const result = await updateCategory(req.params.id, req.body);
+    res.status(result.status).json(result.body);
+  })
+);
+
 app.post(
   "/api/technicians",
   asyncRoute(async (req, res) => {
@@ -2381,6 +2456,18 @@ app.post(
       return res.status(403).json({ error: "Only admin can create technicians" });
     }
     const result = await createTechnician(req.body);
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.patch(
+  "/api/technicians/:id",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can update technicians" });
+    }
+    const result = await updateTechnicianMaster(req.params.id, req.body);
     res.status(result.status).json(result.body);
   })
 );

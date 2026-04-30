@@ -76,6 +76,8 @@ let state = {
 let currentUser = readStoredUser();
 let directoryUsers = [];
 let editingUserAccessId = "";
+let editingCategoryId = "";
+let editingTechnicianId = "";
 
 function readStoredUser() {
   try {
@@ -635,6 +637,10 @@ function detailForStatus(status) {
 
 async function assignTicket(ticketId, technicianId) {
   if (!["admin", "manager"].includes(currentUser?.role)) return;
+  if (!technicianId) {
+    window.alert("No technician is selected. Add outlet coverage to a technician first, then assign again.");
+    return;
+  }
 
   const technician = technicianById(technicianId);
   const ticket = (state.tickets || []).find((item) => item.id === ticketId);
@@ -759,52 +765,89 @@ async function createCategory(event) {
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
   const resultBox = document.querySelector("#masterCreateResult");
   submitButton.disabled = true;
-  submitButton.textContent = "Adding...";
+  submitButton.textContent = editingCategoryId ? "Updating..." : "Adding...";
   resultBox.textContent = "";
   try {
-    const category = await api("/api/categories", {
-      method: "POST",
+    const category = await api(editingCategoryId ? `/api/categories/${editingCategoryId}` : "/api/categories", {
+      method: editingCategoryId ? "PATCH" : "POST",
       body: JSON.stringify({ name: document.querySelector("#categoryName").value })
     });
-    document.querySelector("#categoryName").value = "";
-    resultBox.textContent = `${category.name} category added.`;
+    const wasEditing = Boolean(editingCategoryId);
+    resetCategoryForm();
+    resultBox.textContent = `${category.name} category ${wasEditing ? "updated" : "added"}.`;
     await loadState();
   } catch (error) {
     resultBox.textContent = error.message;
   } finally {
     submitButton.disabled = false;
-    submitButton.textContent = "Add Category";
+    submitButton.textContent = editingCategoryId ? "Update Category" : "Add Category";
   }
 }
 
-async function createTechnician(event) {
+function resetCategoryForm() {
+  editingCategoryId = "";
+  document.querySelector("#categoryName").value = "";
+  document.querySelector("#categorySubmit").textContent = "Add Category";
+}
+
+function fillCategoryForm(categoryId) {
+  const category = (state.categories || []).find((item) => item.id === categoryId);
+  if (!category) return;
+  editingCategoryId = category.id;
+  document.querySelector("#categoryName").value = category.name || "";
+  document.querySelector("#categorySubmit").textContent = "Update Category";
+}
+
+async function saveTechnicianMaster(event) {
   event.preventDefault();
   if (!canUseView("masters")) return;
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
   const resultBox = document.querySelector("#masterCreateResult");
   submitButton.disabled = true;
-  submitButton.textContent = "Adding...";
+  submitButton.textContent = editingTechnicianId ? "Updating..." : "Adding...";
   resultBox.textContent = "";
   try {
-    const technician = await api("/api/technicians", {
-      method: "POST",
+    const serviceOutlets = selectedOptionValues(document.querySelector("#technicianOutlet"));
+    const technician = await api(editingTechnicianId ? `/api/technicians/${editingTechnicianId}` : "/api/technicians", {
+      method: editingTechnicianId ? "PATCH" : "POST",
       body: JSON.stringify({
         name: document.querySelector("#technicianName").value,
         skill: document.querySelector("#technicianSkill").value,
-        outlet: document.querySelector("#technicianOutlet").value
+        outlet: serviceOutlets[0] || "",
+        serviceOutlets
       })
     });
-    document.querySelector("#technicianName").value = "";
+    const wasEditing = Boolean(editingTechnicianId);
+    resetTechnicianForm();
     resultBox.textContent = technician.login
       ? `${technician.name} added. Login: ${technician.login.username} / ${technician.temporaryPassword}`
-      : `${technician.name} technician added.`;
+      : `${technician.name} technician ${wasEditing ? "updated" : "added"}.`;
     await loadState();
   } catch (error) {
     resultBox.textContent = error.message;
   } finally {
     submitButton.disabled = false;
-    submitButton.textContent = "Add Technician";
+    submitButton.textContent = editingTechnicianId ? "Update Technician" : "Add Technician";
   }
+}
+
+function resetTechnicianForm() {
+  editingTechnicianId = "";
+  document.querySelector("#technicianForm")?.reset();
+  [...(document.querySelector("#technicianOutlet")?.options || [])].forEach((option) => { option.selected = false; });
+  document.querySelector("#technicianSubmit").textContent = "Add Technician";
+}
+
+function fillTechnicianForm(technicianId) {
+  const tech = state.technicians.find((item) => item.id === technicianId);
+  if (!tech) return;
+  editingTechnicianId = tech.id;
+  document.querySelector("#technicianName").value = tech.name || "";
+  document.querySelector("#technicianSkill").value = tech.skill || "";
+  [...(document.querySelector("#technicianOutlet")?.options || [])].forEach((option) => {
+    option.selected = (tech.serviceOutlets || []).includes(option.value);
+  });
+  document.querySelector("#technicianSubmit").textContent = "Update Technician";
 }
 
 function resetUserAccessForm() {
@@ -1019,6 +1062,7 @@ function renderSelects() {
   const selectedAssetCategory = assetCategory?.value;
   const selectedTechnicianSkill = technicianSkill?.value;
   const selectedTechnicianOutlet = technicianOutlet?.value;
+  const selectedTechnicianOutlets = selectedOptionValues(technicianOutlet);
   const selectedAccessSkill = accessSkill?.value;
   const selectedAccessOutlets = selectedOptionValues(accessOutlets);
   const selectedTicketCategory = ticketCategory?.value;
@@ -1067,8 +1111,14 @@ function renderSelects() {
     technicianOutlet.innerHTML = state.outlets
       .map((outlet) => `<option value="${escapeHtml(outlet)}">${escapeHtml(outlet)}</option>`)
       .join("");
-    if (selectedTechnicianOutlet && state.outlets.includes(selectedTechnicianOutlet)) {
-      technicianOutlet.value = selectedTechnicianOutlet;
+    if (selectedTechnicianOutlets.length) {
+      selectedTechnicianOutlets.forEach((outlet) => {
+        const option = [...technicianOutlet.options].find((item) => item.value === outlet);
+        if (option) option.selected = true;
+      });
+    } else if (selectedTechnicianOutlet && state.outlets.includes(selectedTechnicianOutlet)) {
+      const option = [...technicianOutlet.options].find((item) => item.value === selectedTechnicianOutlet);
+      if (option) option.selected = true;
     }
   }
 
@@ -1450,7 +1500,12 @@ function renderMasters() {
     : `<div class="empty mini">No outlets yet.</div>`;
 
   document.querySelector("#categoryBoard").innerHTML = (state.categories || []).length
-    ? state.categories.map((category) => `<article class="master-row"><strong>${escapeHtml(category.name)}</strong><span>${escapeHtml(category.description || "Category")}</span></article>`).join("")
+    ? state.categories.map((category) => `
+      <button type="button" class="master-row" data-edit-category="${escapeHtml(category.id)}">
+        <strong>${escapeHtml(category.name)}</strong>
+        <span>${escapeHtml(category.description || "Category")} / Edit</span>
+      </button>
+    `).join("")
     : `<div class="empty mini">No categories yet.</div>`;
 
   document.querySelector("#assetBoard").innerHTML = (state.assets || []).length
@@ -1463,7 +1518,12 @@ function renderMasters() {
     : `<div class="empty mini">No assets yet.</div>`;
 
   document.querySelector("#technicianMasterBoard").innerHTML = state.technicians.length
-    ? state.technicians.map((tech) => `<article class="master-row status-${token(tech.status)}"><strong>${escapeHtml(tech.name)}</strong><span>${escapeHtml(tech.skill)} / ${escapeHtml(serviceAreaLabel(tech))}</span></article>`).join("")
+    ? state.technicians.map((tech) => `
+      <button type="button" class="master-row status-${token(tech.status)}" data-edit-technician="${escapeHtml(tech.id)}">
+        <strong>${escapeHtml(tech.name)}</strong>
+        <span>${escapeHtml(tech.skill)} / ${escapeHtml(serviceAreaLabel(tech))} / Edit outlets</span>
+      </button>
+    `).join("")
     : `<div class="empty mini">No technicians yet.</div>`;
 
   const peopleBoard = document.querySelector("#peopleAccessBoard");
@@ -2703,7 +2763,9 @@ document.querySelector("#ticketNote").addEventListener("input", updateTicketPrio
 document.querySelector("#assetForm").addEventListener("submit", createAsset);
 document.querySelector("#outletForm").addEventListener("submit", createOutlet);
 document.querySelector("#categoryForm").addEventListener("submit", createCategory);
-document.querySelector("#technicianForm").addEventListener("submit", createTechnician);
+document.querySelector("#categoryCancel").addEventListener("click", resetCategoryForm);
+document.querySelector("#technicianForm").addEventListener("submit", saveTechnicianMaster);
+document.querySelector("#technicianCancel").addEventListener("click", resetTechnicianForm);
 document.querySelector("#userAccessForm").addEventListener("submit", saveUserAccess);
 document.querySelector("#userAccessCancel").addEventListener("click", resetUserAccessForm);
 document.querySelector("#maintenanceRuleForm").addEventListener("submit", createMaintenanceRule);
@@ -2733,6 +2795,18 @@ document.addEventListener("click", async (event) => {
   const editUserAccess = event.target.closest?.("[data-edit-user-access]");
   if (editUserAccess) {
     fillUserAccessForm(editUserAccess.dataset.editUserAccess);
+    return;
+  }
+
+  const editCategory = event.target.closest?.("[data-edit-category]");
+  if (editCategory) {
+    fillCategoryForm(editCategory.dataset.editCategory);
+    return;
+  }
+
+  const editTechnician = event.target.closest?.("[data-edit-technician]");
+  if (editTechnician) {
+    fillTechnicianForm(editTechnician.dataset.editTechnician);
     return;
   }
 
@@ -2799,7 +2873,11 @@ document.addEventListener("click", async (event) => {
   if (assignButton) {
     const assignId = assignButton.dataset.assignButton;
     const select = document.querySelector(`[data-assign="${assignId}"]`);
-    await assignTicket(assignId, select.value);
+    try {
+      await assignTicket(assignId, select?.value || "");
+    } catch (error) {
+      window.alert(error.message);
+    }
     return;
   }
 

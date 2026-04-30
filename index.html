@@ -396,7 +396,8 @@
                   Category name
                   <input id="categoryName" required placeholder="Example: Gas">
                 </label>
-                <button type="submit" class="primary-button">Add Category</button>
+                <button id="categorySubmit" type="submit" class="primary-button">Add Category</button>
+                <button id="categoryCancel" type="button" class="small-button">Clear</button>
               </form>
               <div id="categoryBoard" class="master-list"></div>
             </section>
@@ -447,10 +448,11 @@
                   <select id="technicianSkill"></select>
                 </label>
                 <label>
-                  Outlet
-                  <select id="technicianOutlet"></select>
+                  Outlet coverage
+                  <select id="technicianOutlet" multiple size="4"></select>
                 </label>
-                <button type="submit" class="primary-button">Add Technician</button>
+                <button id="technicianSubmit" type="submit" class="primary-button">Add Technician</button>
+                <button id="technicianCancel" type="button" class="small-button">Clear</button>
               </form>
               <div id="technicianMasterBoard" class="master-list"></div>
             </section>
