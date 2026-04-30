@@ -2113,6 +2113,8 @@ input::placeholder {
 
 .master-list {
   display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
   gap: 8px;
   margin-top: 8px;
 }
