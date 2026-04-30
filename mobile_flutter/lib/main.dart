@@ -433,8 +433,8 @@ class _LoginScreenState extends State<LoginScreen> {
   late final TextEditingController endpoint = TextEditingController(
     text: widget.apiBase,
   );
-  final username = TextEditingController(text: 'chintan.patel');
-  final password = TextEditingController(text: 'chintan123');
+  final username = TextEditingController(text: 'aiops');
+  final password = TextEditingController(text: 'AIops');
 
   @override
   Widget build(BuildContext context) {
@@ -508,8 +508,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   QuickLoginChip(
                     'Admin',
-                    'chintan.patel',
-                    'chintan123',
+                    'aiops',
+                    'AIops',
                     username,
                     password,
                   ),

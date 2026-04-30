@@ -192,17 +192,19 @@ on conflict (id) do update set
   service_outlets = excluded.service_outlets,
   updated_at = now();
 
-insert into app_users (id, username, display_name, post, role, outlet, technician_id, default_view, allowed_views)
+insert into app_users (id, username, password_hash, display_name, post, role, outlet, technician_id, default_view, allowed_views)
 values
-  ('U-ADMIN-CHINTAN', 'chintan.patel', 'Chintan Patel', 'Admin Control Panel Operator', 'admin', null, null, 'dashboard', array['dashboard', 'manager', 'admin', 'technician', 'reports']),
-  ('U-ADMIN-MEET', 'meet.patel', 'Meet Patel', 'Admin Control Panel Operator', 'admin', null, null, 'dashboard', array['dashboard', 'manager', 'admin', 'technician', 'reports']),
-  ('U-MGR-PRATIK', 'pratik.patel', 'Pratik Patel', 'Outlet Manager', 'manager', 'aiko surat', null, 'dashboard', array['dashboard', 'manager', 'reports']),
-  ('U-MGR-HUSSAIN', 'hussain.sheikh', 'Hussain Sheikh', 'Outlet Manager', 'manager', 'Capiche', null, 'dashboard', array['dashboard', 'manager', 'reports']),
-  ('U-TECH-VICKY', 'vicky', 'Vicky', 'Technician', 'technician', null, 'T1', 'dashboard', array['dashboard', 'technician', 'reports']),
-  ('U-TECH-RAHUL', 'rahul.patil', 'Rahul Patil', 'Technician', 'technician', null, 'T2', 'dashboard', array['dashboard', 'technician', 'reports']),
-  ('U-TECH-ABRAR', 'abrar', 'Abrar', 'Technician', 'technician', null, 'T3', 'dashboard', array['dashboard', 'technician', 'reports'])
+  ('U-ADMIN-AIOPS', 'aiops', 'pbkdf2:120000:a1b2c3d4e5f60708:888871d5e5ac38b1cce1fcff51ad7bd18e72436def796616789a6c031f43fa6e', 'AIops', 'Admin Control Panel Operator', 'admin', null, null, 'dashboard', array['dashboard', 'manager', 'admin', 'technician', 'reports']),
+  ('U-ADMIN-CHINTAN', 'chintan.patel', 'pbkdf2:120000:982c18b51e794bf4cb87e8642731c2cc:73c5cbd85cb7994067ded367b738fdb5ee55a4aa2c0a0d057d4a5553f2097b44', 'Chintan Patel', 'Admin Control Panel Operator', 'admin', null, null, 'dashboard', array['dashboard', 'manager', 'admin', 'technician', 'reports']),
+  ('U-ADMIN-MEET', 'meet.patel', 'pbkdf2:120000:bbcdabab57be3c89299580e74f5bdfb5:f4bff0d92c29c9c5f8acb3f73bd2981549ea5e024f80c81590d5de198c10492b', 'Meet Patel', 'Admin Control Panel Operator', 'admin', null, null, 'dashboard', array['dashboard', 'manager', 'admin', 'technician', 'reports']),
+  ('U-MGR-PRATIK', 'pratik.patel', 'pbkdf2:120000:d9778cb8f2cacd1633eeb0239cd22d87:923afc6207abf49b386396850d5df74eda4166b1dfe40a1a97bc87a8a4b6023c', 'Pratik Patel', 'Outlet Manager', 'manager', 'aiko surat', null, 'dashboard', array['dashboard', 'manager', 'reports']),
+  ('U-MGR-HUSSAIN', 'hussain.sheikh', 'pbkdf2:120000:5542a0b2e59554516ae58e01deb207ac:52f76c3bf884aac40e9bbeae6bcd36d753cf1d38a15ae1ff45c3549ad24a23db', 'Hussain Sheikh', 'Outlet Manager', 'manager', 'Capiche', null, 'dashboard', array['dashboard', 'manager', 'reports']),
+  ('U-TECH-VICKY', 'vicky', 'pbkdf2:120000:7bfc5ae8cbd0ebb81b40b6b588d26788:aa230c800b2e3483804198abee0567ee6fd021195cbaeabdf82d97725a51d44f', 'Vicky', 'Technician', 'technician', null, 'T1', 'dashboard', array['dashboard', 'technician', 'reports']),
+  ('U-TECH-RAHUL', 'rahul.patil', 'pbkdf2:120000:968b19eef77ef131c769fb07e287f00c:cccd93f76578cf8cb992e67e6279b142b933fa89b9cb8a717c484666c61e8556', 'Rahul Patil', 'Technician', 'technician', null, 'T2', 'dashboard', array['dashboard', 'technician', 'reports']),
+  ('U-TECH-ABRAR', 'abrar', 'pbkdf2:120000:88f7489f0b8b0ab0bb115b31b9ad9eba:0dbaba9c4c3a887788fed5cefb39ad5e74160eaf49c13a0689d25a69adc77497', 'Abrar', 'Technician', 'technician', null, 'T3', 'dashboard', array['dashboard', 'technician', 'reports'])
 on conflict (id) do update set
   username = excluded.username,
+  password_hash = excluded.password_hash,
   display_name = excluded.display_name,
   post = excluded.post,
   role = excluded.role,

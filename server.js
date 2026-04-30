@@ -68,6 +68,16 @@ function migrateUserPasswords(users) {
 
 const DEMO_USERS = [
   {
+    id: "U-ADMIN-AIOPS",
+    username: "aiops",
+    password: "AIops",
+    name: "AIops",
+    post: "Admin Control Panel Operator",
+    role: "admin",
+    defaultView: "dashboard",
+    allowedViews: ["dashboard", "manager", "admin", "technician", "reports"]
+  },
+  {
     id: "U-ADMIN-CHINTAN",
     username: "chintan.patel",
     password: "chintan123",

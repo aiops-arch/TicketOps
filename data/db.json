@@ -1,6 +1,22 @@
 {
   "users": [
     {
+      "id": "U-ADMIN-AIOPS",
+      "username": "aiops",
+      "name": "AIops",
+      "post": "Admin Control Panel Operator",
+      "role": "admin",
+      "defaultView": "dashboard",
+      "allowedViews": [
+        "dashboard",
+        "manager",
+        "admin",
+        "technician",
+        "reports"
+      ],
+      "passwordHash": "pbkdf2:120000:a1b2c3d4e5f60708:888871d5e5ac38b1cce1fcff51ad7bd18e72436def796616789a6c031f43fa6e"
+    },
+    {
       "id": "U-ADMIN-CHINTAN",
       "username": "chintan.patel",
       "name": "Chintan Patel",
