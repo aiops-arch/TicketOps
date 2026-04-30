@@ -360,6 +360,14 @@ function sanitizePhotoUrl(value) {
   return photoUrl.length <= 3_000_000 ? photoUrl : "";
 }
 
+function sanitizePhotoUrls(value, limit = 5) {
+  const source = Array.isArray(value) ? value : [value];
+  return source
+    .map(sanitizePhotoUrl)
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
 function taskRequiresEvidence(task) {
   const text = `${task.title || ""} ${task.notes || ""}`.toLowerCase();
   return /(temperature|freezer|refrigerator|gas|fire|extinguisher|leak|pest|safety)/.test(text);
@@ -707,7 +715,37 @@ function reports(db) {
   };
 }
 
-function withSuggestions(db) {
+function notificationsForUser(db, user) {
+  if (!user) return [];
+  const openTickets = (db.tickets || []).filter((ticket) => !["Closed", "Cancelled"].includes(ticket.status));
+  if (user.role === "technician") {
+    return openTickets
+      .filter((ticket) => ticket.assignedTo === user.technicianId && ["Assigned", "Reopened", "Blocked"].includes(ticket.status))
+      .map((ticket) => ({
+        type: ticket.status === "Assigned" ? "assigned" : token(ticket.status),
+        ticketId: ticket.id,
+        message: ticket.status === "Assigned" ? "New ticket assigned to you" : `Ticket ${ticket.status.toLowerCase()} needs attention`
+      }));
+  }
+  if (user.role === "manager") {
+    return openTickets
+      .filter((ticket) => ticket.outlet === user.outlet && ["Resolved", "Verification Pending", "Reopened", "Blocked"].includes(ticket.status))
+      .map((ticket) => ({
+        type: token(ticket.status),
+        ticketId: ticket.id,
+        message: ticket.status === "Resolved" || ticket.status === "Verification Pending" ? "Ticket is ready for manager closure" : "Ticket needs manager attention"
+      }));
+  }
+  return openTickets
+    .filter((ticket) => !ticket.assignedTo || ["Blocked", "Reopened"].includes(ticket.status))
+    .map((ticket) => ({
+      type: !ticket.assignedTo ? "unassigned" : token(ticket.status),
+      ticketId: ticket.id,
+      message: !ticket.assignedTo ? "Ticket is waiting for technician assignment" : "Ticket needs admin attention"
+    }));
+}
+
+function withSuggestions(db, user = null) {
   const { users, ...publicDb } = db;
   return {
     ...publicDb,
@@ -723,6 +761,7 @@ function withSuggestions(db) {
       suggestedTechnician: smartSuggestion(db, ticket)
     })),
     reports: reports(db),
+    notifications: notificationsForUser(db, user),
     storage: useSupabase ? "supabase" : "json"
   };
 }
@@ -893,6 +932,8 @@ function mapTicket(row, history = []) {
     assignedTo: row.assigned_to || "",
     latestDetail: row.latest_detail || "",
     photoUrl: row.photo_url || "",
+    photoUrls: row.photo_urls?.length ? row.photo_urls : (row.photo_url ? [row.photo_url] : []),
+    resolutionPhotoUrls: row.resolution_photo_urls || [],
     createdBy: row.created_by || "",
     createdAt: row.created_at,
     history
@@ -1015,10 +1056,12 @@ async function loadDb() {
 async function createTicket(payload, user) {
   const db = await loadDb();
   const selectedAsset = payload.assetId ? assetById(db, payload.assetId) : null;
-  const cleanPhotoUrl = sanitizePhotoUrl(payload.photoUrl);
+  const cleanPhotoUrls = sanitizePhotoUrls(payload.photoUrls?.length ? payload.photoUrls : payload.photoUrl);
+  const cleanPhotoUrl = cleanPhotoUrls[0] || "";
   const cleanNote = String(payload.note || "").trim();
   const cleanArea = String(payload.area || "").trim();
   const unknownAsset = Boolean(payload.unknownAsset);
+  const requestedTechnician = payload.assignedTo ? db.technicians.find((tech) => tech.id === payload.assignedTo) : null;
   const effectiveCategory = selectedAsset?.category || payload.category;
   const effectiveImpact = payload.impact;
   if (ticketRequiresPhoto({ impact: effectiveImpact, category: effectiveCategory, note: cleanNote }) && !cleanPhotoUrl) {
@@ -1038,17 +1081,21 @@ async function createTicket(payload, user) {
     assignedTo: "",
     createdBy: user?.id || "",
     photoUrl: cleanPhotoUrl,
+    photoUrls: cleanPhotoUrls,
+    resolutionPhotoUrls: [],
     createdAt: new Date().toISOString(),
     history: []
   };
   if (unknownAsset) {
     ticket.latestDetail = `Manager marked asset as Other / unknown${cleanArea ? ` in ${cleanArea}` : ""}`;
   }
-  const autoAssignedTechnician = smartSuggestion(db, ticket);
+  const autoAssignedTechnician = requestedTechnician || smartSuggestion(db, ticket);
   if (autoAssignedTechnician) {
     ticket.status = "Assigned";
     ticket.assignedTo = autoAssignedTechnician.id;
-    ticket.latestDetail = `${ticket.latestDetail ? `${ticket.latestDetail}. ` : ""}Auto assigned to ${autoAssignedTechnician.name}: ${autoAssignedTechnician.dispatchReason}`;
+    ticket.latestDetail = requestedTechnician
+      ? `${ticket.latestDetail ? `${ticket.latestDetail}. ` : ""}Assigned to ${autoAssignedTechnician.name} by ${user?.name || user?.role || "user"}`
+      : `${ticket.latestDetail ? `${ticket.latestDetail}. ` : ""}Auto assigned to ${autoAssignedTechnician.name}: ${autoAssignedTechnician.dispatchReason}`;
   }
 
   if (useSupabase) {
@@ -1066,12 +1113,19 @@ async function createTicket(payload, user) {
         assigned_to: ticket.assignedTo || null,
         latest_detail: ticket.latestDetail || "",
         photo_url: ticket.photoUrl || null,
+        photo_urls: ticket.photoUrls,
+        resolution_photo_urls: ticket.resolutionPhotoUrls,
         created_by: ticket.createdBy || null
       })
     );
     await addSupabaseHistory(ticket.id, `Ticket created by ${user?.name || "manager"}`);
     if (autoAssignedTechnician) {
-      await addSupabaseHistory(ticket.id, `Auto assigned to ${autoAssignedTechnician.name}: ${autoAssignedTechnician.dispatchReason}`);
+      await addSupabaseHistory(
+        ticket.id,
+        requestedTechnician
+          ? `Assigned to ${autoAssignedTechnician.name} by ${user?.name || user?.role || "user"}`
+          : `Auto assigned to ${autoAssignedTechnician.name}: ${autoAssignedTechnician.dispatchReason}`
+      );
     }
     ticket.suggestedTechnician = autoAssignedTechnician;
     return ticket;
@@ -1081,7 +1135,9 @@ async function createTicket(payload, user) {
   if (autoAssignedTechnician) {
     ticket.history.push({
       at: new Date().toISOString(),
-      action: `Auto assigned to ${autoAssignedTechnician.name}: ${autoAssignedTechnician.dispatchReason}`
+      action: requestedTechnician
+        ? `Assigned to ${autoAssignedTechnician.name} by ${user?.name || user?.role || "user"}`
+        : `Auto assigned to ${autoAssignedTechnician.name}: ${autoAssignedTechnician.dispatchReason}`
     });
   }
   db.tickets.unshift(ticket);
@@ -1313,8 +1369,8 @@ async function updateTaskStatus(taskId, status, user, evidence = {}) {
   if (task.status === "Done") return { status: 409, body: { error: "Task is already completed" } };
   const evidenceComment = String(evidence.comment || "").trim().slice(0, 500);
   const evidencePhotoUrl = sanitizePhotoUrl(evidence.photoUrl);
-  if (taskRequiresEvidence(task) && !evidencePhotoUrl) {
-    return { status: 400, body: { error: "Photo evidence is required for this safety-critical checklist task" } };
+  if (!evidencePhotoUrl) {
+    return { status: 400, body: { error: "Photo evidence is required to complete this task" } };
   }
 
   task.status = status;
@@ -1531,7 +1587,7 @@ async function deleteAssignment(ticketId, user) {
   return { status: 200, body: ticket };
 }
 
-async function updateTicketStatus(ticketId, status, detail, user) {
+async function updateTicketStatus(ticketId, status, detail, user, evidence = {}) {
   const db = await loadDb();
   const ticket = db.tickets.find((item) => item.id === ticketId);
   if (!ticket) return { status: 404, body: { error: "Ticket not found" } };
@@ -1541,13 +1597,19 @@ async function updateTicketStatus(ticketId, status, detail, user) {
   if (DETAIL_REQUIRED_STATUSES[status] && !String(detail || "").trim()) {
     return { status: 400, body: { error: DETAIL_REQUIRED_STATUSES[status] } };
   }
+  const resolutionPhotoUrls = sanitizePhotoUrls(evidence.evidencePhotoUrls?.length ? evidence.evidencePhotoUrls : evidence.evidencePhotoUrl);
+  if (user.role === "technician" && status === "Resolved" && !resolutionPhotoUrls.length) {
+    return { status: 400, body: { error: "Completion photo is required before resolving the ticket" } };
+  }
 
   const action = detail || `Status changed to ${status}`;
   if (useSupabase) {
+    const updatePayload = { status, latest_detail: action, updated_at: new Date().toISOString() };
+    if (status === "Resolved" && resolutionPhotoUrls.length) updatePayload.resolution_photo_urls = resolutionPhotoUrls;
     await requireSupabase(
       await supabase
         .from("tickets")
-        .update({ status, latest_detail: action, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq("id", ticketId)
     );
     await addSupabaseHistory(ticketId, action);
@@ -1556,6 +1618,7 @@ async function updateTicketStatus(ticketId, status, detail, user) {
 
   ticket.status = status;
   ticket.latestDetail = action;
+  if (status === "Resolved" && resolutionPhotoUrls.length) ticket.resolutionPhotoUrls = resolutionPhotoUrls;
   ticket.history.push({ at: new Date().toISOString(), action });
   writeJsonDb(db);
   return { status: 200, body: ticket };
@@ -1879,7 +1942,7 @@ app.get(
   asyncRoute(async (req, res) => {
     const user = await userFromRequest(req);
     if (!user) return res.status(401).json({ error: "Login required" });
-    res.json(withSuggestions(scopedDbForUser(await loadDb(), user)));
+    res.json(withSuggestions(scopedDbForUser(await loadDb(), user), user));
   })
 );
 
@@ -2032,10 +2095,10 @@ app.post(
   "/api/tickets",
   asyncRoute(async (req, res) => {
     const user = await userFromRequest(req);
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      return res.status(403).json({ error: "Only managers or admin can issue tickets" });
+    if (!user || !["admin", "manager", "technician"].includes(user.role)) {
+      return res.status(403).json({ error: "Only authenticated operations users can issue tickets" });
     }
-    const { outlet, category, impact, note, photoUrl, area, unknownAsset } = req.body;
+    const { outlet, category, impact, note, photoUrl, photoUrls, area, unknownAsset, assignedTo } = req.body;
     const assetId = req.body.assetId === "__other" ? "" : req.body.assetId;
     if (!outlet || !category || !impact) {
       return res.status(400).json({ error: "outlet, category and impact are required" });
@@ -2049,7 +2112,19 @@ app.post(
     if (user.role === "manager" && user.outlet !== effectiveOutlet) {
       return res.status(403).json({ error: "Managers can only issue tickets for their outlet" });
     }
-    const ticket = await createTicket({ outlet, category, assetId, impact, note, photoUrl, area, unknownAsset }, user);
+    if (assignedTo) {
+      const technician = db.technicians.find((tech) => tech.id === assignedTo);
+      if (!technician) return res.status(404).json({ error: "Assigned technician was not found" });
+      const effectiveTechnician = technicianWithAttendance(db, technician);
+      const servesOutlet = (effectiveTechnician.serviceOutlets || []).includes(effectiveOutlet);
+      if (user.role === "manager" && (!servesOutlet || !ASSIGNABLE_STATUSES.includes(effectiveTechnician.status))) {
+        return res.status(403).json({ error: "Managers can only assign available technicians who serve this outlet" });
+      }
+      if (user.role === "technician" && !servesOutlet) {
+        return res.status(403).json({ error: "Technicians can only assign tickets within technician service coverage" });
+      }
+    }
+    const ticket = await createTicket({ outlet, category, assetId, impact, note, photoUrl, photoUrls, area, unknownAsset, assignedTo }, user);
     if (ticket.status && ticket.body) return res.status(ticket.status).json(ticket.body);
     res.status(201).json(ticket);
   })
@@ -2097,7 +2172,10 @@ app.patch(
     const user = await userFromRequest(req);
     if (!user) return res.status(401).json({ error: "Login required" });
     if (!req.body.status) return res.status(400).json({ error: "status is required" });
-    const result = await updateTicketStatus(req.params.id, req.body.status, req.body.detail, user);
+    const result = await updateTicketStatus(req.params.id, req.body.status, req.body.detail, user, {
+      evidencePhotoUrl: req.body.evidencePhotoUrl,
+      evidencePhotoUrls: req.body.evidencePhotoUrls
+    });
     res.status(result.status).json(result.body);
   })
 );

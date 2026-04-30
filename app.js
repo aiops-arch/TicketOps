@@ -2,6 +2,9 @@ const NATIVE_DEFAULT_API = location.protocol === "capacitor:" ? "http://10.0.2.2
 const CONFIG_API_BASE = window.TICKETOPS_CONFIG?.apiBase || window.TICKETOPS_API_BASE || "";
 const API_BASE = localStorage.getItem("ticketops-api-base") || CONFIG_API_BASE || NATIVE_DEFAULT_API;
 const AUTH_STORAGE_KEY = "ticketops-auth-user-v2";
+const MAX_TICKET_PHOTOS = 5;
+const MAX_IMAGE_EDGE = 1600;
+const IMAGE_QUALITY = 0.72;
 
 const STATUS_STEPS = {
   New: { label: "Queued", percent: 12 },
@@ -36,7 +39,7 @@ function ticketRequiresPhoto({ impact = "", category = "", note = "" } = {}) {
 }
 
 const ROLE_DEFAULT_VIEWS = {
-  admin: ["dashboard", "admin", "masters", "scheduler", "reports"],
+  admin: ["dashboard", "manager", "admin", "masters", "scheduler", "reports"],
   manager: ["dashboard", "manager", "reports"],
   technician: ["dashboard", "technician", "reports"],
   auditor: ["dashboard", "reports"]
@@ -44,7 +47,7 @@ const ROLE_DEFAULT_VIEWS = {
 
 const UTILITY_VIEWS = [];
 const ROLE_VIEW_ALLOWLIST = {
-  admin: ["dashboard", "admin", "masters", "scheduler", "reports"],
+  admin: ["dashboard", "manager", "admin", "masters", "scheduler", "reports"],
   manager: ["dashboard", "manager", "reports"],
   technician: ["dashboard", "technician", "reports"],
   auditor: ["dashboard", "reports"]
@@ -102,37 +105,56 @@ function escapeHtml(value) {
   ));
 }
 
-function readTicketPhoto() {
+async function compressImageFile(file) {
+  if (!file) return "";
+  if (!file.type.startsWith("image/")) throw new Error("Attach an image file only.");
+
+  const sourceUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.addEventListener("load", () => resolve(img), { once: true });
+      img.addEventListener("error", () => reject(new Error("Photo could not be read.")), { once: true });
+      img.src = sourceUrl;
+    });
+    const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
+    const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+    const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d", { alpha: false });
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+    return canvas.toDataURL("image/jpeg", IMAGE_QUALITY);
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
+async function readTicketPhotos() {
   const input = document.querySelector("#ticketPhoto");
-  const file = input?.files?.[0];
-  if (!file) return Promise.resolve("");
-
-  if (!file.type.startsWith("image/")) {
-    return Promise.reject(new Error("Attach an image file only."));
+  const files = [...(input?.files || [])];
+  if (!files.length) return [];
+  if (files.length > MAX_TICKET_PHOTOS) {
+    throw new Error(`Attach up to ${MAX_TICKET_PHOTOS} images only.`);
   }
+  return Promise.all(files.map(compressImageFile));
+}
 
-  if (file.size > 2 * 1024 * 1024) {
-    return Promise.reject(new Error("Photo must be under 2 MB."));
-  }
+function readTicketPhoto() {
+  return readTicketPhotos().then((photos) => photos[0] || "");
+}
 
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener("load", () => resolve(reader.result || ""));
-    reader.addEventListener("error", () => reject(new Error("Photo could not be read.")));
-    reader.readAsDataURL(file);
-  });
+async function readPhotosFromInput(input) {
+  const files = [...(input?.files || [])];
+  if (files.length > MAX_TICKET_PHOTOS) throw new Error(`Attach up to ${MAX_TICKET_PHOTOS} images only.`);
+  return Promise.all(files.map(compressImageFile));
 }
 
 function readImageFile(file) {
-  if (!file) return Promise.resolve("");
-  if (!file.type.startsWith("image/")) return Promise.reject(new Error("Attach an image file only."));
-  if (file.size > 2 * 1024 * 1024) return Promise.reject(new Error("Photo must be under 2 MB."));
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener("load", () => resolve(reader.result || ""));
-    reader.addEventListener("error", () => reject(new Error("Photo could not be read.")));
-    reader.readAsDataURL(file);
-  });
+  return compressImageFile(file);
 }
 
 function token(value) {
@@ -465,7 +487,8 @@ async function createTicket(event) {
   resultBox.textContent = "";
 
   try {
-    const photoUrl = await readTicketPhoto();
+    const photoUrls = await readTicketPhotos();
+    const photoUrl = photoUrls[0] || "";
     const impact = document.querySelector("#ticketImpact").value;
     const category = document.querySelector("#ticketCategory").value;
     const note = document.querySelector("#ticketNote").value.trim();
@@ -485,7 +508,8 @@ async function createTicket(event) {
         impact,
         note,
         area: document.querySelector("#ticketArea").value,
-        photoUrl
+        photoUrl,
+        photoUrls
       })
     });
     document.querySelector("#ticketNote").value = "";
@@ -498,7 +522,7 @@ async function createTicket(event) {
         ? `Auto assigned to ${escapeHtml(created.suggestedTechnician.name)}.`
         : "Created in admin queue. No available technician matched right now."}</span>
       ${created.suggestedTechnician?.dispatchReason ? `<span>${escapeHtml(created.suggestedTechnician.dispatchReason)}</span>` : ""}
-      ${created.photoUrl ? `<span>Issue photo attached.</span>` : ""}
+      ${(created.photoUrls?.length || created.photoUrl) ? `<span>${created.photoUrls?.length || 1} issue photo${(created.photoUrls?.length || 1) === 1 ? "" : "s"} attached.</span>` : ""}
     `;
     await loadState();
   } catch (error) {
@@ -509,10 +533,64 @@ async function createTicket(event) {
   }
 }
 
+async function createTechnicianTicket(event) {
+  event.preventDefault();
+  if (currentUser?.role !== "technician") return;
+
+  const submitButton = event.currentTarget.querySelector("button[type='submit']");
+  const resultBox = document.querySelector("#technicianTicketResult");
+  submitButton.disabled = true;
+  submitButton.textContent = "Creating...";
+  resultBox.textContent = "";
+
+  try {
+    const photoUrls = await readPhotosFromInput(document.querySelector("#technicianTicketPhotos"));
+    const impact = document.querySelector("#technicianTicketImpact").value;
+    const category = document.querySelector("#technicianTicketCategory").value;
+    const note = document.querySelector("#technicianTicketNote").value.trim();
+    if (ticketRequiresPhoto({ impact, category, note }) && !photoUrls.length) {
+      throw new Error("Photo is required for critical, food-safety, gas, electrical, leak, or temperature issues.");
+    }
+
+    const created = await api("/api/tickets", {
+      method: "POST",
+      body: JSON.stringify({
+        outlet: document.querySelector("#technicianTicketOutlet").value,
+        category,
+        impact,
+        note,
+        area: "Technician raised",
+        assignedTo: document.querySelector("#technicianTicketAssign").value,
+        photoUrl: photoUrls[0] || "",
+        photoUrls
+      })
+    });
+    document.querySelector("#technicianTicketNote").value = "";
+    document.querySelector("#technicianTicketPhotos").value = "";
+    resultBox.textContent = `${created.id} created${created.assignedTo ? " and assigned" : " for admin assignment"}.`;
+    await loadState();
+  } catch (error) {
+    resultBox.textContent = error.message;
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = "Create Ticket";
+  }
+}
+
 async function setTicketStatus(ticketId, status, detail = "") {
+  const payload = { status, detail };
+  if (status === "Resolved" && currentUser?.role === "technician") {
+    const photoUrl = await chooseEvidencePhoto();
+    if (!photoUrl) {
+      window.alert("Completion photo is required before marking the ticket resolved.");
+      return;
+    }
+    payload.evidencePhotoUrls = [photoUrl];
+    payload.evidencePhotoUrl = photoUrl;
+  }
   await api(`/api/tickets/${ticketId}/status`, {
     method: "PATCH",
-    body: JSON.stringify({ status, detail })
+    body: JSON.stringify(payload)
   });
   await loadState();
 }
@@ -757,20 +835,17 @@ async function createAttendancePlan(technicianId, payload) {
 }
 
 async function collectTaskEvidence(task) {
-  const required = taskRequiresEvidence(task);
+  const required = true;
   const comment = window.prompt(
-    required ? "Safety evidence note (photo required)" : "Completion note (optional)",
-    required ? "Checked and verified on site" : ""
+    taskRequiresEvidence(task) ? "Safety evidence note (photo required)" : "Completion note (photo required)",
+    taskRequiresEvidence(task) ? "Checked and verified on site" : "Completed on site"
   );
   if (comment === null) return null;
 
-  let photoUrl = "";
-  if (required || window.confirm("Attach a completion photo?")) {
-    photoUrl = await chooseEvidencePhoto();
-  }
+  const photoUrl = await chooseEvidencePhoto();
 
-  if (required && !photoUrl) {
-    window.alert("Photo evidence is required for this safety-critical checklist task.");
+  if (!photoUrl) {
+    window.alert("Photo evidence is required to complete this task.");
     return null;
   }
 
@@ -1035,6 +1110,8 @@ function ticketCard(ticket, mode) {
   const confidenceTech = assigned && suggested?.id === assigned.id ? suggested : suggested;
   const dispatchReason = confidenceTech?.dispatchReason || (assigned ? `Assigned to ${assigned.name}` : "");
   const nextAction = mode === "admin" ? ticketNextAction(ticket, assigned, suggested) : "";
+  const photoUrls = (ticket.photoUrls?.length ? ticket.photoUrls : [ticket.photoUrl]).filter(Boolean);
+  const resolutionPhotoUrls = (ticket.resolutionPhotoUrls || []).filter(Boolean);
 
   return `
     <article class="ticket-card ${priorityClass}">
@@ -1056,15 +1133,16 @@ function ticketCard(ticket, mode) {
       <div class="badge-row">
         <span class="badge ${statusClass}">${escapeHtml(ticket.status)}</span>
         <span class="badge">${escapeHtml(assigned ? assigned.name : "Unassigned")}</span>
-        ${ticket.photoUrl ? `<span class="badge photo-badge">Photo</span>` : ""}
+        ${photoUrls.length ? `<span class="badge photo-badge">${photoUrls.length} Photo${photoUrls.length === 1 ? "" : "s"}</span>` : ""}
+        ${resolutionPhotoUrls.length ? `<span class="badge status-closed">Completion Photo</span>` : ""}
         ${suggested ? `<span class="badge confidence">Score ${escapeHtml(suggested.dispatchScore || "OK")}: ${escapeHtml(suggested.name)}</span>` : ""}
         ${selectedSummary?.risk.length ? `<span class="badge status-blocked">Override risk: ${escapeHtml(selectedSummary.risk.join(", "))}</span>` : ""}
       </div>
       ${nextAction ? `<p class="ticket-meta next-action">${escapeHtml(nextAction)}</p>` : ""}
-      ${ticket.photoUrl ? `
+      ${photoUrls.length ? `
         <button class="ticket-photo" type="button" data-photo-open="${escapeHtml(ticket.id)}" aria-label="Open issue photo for ${escapeHtml(ticket.id)}">
-          <img src="${escapeHtml(ticket.photoUrl)}" alt="Issue photo for ${escapeHtml(ticket.id)}">
-          <span>Issue photo attached</span>
+          <img src="${escapeHtml(photoUrls[0])}" alt="Issue photo for ${escapeHtml(ticket.id)}">
+          <span>${photoUrls.length} issue photo${photoUrls.length === 1 ? "" : "s"} attached</span>
         </button>
       ` : ""}
       ${dispatchReason ? `<p class="ticket-meta dispatch-confidence">Dispatch: ${escapeHtml(dispatchReason)}</p>` : ""}
@@ -1804,6 +1882,50 @@ function renderTechnician() {
   ` : "";
 
   attendanceTools.innerHTML = activeTech ? `
+    <details class="technician-raise-ticket">
+      <summary>Raise maintenance ticket</summary>
+      <form id="technicianTicketForm" class="ticket-form compact-ticket-form">
+        <label>
+          Outlet
+          <select id="technicianTicketOutlet" required>
+            ${(activeTech.serviceOutlets || state.outlets).map((outlet) => `<option value="${escapeHtml(outlet)}">${escapeHtml(outlet)}</option>`).join("")}
+          </select>
+        </label>
+        <label>
+          Category
+          <select id="technicianTicketCategory" required>
+            ${(state.categories || []).map((category) => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`).join("")}
+          </select>
+        </label>
+        <label>
+          Impact
+          <select id="technicianTicketImpact" required>
+            <option value="Normal repair">Normal repair</option>
+            <option value="Service stopped">Service stopped</option>
+            <option value="Food safety risk">Food safety risk</option>
+            <option value="Customer visible">Customer visible</option>
+            <option value="Cosmetic">Cosmetic</option>
+          </select>
+        </label>
+        <label>
+          Assign
+          <select id="technicianTicketAssign">
+            <option value="">Auto/Admin queue</option>
+            ${state.technicians.map((tech) => `<option value="${escapeHtml(tech.id)}" ${tech.id === activeTech.id ? "selected" : ""}>${escapeHtml(tech.name)}</option>`).join("")}
+          </select>
+        </label>
+        <label>
+          Details
+          <input id="technicianTicketNote" required placeholder="What needs to be done">
+        </label>
+        <label class="photo-upload">
+          Photos
+          <input id="technicianTicketPhotos" type="file" accept="image/*" capture="environment" multiple>
+        </label>
+        <button type="submit" class="primary-button">Create Ticket</button>
+        <p id="technicianTicketResult" class="form-hint" aria-live="polite"></p>
+      </form>
+    </details>
     ${checklistHtml}
     <div class="attendance-layout">
       <article class="attendance-card tech-card status-${token(activeTech.status)}">
@@ -2454,10 +2576,11 @@ document.addEventListener("click", async (event) => {
   const photoButton = event.target.closest?.("[data-photo-open]");
   if (photoButton) {
     const ticket = state.tickets.find((item) => item.id === photoButton.dataset.photoOpen);
-    if (ticket?.photoUrl) {
+    const photos = (ticket?.photoUrls?.length ? ticket.photoUrls : [ticket?.photoUrl]).filter(Boolean);
+    if (photos.length) {
       const viewer = window.open("", "_blank");
       if (viewer) {
-        viewer.document.write(`<title>${escapeHtml(ticket.id)} issue photo</title><img src="${escapeHtml(ticket.photoUrl)}" alt="Issue photo" style="max-width:100%;height:auto;display:block;margin:0 auto;">`);
+        viewer.document.write(`<title>${escapeHtml(ticket.id)} issue photos</title>${photos.map((photo, index) => `<img src="${escapeHtml(photo)}" alt="Issue photo ${index + 1}" style="max-width:100%;height:auto;display:block;margin:0 auto 16px;">`).join("")}`);
         viewer.document.close();
       }
     }
@@ -2573,6 +2696,11 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("submit", async (event) => {
+  if (event.target.id === "technicianTicketForm") {
+    await createTechnicianTicket(event);
+    return;
+  }
+
   if (event.target.id !== "attendanceForm") return;
   event.preventDefault();
   const technicianId = currentUser?.technicianId || document.querySelector("#activeTechnician").value;

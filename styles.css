@@ -1180,6 +1180,25 @@ body.has-session .topbar:focus-within .tabs {
   padding: 12px;
 }
 
+.compact-ticket-form {
+  grid-template-columns: minmax(120px, 0.7fr) minmax(140px, 0.7fr) minmax(135px, 0.65fr) minmax(150px, 0.75fr) minmax(210px, 1.1fr) minmax(160px, 0.8fr) auto;
+  padding: 10px 0 0;
+}
+
+.technician-raise-ticket {
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.42);
+  padding: 10px 12px;
+}
+
+.technician-raise-ticket summary {
+  cursor: pointer;
+  color: var(--teal-deep);
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .ticket-priority-preview {
   display: grid;
   align-content: center;
