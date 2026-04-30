@@ -1310,6 +1310,45 @@ async function createOutlet(payload) {
   return { status: 201, body: { name, address, latitude, longitude } };
 }
 
+async function updateOutlet(oldName, payload) {
+  const db = await loadDb();
+  const existing = db.outlets.find((outlet) => outlet === oldName);
+  if (!existing) return { status: 404, body: { error: "Outlet not found" } };
+  const name = String(payload.name || oldName).trim();
+  const address = String(payload.address || "").trim();
+  if (!name) return { status: 400, body: { error: "Outlet name is required" } };
+  if (db.outlets.some((outlet) => outlet !== oldName && outlet.toLowerCase() === name.toLowerCase())) {
+    return { status: 409, body: { error: "Outlet already exists" } };
+  }
+  const currentLocation = db.outletLocations?.[oldName] || {};
+  const latitude = parseNullableNumber(payload.latitude ?? currentLocation.latitude);
+  const longitude = parseNullableNumber(payload.longitude ?? currentLocation.longitude);
+
+  if (useSupabase) {
+    if (name !== oldName) return { status: 400, body: { error: "Outlet name cannot be changed after creation. Update the location or add a new outlet." } };
+    await requireSupabase(await supabase.from("outlets").update({ name, address: address || null, latitude, longitude }).eq("name", oldName));
+    return { status: 200, body: { name, address, latitude, longitude } };
+  }
+
+  db.outlets = db.outlets.map((outlet) => outlet === oldName ? name : outlet);
+  db.assets = (db.assets || []).map((asset) => asset.outlet === oldName ? { ...asset, outlet: name } : asset);
+  db.tasks = (db.tasks || []).map((task) => task.outlet === oldName ? { ...task, outlet: name } : task);
+  db.tickets = (db.tickets || []).map((ticket) => ticket.outlet === oldName ? { ...ticket, outlet: name } : ticket);
+  db.technicians = (db.technicians || []).map((tech) => ({
+    ...tech,
+    serviceOutlets: (tech.serviceOutlets || []).map((outlet) => outlet === oldName ? name : outlet)
+  }));
+  db.users = (db.users || []).map((user) => ({
+    ...user,
+    outlet: user.outlet === oldName ? name : user.outlet,
+    allowedOutlets: (user.allowedOutlets || []).map((outlet) => outlet === oldName ? name : outlet)
+  }));
+  const { [oldName]: _oldLocation, ...locations } = db.outletLocations || {};
+  db.outletLocations = { ...locations, [name]: { address, latitude, longitude } };
+  writeJsonDb(db);
+  return { status: 200, body: { name, address, latitude, longitude } };
+}
+
 async function createCategory(payload) {
   const db = await loadDb();
   const name = String(payload.name || "").trim();
@@ -2420,6 +2459,18 @@ app.post(
       return res.status(403).json({ error: "Only admin can create outlets" });
     }
     const result = await createOutlet(req.body);
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.patch(
+  "/api/outlets/:name",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can update outlets" });
+    }
+    const result = await updateOutlet(decodeURIComponent(req.params.name), req.body);
     res.status(result.status).json(result.body);
   })
 );

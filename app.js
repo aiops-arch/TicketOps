@@ -78,6 +78,7 @@ let directoryUsers = [];
 let editingUserAccessId = "";
 let editingCategoryId = "";
 let editingTechnicianId = "";
+let editingOutletName = "";
 
 function readStoredUser() {
   try {
@@ -735,28 +736,49 @@ async function createOutlet(event) {
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
   const resultBox = document.querySelector("#masterCreateResult");
   submitButton.disabled = true;
-  submitButton.textContent = "Adding...";
+  submitButton.textContent = editingOutletName ? "Updating..." : "Adding...";
   resultBox.textContent = "";
   try {
-    const outlet = await api("/api/outlets", {
-      method: "POST",
+    const payload = {
+      name: document.querySelector("#outletName").value,
+      address: document.querySelector("#outletAddress").value,
+      latitude: "",
+      longitude: ""
+    };
+    const outlet = await api(editingOutletName ? `/api/outlets/${encodeURIComponent(editingOutletName)}` : "/api/outlets", {
+      method: editingOutletName ? "PATCH" : "POST",
       body: JSON.stringify({
-        name: document.querySelector("#outletName").value,
-        address: document.querySelector("#outletAddress").value,
-        latitude: "",
-        longitude: ""
+        ...payload,
+        name: editingOutletName || payload.name
       })
     });
-    document.querySelector("#outletName").value = "";
-    document.querySelector("#outletAddress").value = "";
-    resultBox.textContent = `${outlet.name} outlet added${outlet.address ? ` at ${outlet.address}` : ""}.`;
+    const wasEditing = Boolean(editingOutletName);
+    resetOutletForm();
+    resultBox.textContent = `${outlet.name} outlet ${wasEditing ? "updated" : "added"}${outlet.address ? ` at ${outlet.address}` : ""}.`;
     await loadState();
   } catch (error) {
     resultBox.textContent = error.message;
   } finally {
     submitButton.disabled = false;
-    submitButton.textContent = "Add Outlet";
+    submitButton.textContent = editingOutletName ? "Update Outlet" : "Add Outlet";
   }
+}
+
+function resetOutletForm() {
+  editingOutletName = "";
+  document.querySelector("#outletName").value = "";
+  document.querySelector("#outletName").disabled = false;
+  document.querySelector("#outletAddress").value = "";
+  document.querySelector("#outletSubmit").textContent = "Add Outlet";
+}
+
+function fillOutletForm(outletName) {
+  const location = state.outletLocations?.[outletName] || {};
+  editingOutletName = outletName;
+  document.querySelector("#outletName").value = outletName;
+  document.querySelector("#outletName").disabled = true;
+  document.querySelector("#outletAddress").value = location.address || "";
+  document.querySelector("#outletSubmit").textContent = "Update Outlet";
 }
 
 async function createCategory(event) {
@@ -1495,7 +1517,12 @@ function renderMasters() {
       const coordinates = location.latitude !== null && location.latitude !== undefined && location.longitude !== null && location.longitude !== undefined
         ? `${location.latitude}, ${location.longitude}`
         : "";
-      return `<article class="master-row"><strong>${escapeHtml(outlet)}</strong><span>${escapeHtml(location.address || coordinates || "Location pending")}</span></article>`;
+      return `
+        <button type="button" class="master-row" data-edit-outlet="${escapeHtml(outlet)}">
+          <strong>${escapeHtml(outlet)}</strong>
+          <span>${escapeHtml(location.address || coordinates || "Location pending")} / Edit</span>
+        </button>
+      `;
     }).join("")
     : `<div class="empty mini">No outlets yet.</div>`;
 
@@ -2762,6 +2789,7 @@ document.querySelector("#ticketCategory").addEventListener("change", updateTicke
 document.querySelector("#ticketNote").addEventListener("input", updateTicketPriorityPreview);
 document.querySelector("#assetForm").addEventListener("submit", createAsset);
 document.querySelector("#outletForm").addEventListener("submit", createOutlet);
+document.querySelector("#outletCancel").addEventListener("click", resetOutletForm);
 document.querySelector("#categoryForm").addEventListener("submit", createCategory);
 document.querySelector("#categoryCancel").addEventListener("click", resetCategoryForm);
 document.querySelector("#technicianForm").addEventListener("submit", saveTechnicianMaster);
@@ -2795,6 +2823,12 @@ document.addEventListener("click", async (event) => {
   const editUserAccess = event.target.closest?.("[data-edit-user-access]");
   if (editUserAccess) {
     fillUserAccessForm(editUserAccess.dataset.editUserAccess);
+    return;
+  }
+
+  const editOutlet = event.target.closest?.("[data-edit-outlet]");
+  if (editOutlet) {
+    fillOutletForm(editOutlet.dataset.editOutlet);
     return;
   }
 
