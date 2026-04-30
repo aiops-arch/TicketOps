@@ -74,8 +74,10 @@ const DEMO_USERS = [
     name: "AIops",
     post: "Admin Control Panel Operator",
     role: "admin",
+    accessAllOutlets: true,
+    allowedOutlets: [],
     defaultView: "dashboard",
-    allowedViews: ["dashboard", "manager", "admin", "technician", "reports"]
+    allowedViews: ["dashboard", "manager", "admin", "masters", "scheduler", "reports"]
   },
   {
     id: "U-ADMIN-CHINTAN",
@@ -84,8 +86,10 @@ const DEMO_USERS = [
     name: "Chintan Patel",
     post: "Admin Control Panel Operator",
     role: "admin",
+    accessAllOutlets: true,
+    allowedOutlets: [],
     defaultView: "dashboard",
-    allowedViews: ["dashboard", "manager", "admin", "technician", "reports"]
+    allowedViews: ["dashboard", "manager", "admin", "masters", "scheduler", "reports"]
   },
   {
     id: "U-ADMIN-MEET",
@@ -94,8 +98,10 @@ const DEMO_USERS = [
     name: "Meet Patel",
     post: "Admin Control Panel Operator",
     role: "admin",
+    accessAllOutlets: true,
+    allowedOutlets: [],
     defaultView: "dashboard",
-    allowedViews: ["dashboard", "manager", "admin", "technician", "reports"]
+    allowedViews: ["dashboard", "manager", "admin", "masters", "scheduler", "reports"]
   },
   {
     id: "U-MGR-PRATIK",
@@ -105,6 +111,8 @@ const DEMO_USERS = [
     post: "Outlet Manager",
     role: "manager",
     outlet: "aiko surat",
+    accessAllOutlets: false,
+    allowedOutlets: ["aiko surat"],
     defaultView: "dashboard",
     allowedViews: ["dashboard", "manager", "reports"]
   },
@@ -116,6 +124,8 @@ const DEMO_USERS = [
     post: "Outlet Manager",
     role: "manager",
     outlet: "Capiche",
+    accessAllOutlets: false,
+    allowedOutlets: ["Capiche"],
     defaultView: "dashboard",
     allowedViews: ["dashboard", "manager", "reports"]
   },
@@ -127,6 +137,8 @@ const DEMO_USERS = [
     post: "Technician",
     role: "technician",
     technicianId: "T1",
+    accessAllOutlets: false,
+    allowedOutlets: ["aiko surat", "Capiche"],
     defaultView: "dashboard",
     allowedViews: ["dashboard", "technician", "reports"]
   },
@@ -138,6 +150,8 @@ const DEMO_USERS = [
     post: "Technician",
     role: "technician",
     technicianId: "T2",
+    accessAllOutlets: false,
+    allowedOutlets: ["aiko surat"],
     defaultView: "dashboard",
     allowedViews: ["dashboard", "technician", "reports"]
   },
@@ -149,6 +163,8 @@ const DEMO_USERS = [
     post: "Technician",
     role: "technician",
     technicianId: "T3",
+    accessAllOutlets: false,
+    allowedOutlets: ["Capiche"],
     defaultView: "dashboard",
     allowedViews: ["dashboard", "technician", "reports"]
   }
@@ -424,6 +440,31 @@ function slugUsername(name) {
     .replace(/^\.+|\.+$/g, "")
     .replace(/\.+/g, ".")
     .slice(0, 40) || "technician";
+}
+
+function parseNullableNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function normalizeOutletList(value, db) {
+  const requested = Array.isArray(value) ? value : [value];
+  const seen = new Set();
+  return requested
+    .map((item) => String(item || "").trim())
+    .filter((item) => item && (db.outlets || []).includes(item))
+    .filter((item) => {
+      if (seen.has(item)) return false;
+      seen.add(item);
+      return true;
+    });
+}
+
+function allowedViewsForRole(role) {
+  if (role === "admin") return ["dashboard", "manager", "admin", "masters", "scheduler", "reports"];
+  if (role === "manager") return ["dashboard", "manager", "reports"];
+  return ["dashboard", "technician", "reports"];
 }
 
 function makeUniqueUsername(users, baseUsername) {
@@ -729,6 +770,7 @@ function reports(db) {
 function notificationsForUser(db, user) {
   if (!user) return [];
   const openTickets = (db.tickets || []).filter((ticket) => !["Closed", "Cancelled"].includes(ticket.status));
+  const userOutlets = outletAccessForUser(user, db);
   if (user.role === "technician") {
     return openTickets
     .filter((ticket) => {
@@ -744,7 +786,7 @@ function notificationsForUser(db, user) {
   }
   if (user.role === "manager") {
     return openTickets
-      .filter((ticket) => ticket.outlet === user.outlet && ["Resolved", "Verification Pending", "Reopened", "Blocked"].includes(ticket.status))
+      .filter((ticket) => userOutlets.includes(ticket.outlet) && ["Resolved", "Verification Pending", "Reopened", "Blocked"].includes(ticket.status))
       .map((ticket) => ({
         type: token(ticket.status),
         ticketId: ticket.id,
@@ -758,6 +800,23 @@ function notificationsForUser(db, user) {
       ticketId: ticket.id,
       message: !ticket.assignedTo ? "Ticket is waiting for technician assignment" : "Ticket needs admin attention"
     }));
+}
+
+function outletAccessForUser(user, db) {
+  const outlets = db.outlets || [];
+  if (!user) return [];
+  if (user.accessAllOutlets) return [...outlets];
+  const allowed = Array.isArray(user.allowedOutlets) ? user.allowedOutlets.filter((outlet) => outlets.includes(outlet)) : [];
+  if (allowed.length) return allowed;
+  if (user.outlet && outlets.includes(user.outlet)) return [user.outlet];
+  if (user.role === "admin") return [...outlets];
+  return [];
+}
+
+function canUserAccessOutlet(user, db, outlet) {
+  if (!user || !outlet) return false;
+  if (user.role === "technician") return true;
+  return outletAccessForUser(user, db).includes(outlet);
 }
 
 function withSuggestions(db, user = null) {
@@ -1277,9 +1336,13 @@ async function createTechnician(payload) {
   const name = String(payload.name || "").trim();
   const skill = String(payload.skill || "").trim();
   const outlet = String(payload.outlet || "").trim();
+  const requestedOutlets = normalizeOutletList(payload.serviceOutlets?.length ? payload.serviceOutlets : payload.allowedOutlets?.length ? payload.allowedOutlets : outlet ? [outlet] : db.outlets, db);
+  const address = String(payload.address || "").trim();
+  const latitude = parseNullableNumber(payload.latitude);
+  const longitude = parseNullableNumber(payload.longitude);
   if (!name) return { status: 400, body: { error: "Technician name is required" } };
   if (!db.categories.some((category) => category.name === skill)) return { status: 400, body: { error: "Skill category is invalid" } };
-  if (outlet && !db.outlets.includes(outlet)) return { status: 400, body: { error: "Outlet is invalid" } };
+  if (!requestedOutlets.length) return { status: 400, body: { error: "At least one outlet is required" } };
 
   const technician = {
     id: nextTechnicianId(db.technicians),
@@ -1288,7 +1351,7 @@ async function createTechnician(payload) {
     status: "Present",
     workload: 0,
     quality: 90,
-    serviceOutlets: outlet ? [outlet] : [...db.outlets]
+    serviceOutlets: requestedOutlets
   };
   const username = makeUniqueUsername(await allUsers(), slugUsername(name));
   const password = `${slugUsername(name).split(".")[0] || "tech"}123`;
@@ -1299,7 +1362,13 @@ async function createTechnician(payload) {
     name: technician.name,
     post: "Technician",
     role: "technician",
+    outlet: requestedOutlets[0] || "",
     technicianId: technician.id,
+    accessAllOutlets: false,
+    allowedOutlets: requestedOutlets,
+    address,
+    latitude,
+    longitude,
     defaultView: "dashboard",
     allowedViews: ["dashboard", "technician", "reports"]
   };
@@ -1323,7 +1392,13 @@ async function createTechnician(payload) {
         password_hash: loginUser.passwordHash,
         post: loginUser.post,
         role: loginUser.role,
+        outlet: loginUser.outlet || null,
         technician_id: loginUser.technicianId,
+        access_all_outlets: loginUser.accessAllOutlets,
+        allowed_outlets: loginUser.allowedOutlets,
+        address: loginUser.address || null,
+        latitude: loginUser.latitude,
+        longitude: loginUser.longitude,
         default_view: loginUser.defaultView,
         allowed_views: loginUser.allowedViews
       })
@@ -1335,6 +1410,199 @@ async function createTechnician(payload) {
   db.users = [...(db.users || DEMO_USERS), loginUser];
   writeJsonDb(db);
   return { status: 201, body: { ...technician, login: publicUser(loginUser), temporaryPassword: password } };
+}
+
+function buildUserAccessPayload(payload, db, existingUser = null) {
+  const role = String(payload.role || existingUser?.role || "manager").trim();
+  const name = String(payload.name || payload.displayName || existingUser?.name || "").trim();
+  const post = String(payload.post || existingUser?.post || (role === "technician" ? "Technician" : role === "admin" ? "Admin" : "Outlet Manager")).trim();
+  const accessAllOutlets = Boolean(payload.accessAllOutlets);
+  const allowedOutlets = accessAllOutlets ? [] : normalizeOutletList(payload.allowedOutlets || payload.serviceOutlets || [], db);
+  const outlet = accessAllOutlets ? "" : allowedOutlets[0] || String(payload.outlet || existingUser?.outlet || "").trim();
+  const address = String(payload.address || existingUser?.address || "").trim();
+  const latitude = parseNullableNumber(payload.latitude ?? existingUser?.latitude);
+  const longitude = parseNullableNumber(payload.longitude ?? existingUser?.longitude);
+  if (!["admin", "manager", "technician"].includes(role)) return { error: "Role is invalid" };
+  if (!name) return { error: "Name is required" };
+  if (!accessAllOutlets && !allowedOutlets.length) return { error: "Select at least one outlet or give all outlet access" };
+  return { role, name, post, accessAllOutlets, allowedOutlets, outlet, address, latitude, longitude };
+}
+
+async function createAdminUser(payload) {
+  const db = await loadDb();
+  const users = await allUsers();
+  const username = String(payload.username || "").trim().toLowerCase();
+  const password = String(payload.password || "").trim();
+  const access = buildUserAccessPayload(payload, db);
+  if (access.error) return { status: 400, body: { error: access.error } };
+  if (!username) return { status: 400, body: { error: "Username is required" } };
+  if (!password) return { status: 400, body: { error: "Password is required" } };
+  if (users.some((user) => user.username === username)) return { status: 409, body: { error: "Username already exists" } };
+
+  let technician = null;
+  let technicianId = "";
+  if (access.role === "technician") {
+    const skill = String(payload.skill || "").trim();
+    if (!db.categories.some((category) => category.name === skill)) return { status: 400, body: { error: "Skill category is invalid" } };
+    technician = {
+      id: nextTechnicianId(db.technicians),
+      name: access.name,
+      skill,
+      status: String(payload.status || "Present").trim() || "Present",
+      quality: 90,
+      serviceOutlets: access.allowedOutlets.length ? access.allowedOutlets : [...db.outlets]
+    };
+    technicianId = technician.id;
+  }
+
+  const prefix = access.role === "admin" ? "U-ADMIN" : access.role === "manager" ? "U-MGR" : "U-TECH";
+  const user = {
+    id: `${prefix}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
+    username,
+    passwordHash: hashPassword(password),
+    name: access.name,
+    post: access.post,
+    role: access.role,
+    outlet: access.outlet,
+    technicianId,
+    accessAllOutlets: access.accessAllOutlets,
+    allowedOutlets: access.allowedOutlets,
+    address: access.address,
+    latitude: access.latitude,
+    longitude: access.longitude,
+    defaultView: "dashboard",
+    allowedViews: allowedViewsForRole(access.role)
+  };
+
+  if (useSupabase) {
+    if (technician) {
+      await requireSupabase(await supabase.from("technicians").insert({
+        id: technician.id,
+        name: technician.name,
+        skill: technician.skill,
+        status: technician.status,
+        quality: technician.quality,
+        service_outlets: technician.serviceOutlets
+      }));
+    }
+    await requireSupabase(await supabase.from("app_users").insert({
+      id: user.id,
+      username: user.username,
+      password_hash: user.passwordHash,
+      display_name: user.name,
+      post: user.post,
+      role: user.role,
+      outlet: user.outlet || null,
+      technician_id: user.technicianId || null,
+      access_all_outlets: user.accessAllOutlets,
+      allowed_outlets: user.allowedOutlets,
+      address: user.address || null,
+      latitude: user.latitude,
+      longitude: user.longitude,
+      default_view: user.defaultView,
+      allowed_views: user.allowedViews
+    }));
+    return { status: 201, body: { user: publicUser(user), technician } };
+  }
+
+  if (technician) db.technicians.push(technician);
+  db.users = [...(db.users || DEMO_USERS), user];
+  writeJsonDb(db);
+  return { status: 201, body: { user: publicUser(user), technician } };
+}
+
+async function updateAdminUser(userId, payload) {
+  const db = await loadDb();
+  const users = await allUsers();
+  const existing = users.find((user) => user.id === userId);
+  if (!existing) return { status: 404, body: { error: "User not found" } };
+  const access = buildUserAccessPayload(payload, db, existing);
+  if (access.error) return { status: 400, body: { error: access.error } };
+  const allowedViews = allowedViewsForRole(access.role);
+  let technicianId = access.role === "technician" ? existing.technicianId || "" : "";
+
+  if (access.role === "technician" && !technicianId) {
+    const skill = String(payload.skill || "General").trim();
+    const technician = {
+      id: nextTechnicianId(db.technicians),
+      name: access.name,
+      skill,
+      status: String(payload.status || "Present").trim() || "Present",
+      quality: 90,
+      serviceOutlets: access.allowedOutlets.length ? access.allowedOutlets : [...db.outlets]
+    };
+    technicianId = technician.id;
+    if (useSupabase) {
+      await requireSupabase(await supabase.from("technicians").insert({
+        id: technician.id,
+        name: technician.name,
+        skill: technician.skill,
+        status: technician.status,
+        quality: technician.quality,
+        service_outlets: technician.serviceOutlets
+      }));
+    } else {
+      db.technicians.push(technician);
+    }
+  }
+
+  if (technicianId) {
+    const technicianUpdates = {
+      name: access.name,
+      service_outlets: access.accessAllOutlets ? [...db.outlets] : access.allowedOutlets,
+      updated_at: new Date().toISOString()
+    };
+    if (payload.skill) technicianUpdates.skill = String(payload.skill).trim();
+    if (payload.status) technicianUpdates.status = String(payload.status).trim();
+    if (useSupabase) {
+      await requireSupabase(await supabase.from("technicians").update(technicianUpdates).eq("id", technicianId));
+    } else {
+      db.technicians = db.technicians.map((tech) => tech.id === technicianId ? {
+        ...tech,
+        name: technicianUpdates.name,
+        skill: technicianUpdates.skill || tech.skill,
+        status: technicianUpdates.status || tech.status,
+        serviceOutlets: technicianUpdates.service_outlets
+      } : tech);
+    }
+  }
+
+  if (useSupabase) {
+    await requireSupabase(await supabase.from("app_users").update({
+      display_name: access.name,
+      post: access.post,
+      role: access.role,
+      outlet: access.outlet || null,
+      technician_id: technicianId || null,
+      access_all_outlets: access.accessAllOutlets,
+      allowed_outlets: access.allowedOutlets,
+      address: access.address || null,
+      latitude: access.latitude,
+      longitude: access.longitude,
+      default_view: "dashboard",
+      allowed_views: allowedViews,
+      updated_at: new Date().toISOString()
+    }).eq("id", userId));
+    return { status: 200, body: { ok: true } };
+  }
+
+  db.users = (db.users || []).map((user) => user.id === userId ? {
+    ...user,
+    name: access.name,
+    post: access.post,
+    role: access.role,
+    outlet: access.outlet,
+    technicianId,
+    accessAllOutlets: access.accessAllOutlets,
+    allowedOutlets: access.allowedOutlets,
+    address: access.address,
+    latitude: access.latitude,
+    longitude: access.longitude,
+    defaultView: "dashboard",
+    allowedViews
+  } : user);
+  writeJsonDb(db);
+  return { status: 200, body: { ok: true } };
 }
 
 async function createMaintenanceRule(payload) {
@@ -1447,8 +1715,8 @@ async function assignTicket(ticketId, technicianId, overrideReason, user, schedu
   if (!user || !["admin", "manager"].includes(user.role)) {
     return { status: 403, body: { error: "Only admin or manager can assign technicians" } };
   }
-  if (user.role === "manager" && ticket.outlet !== user.outlet) {
-    return { status: 403, body: { error: "Managers can only assign tickets from their outlet" } };
+  if (["admin", "manager"].includes(user.role) && !canUserAccessOutlet(user, db, ticket.outlet)) {
+    return { status: 403, body: { error: "You can only assign tickets from your outlet access" } };
   }
 
   const effectiveTechnician = technicianWithAttendance(db, technician);
@@ -1842,6 +2110,11 @@ function mapSupabaseUser(row) {
     role: row.role,
     outlet: row.outlet || "",
     technicianId: row.technician_id || "",
+    accessAllOutlets: row.access_all_outlets === true,
+    allowedOutlets: row.allowed_outlets || [],
+    address: row.address || "",
+    latitude: row.latitude ?? null,
+    longitude: row.longitude ?? null,
     defaultView: row.default_view,
     allowedViews: row.allowed_views || []
   };
@@ -1862,7 +2135,7 @@ async function allUsers() {
   if (useSupabase) {
     const result = await supabase
       .from("app_users")
-      .select("id,username,display_name,password_hash,post,role,outlet,technician_id,default_view,allowed_views")
+      .select("id,username,display_name,password_hash,post,role,outlet,technician_id,access_all_outlets,allowed_outlets,address,latitude,longitude,default_view,allowed_views")
       .order("username");
     return (await requireSupabase(result)).map(mapSupabaseUser);
   }
@@ -1877,12 +2150,13 @@ async function userFromRequest(req) {
 function scopedDbForUser(db, user) {
   if (!user) return db;
 
-  if (user.role === "manager" && user.outlet) {
+  if (user.role === "manager") {
+    const outlets = outletAccessForUser(user, db);
     return {
       ...db,
-      assets: (db.assets || []).filter((asset) => asset.outlet === user.outlet),
-      tasks: (db.tasks || []).filter((task) => task.outlet === user.outlet),
-      tickets: db.tickets.filter((ticket) => ticket.outlet === user.outlet)
+      assets: (db.assets || []).filter((asset) => outlets.includes(asset.outlet)),
+      tasks: (db.tasks || []).filter((task) => outlets.includes(task.outlet)),
+      tickets: db.tickets.filter((ticket) => outlets.includes(ticket.outlet))
     };
   }
 
@@ -2112,6 +2386,30 @@ app.post(
 );
 
 app.post(
+  "/api/admin/users",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can create users" });
+    }
+    const result = await createAdminUser(req.body);
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.patch(
+  "/api/admin/users/:id",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can update users" });
+    }
+    const result = await updateAdminUser(req.params.id, req.body);
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.post(
   "/api/maintenance-rules",
   asyncRoute(async (req, res) => {
     const user = await userFromRequest(req);
@@ -2153,8 +2451,8 @@ app.post(
       return res.status(404).json({ error: "Selected asset was not found" });
     }
     const effectiveOutlet = selectedAsset?.outlet || outlet;
-    if (user.role === "manager" && user.outlet !== effectiveOutlet) {
-      return res.status(403).json({ error: "Managers can only issue tickets for their outlet" });
+    if (["admin", "manager"].includes(user.role) && !canUserAccessOutlet(user, db, effectiveOutlet)) {
+      return res.status(403).json({ error: "You do not have access to this outlet" });
     }
     if (assignedTo) {
       const technician = db.technicians.find((tech) => tech.id === assignedTo);

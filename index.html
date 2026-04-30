@@ -429,6 +429,60 @@
               </label>
               <button type="submit" class="primary-button">Add Technician</button>
             </form>
+
+            <form id="userAccessForm" class="master-form user-access-form">
+              <strong>People Access</strong>
+              <label>
+                Role
+                <select id="accessRole">
+                  <option value="manager">Manager</option>
+                  <option value="technician">Technician</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </label>
+              <label>
+                Name
+                <input id="accessName" required placeholder="Full name">
+              </label>
+              <label>
+                Username
+                <input id="accessUsername" placeholder="Required for new user">
+              </label>
+              <label>
+                Password
+                <input id="accessPassword" type="password" required placeholder="Required for new user">
+              </label>
+              <label>
+                Post
+                <input id="accessPost" placeholder="Outlet Manager, Admin, Technician">
+              </label>
+              <label>
+                Technician skill
+                <select id="accessSkill"></select>
+              </label>
+              <label class="checkline">
+                <input id="accessAllOutlets" type="checkbox">
+                <span>Access all outlets</span>
+              </label>
+              <label>
+                Outlet access
+                <select id="accessOutlets" multiple size="4"></select>
+              </label>
+              <label>
+                Person location / base
+                <input id="accessAddress" placeholder="Home base, area, city">
+              </label>
+              <label>
+                Latitude
+                <input id="accessLatitude" inputmode="decimal" placeholder="21.1702">
+              </label>
+              <label>
+                Longitude
+                <input id="accessLongitude" inputmode="decimal" placeholder="72.8311">
+              </label>
+              <button id="userAccessSubmit" type="submit" class="primary-button">Add User</button>
+              <button id="userAccessCancel" type="button" class="small-button">Clear</button>
+            </form>
           </div>
           <p id="masterCreateResult" class="form-hint" aria-live="polite"></p>
           <div class="master-board">
@@ -447,6 +501,10 @@
             <div>
               <span class="section-kicker">Technicians</span>
               <div id="technicianMasterBoard" class="master-list"></div>
+            </div>
+            <div>
+              <span class="section-kicker">People Access</span>
+              <div id="peopleAccessBoard" class="master-list"></div>
             </div>
           </div>
         </div>

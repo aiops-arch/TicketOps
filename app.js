@@ -75,6 +75,7 @@ let state = {
 
 let currentUser = readStoredUser();
 let directoryUsers = [];
+let editingUserAccessId = "";
 
 function readStoredUser() {
   try {
@@ -370,13 +371,33 @@ function canOpenView(view) {
 
 function ticketsForCurrentUser(tickets) {
   if (!currentUser) return [];
-  if (currentUser.role === "manager" && currentUser.outlet) {
-    return tickets.filter((ticket) => ticket.outlet === currentUser.outlet);
+  if (currentUser.role === "manager") {
+    const outlets = outletAccessForUser(currentUser);
+    return tickets.filter((ticket) => outlets.includes(ticket.outlet));
   }
   if (currentUser.role === "technician" && currentUser.technicianId) {
     return tickets.filter((ticket) => ticket.assignedTo === currentUser.technicianId);
   }
   return tickets;
+}
+
+function outletAccessForUser(user = currentUser) {
+  if (!user) return [];
+  if (user.accessAllOutlets) return [...(state.outlets || [])];
+  const allowed = Array.isArray(user.allowedOutlets) ? user.allowedOutlets.filter((outlet) => (state.outlets || []).includes(outlet)) : [];
+  if (allowed.length) return allowed;
+  if (user.outlet && (state.outlets || []).includes(user.outlet)) return [user.outlet];
+  return user.role === "admin" ? [...(state.outlets || [])] : [];
+}
+
+function selectedOptionValues(select) {
+  return [...(select?.selectedOptions || [])].map((option) => option.value).filter(Boolean);
+}
+
+function userOutletLabel(user) {
+  if (user.accessAllOutlets) return "All outlets";
+  const outlets = Array.isArray(user.allowedOutlets) && user.allowedOutlets.length ? user.allowedOutlets : user.outlet ? [user.outlet] : [];
+  return outlets.length ? outlets.join(", ") : "No outlet access";
 }
 
 async function api(path, options = {}) {
@@ -788,6 +809,73 @@ async function createTechnician(event) {
   }
 }
 
+function resetUserAccessForm() {
+  editingUserAccessId = "";
+  document.querySelector("#userAccessForm")?.reset();
+  document.querySelector("#accessUsername").disabled = false;
+  document.querySelector("#accessPassword").required = true;
+  document.querySelector("#userAccessSubmit").textContent = "Add User";
+  [...(document.querySelector("#accessOutlets")?.options || [])].forEach((option) => { option.selected = false; });
+}
+
+function fillUserAccessForm(userId) {
+  const user = directoryUsers.find((item) => item.id === userId);
+  if (!user) return;
+  editingUserAccessId = user.id;
+  document.querySelector("#accessRole").value = user.role || "manager";
+  document.querySelector("#accessName").value = user.name || "";
+  document.querySelector("#accessUsername").value = user.username || "";
+  document.querySelector("#accessUsername").disabled = true;
+  document.querySelector("#accessPassword").value = "";
+  document.querySelector("#accessPassword").required = false;
+  document.querySelector("#accessPost").value = user.post || "";
+  document.querySelector("#accessAllOutlets").checked = Boolean(user.accessAllOutlets);
+  document.querySelector("#accessAddress").value = user.address || "";
+  document.querySelector("#accessLatitude").value = user.latitude ?? "";
+  document.querySelector("#accessLongitude").value = user.longitude ?? "";
+  const tech = state.technicians.find((item) => item.id === user.technicianId);
+  if (tech && document.querySelector("#accessSkill")) document.querySelector("#accessSkill").value = tech.skill;
+  const outlets = Array.isArray(user.allowedOutlets) && user.allowedOutlets.length ? user.allowedOutlets : user.outlet ? [user.outlet] : [];
+  [...(document.querySelector("#accessOutlets")?.options || [])].forEach((option) => {
+    option.selected = outlets.includes(option.value);
+  });
+  document.querySelector("#userAccessSubmit").textContent = "Update User";
+}
+
+async function saveUserAccess(event) {
+  event.preventDefault();
+  if (!canUseView("masters")) return;
+  const submitButton = event.currentTarget.querySelector("button[type='submit']");
+  const resultBox = document.querySelector("#masterCreateResult");
+  submitButton.disabled = true;
+  resultBox.textContent = "";
+  try {
+    const payload = {
+      role: document.querySelector("#accessRole").value,
+      name: document.querySelector("#accessName").value,
+      username: document.querySelector("#accessUsername").value,
+      password: document.querySelector("#accessPassword").value,
+      post: document.querySelector("#accessPost").value,
+      skill: document.querySelector("#accessSkill").value,
+      accessAllOutlets: document.querySelector("#accessAllOutlets").checked,
+      allowedOutlets: selectedOptionValues(document.querySelector("#accessOutlets")),
+      address: document.querySelector("#accessAddress").value,
+      latitude: document.querySelector("#accessLatitude").value,
+      longitude: document.querySelector("#accessLongitude").value
+    };
+    const path = editingUserAccessId ? `/api/admin/users/${editingUserAccessId}` : "/api/admin/users";
+    const method = editingUserAccessId ? "PATCH" : "POST";
+    await api(path, { method, body: JSON.stringify(payload) });
+    resultBox.textContent = editingUserAccessId ? "User access updated." : "User created.";
+    resetUserAccessForm();
+    await loadState();
+  } catch (error) {
+    resultBox.textContent = error.message;
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
 async function createMaintenanceRule(event) {
   event.preventDefault();
   if (!canUseView("scheduler")) return;
@@ -922,22 +1010,30 @@ function renderSelects() {
   const assetCategory = document.querySelector("#assetCategory");
   const technicianSkill = document.querySelector("#technicianSkill");
   const technicianOutlet = document.querySelector("#technicianOutlet");
+  const accessSkill = document.querySelector("#accessSkill");
+  const accessOutlets = document.querySelector("#accessOutlets");
   const ticketCategory = document.querySelector("#ticketCategory");
   const ruleCategory = document.querySelector("#ruleCategory");
   const activeTechnician = document.querySelector("#activeTechnician");
   const activeTechnicianControl = document.querySelector("#activeTechnicianControl");
   const selectedTechnician = activeTechnician.value;
+  const selectedTicketOutlet = outletSelect?.value;
   const selectedTicketAsset = ticketAsset?.value;
   const selectedAssetOutlet = assetOutlet?.value;
   const selectedAssetCategory = assetCategory?.value;
   const selectedTechnicianSkill = technicianSkill?.value;
   const selectedTechnicianOutlet = technicianOutlet?.value;
+  const selectedAccessSkill = accessSkill?.value;
+  const selectedAccessOutlets = selectedOptionValues(accessOutlets);
   const selectedTicketCategory = ticketCategory?.value;
   const categories = state.categories?.length
     ? state.categories
     : ["AC", "Refrigeration", "Electrical", "Plumbing", "Kitchen Equipment", "Gas", "POS / IT", "Civil"].map((name) => ({ name }));
 
-  outletSelect.innerHTML = state.outlets
+  const managerOutlets = currentUser?.role === "manager" ? outletAccessForUser(currentUser) : state.outlets;
+  const ticketOutlets = managerOutlets.length ? managerOutlets : state.outlets;
+
+  outletSelect.innerHTML = ticketOutlets
     .map((outlet) => `<option value="${escapeHtml(outlet)}">${escapeHtml(outlet)}</option>`)
     .join("");
 
@@ -980,6 +1076,16 @@ function renderSelects() {
     }
   }
 
+  if (accessOutlets) {
+    accessOutlets.innerHTML = state.outlets
+      .map((outlet) => `<option value="${escapeHtml(outlet)}">${escapeHtml(outlet)}</option>`)
+      .join("");
+    selectedAccessOutlets.forEach((outlet) => {
+      const option = [...accessOutlets.options].find((item) => item.value === outlet);
+      if (option) option.selected = true;
+    });
+  }
+
   if (assetCategory) {
     assetCategory.innerHTML = categories
       .map((category) => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`)
@@ -995,6 +1101,15 @@ function renderSelects() {
       .join("");
     if (selectedTechnicianSkill && categories.some((category) => category.name === selectedTechnicianSkill)) {
       technicianSkill.value = selectedTechnicianSkill;
+    }
+  }
+
+  if (accessSkill) {
+    accessSkill.innerHTML = categories
+      .map((category) => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`)
+      .join("");
+    if (selectedAccessSkill && categories.some((category) => category.name === selectedAccessSkill)) {
+      accessSkill.value = selectedAccessSkill;
     }
   }
 
@@ -1017,10 +1132,11 @@ function renderSelects() {
     }
   }
 
-  if (currentUser?.outlet) {
-    outletSelect.value = currentUser.outlet;
-    outletSelect.disabled = true;
-    document.querySelector("#managerScope").textContent = `${currentUser.outlet} auto dispatch`;
+  if (currentUser?.role === "manager") {
+    if (ticketOutlets.includes(selectedTicketOutlet)) outletSelect.value = selectedTicketOutlet;
+    if (currentUser.outlet && ticketOutlets.includes(currentUser.outlet)) outletSelect.value = currentUser.outlet;
+    outletSelect.disabled = ticketOutlets.length <= 1;
+    document.querySelector("#managerScope").textContent = `${userOutletLabel(currentUser)} auto dispatch`;
   } else {
     outletSelect.disabled = false;
     document.querySelector("#managerScope").textContent = "Skill + time auto dispatch";
@@ -1353,6 +1469,18 @@ function renderMasters() {
   document.querySelector("#technicianMasterBoard").innerHTML = state.technicians.length
     ? state.technicians.map((tech) => `<article class="master-row status-${token(tech.status)}"><strong>${escapeHtml(tech.name)}</strong><span>${escapeHtml(tech.skill)} / ${escapeHtml(serviceAreaLabel(tech))}</span></article>`).join("")
     : `<div class="empty mini">No technicians yet.</div>`;
+
+  const peopleBoard = document.querySelector("#peopleAccessBoard");
+  if (peopleBoard) {
+    peopleBoard.innerHTML = directoryUsers.length
+      ? directoryUsers.map((user) => `
+        <button type="button" class="master-row" data-edit-user-access="${escapeHtml(user.id)}">
+          <strong>${escapeHtml(user.name)} / ${escapeHtml(user.role)}</strong>
+          <span>${escapeHtml(user.username)} / ${escapeHtml(userOutletLabel(user))}${user.address ? ` / ${escapeHtml(user.address)}` : ""}</span>
+        </button>
+      `).join("")
+      : `<div class="empty mini">No users yet.</div>`;
+  }
 }
 
 function renderAdmin() {
@@ -2483,6 +2611,7 @@ function render() {
     document.querySelector("#categoryBoard").innerHTML = "";
     document.querySelector("#assetBoard").innerHTML = "";
     document.querySelector("#technicianMasterBoard").innerHTML = "";
+    document.querySelector("#peopleAccessBoard").innerHTML = "";
   }
 
   if (canUseView("technician")) {
@@ -2579,6 +2708,8 @@ document.querySelector("#assetForm").addEventListener("submit", createAsset);
 document.querySelector("#outletForm").addEventListener("submit", createOutlet);
 document.querySelector("#categoryForm").addEventListener("submit", createCategory);
 document.querySelector("#technicianForm").addEventListener("submit", createTechnician);
+document.querySelector("#userAccessForm").addEventListener("submit", saveUserAccess);
+document.querySelector("#userAccessCancel").addEventListener("click", resetUserAccessForm);
 document.querySelector("#maintenanceRuleForm").addEventListener("submit", createMaintenanceRule);
 document.querySelector("#activeTechnician").addEventListener("change", renderTechnician);
 document.querySelector("#logoutButton").addEventListener("click", () => {
@@ -2600,6 +2731,12 @@ document.addEventListener("click", async (event) => {
 
   if (event.target.closest?.("[data-close-asset-detail]") || event.target.id === "assetDetailOverlay") {
     closeAssetDetail();
+    return;
+  }
+
+  const editUserAccess = event.target.closest?.("[data-edit-user-access]");
+  if (editUserAccess) {
+    fillUserAccessForm(editUserAccess.dataset.editUserAccess);
     return;
   }
 

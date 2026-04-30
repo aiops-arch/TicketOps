@@ -1315,6 +1315,21 @@ body.has-session .topbar:focus-within .tabs {
   min-height: 39px;
 }
 
+#masters .master-form select[multiple] {
+  min-height: 96px;
+}
+
+.checkline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#masters .master-form .checkline input {
+  min-height: 0;
+  width: auto;
+}
+
 #masters .master-form .primary-button {
   min-height: 40px;
 }
