@@ -2811,6 +2811,17 @@ button.master-row:hover {
   min-width: min(100%, 560px);
 }
 
+.password-reset-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(360px, 1.4fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.password-reset-panel .password-copy p {
+  max-width: 440px;
+}
+
 .password-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
@@ -3311,6 +3322,10 @@ button.master-row:hover {
   .settings-grid,
   .directory-grid,
   .system-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .password-reset-panel {
     grid-template-columns: 1fr;
   }
 

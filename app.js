@@ -1259,6 +1259,7 @@ function renderAdmin() {
   document.querySelector("#newCount").textContent = state.reports.pendingTasks || 0;
   document.querySelector("#blockedCount").textContent = state.reports.blocked || 0;
   document.querySelector("#presentCount").textContent = state.reports.open || 0;
+  document.querySelector("#adminPasswordBoard").innerHTML = renderPasswordResetControl("admin", "Choose a user, set a new password, and share it privately.");
 
   const workload = state.reports.technicianWorkload || [];
   const today = todayInputValue();
@@ -2058,6 +2059,27 @@ function renderReportTables() {
   `;
 }
 
+function renderPasswordResetControl(scope, helpText) {
+  return `
+    <div class="password-copy">
+      <span class="section-kicker">Recovery</span>
+      <strong>Reset user password</strong>
+      <p>${escapeHtml(helpText)}</p>
+    </div>
+    <div class="password-stack" data-password-reset-shell>
+      <form id="${escapeHtml(scope)}PasswordResetForm" class="password-form" data-password-reset-form>
+        <select data-password-reset-user required>
+          <option value="">Choose user</option>
+          ${directoryUsers.map((user) => `<option value="${escapeHtml(user.id)}">${escapeHtml(user.name)} / ${escapeHtml(user.role)} / ${escapeHtml(user.username)}</option>`).join("")}
+        </select>
+        <input data-password-reset-value type="text" placeholder="New password, min 8 characters" minlength="8">
+        <button class="small-button warning" type="submit">Reset Password</button>
+      </form>
+      <p class="password-feedback" data-password-reset-status>Leave the password field blank to auto-generate a temporary password.</p>
+    </div>
+  `;
+}
+
 function renderSettings() {
   const allowed = allowedViews()
     .map((view) => view[0].toUpperCase() + view.slice(1))
@@ -2112,22 +2134,7 @@ function renderSettings() {
     </article>
     ${currentUser?.role === "admin" ? `
       <article class="settings-card wide">
-        <div class="password-copy">
-          <span class="section-kicker">Recovery</span>
-          <strong>Reset user password</strong>
-          <p>Use this when someone forgets a password. A temporary password can be auto-generated or set manually.</p>
-        </div>
-        <div class="password-stack">
-          <form id="passwordResetForm" class="password-form">
-            <select id="passwordResetUser" required>
-              <option value="">Choose user</option>
-              ${directoryUsers.map((user) => `<option value="${escapeHtml(user.id)}">${escapeHtml(user.name)} / ${escapeHtml(user.role)}</option>`).join("")}
-            </select>
-            <input id="passwordResetValue" type="text" placeholder="Temporary password (optional)" minlength="8">
-            <button class="small-button warning" type="submit">Reset Password</button>
-          </form>
-          <p class="password-feedback" id="passwordResetStatus">Leave the password field blank to auto-generate a temporary password.</p>
-        </div>
+        ${renderPasswordResetControl("settings", "Use this when someone forgets a password. A temporary password can be auto-generated or set manually.")}
       </article>
     ` : ""}
     ${currentUser?.role === "admin" ? `
@@ -2619,33 +2626,36 @@ document.addEventListener("submit", async (event) => {
 });
 
 document.addEventListener("submit", async (event) => {
-  if (event.target.id !== "passwordResetForm") return;
+  if (!event.target.matches("[data-password-reset-form]")) return;
   event.preventDefault();
   if (currentUser?.role !== "admin") return;
 
-  const status = document.querySelector("#passwordResetStatus");
+  const form = event.target;
+  const shell = form.closest("[data-password-reset-shell]");
+  const status = shell?.querySelector("[data-password-reset-status]");
   const submitButton = event.target.querySelector("button[type='submit']");
-  const userId = document.querySelector("#passwordResetUser").value;
-  const requestedPassword = document.querySelector("#passwordResetValue").value.trim();
+  const passwordInput = form.querySelector("[data-password-reset-value]");
+  const userId = form.querySelector("[data-password-reset-user]").value;
+  const requestedPassword = passwordInput.value.trim();
 
   if (!userId) {
-    status.textContent = "Choose a user first.";
+    if (status) status.textContent = "Choose a user first.";
     return;
   }
 
   submitButton.disabled = true;
   submitButton.textContent = "Resetting...";
-  status.textContent = "";
+  if (status) status.textContent = "";
 
   try {
     const result = await api(`/api/admin/users/${encodeURIComponent(userId)}/reset-password`, {
       method: "POST",
       body: JSON.stringify({ newPassword: requestedPassword })
     });
-    status.textContent = `${result.username} reset. Temporary password: ${result.temporaryPassword}`;
-    document.querySelector("#passwordResetValue").value = "";
+    if (status) status.textContent = `${result.username} reset. Temporary password: ${result.temporaryPassword}`;
+    passwordInput.value = "";
   } catch (error) {
-    status.textContent = error.message;
+    if (status) status.textContent = error.message;
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = "Reset Password";
