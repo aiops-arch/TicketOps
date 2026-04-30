@@ -395,6 +395,12 @@ function normalizeScheduledAt(value) {
   return Number.isNaN(date.getTime()) ? "" : date.toISOString();
 }
 
+function isTicketScheduleDue(ticket) {
+  if (!ticket?.scheduledAt) return true;
+  const scheduled = new Date(ticket.scheduledAt).getTime();
+  return Number.isNaN(scheduled) || scheduled <= Date.now();
+}
+
 function taskRequiresEvidence(task) {
   const text = `${task.title || ""} ${task.notes || ""}`.toLowerCase();
   return /(temperature|freezer|refrigerator|gas|fire|extinguisher|leak|pest|safety)/.test(text);
@@ -1953,7 +1959,7 @@ async function updateTaskStatus(taskId, status, user, evidence = {}) {
   return { status: 200, body: task };
 }
 
-async function assignTicket(ticketId, technicianId, overrideReason, user, scheduledAtValue = "") {
+async function assignTicket(ticketId, technicianId, overrideReason, user, scheduledAtValue) {
   const db = await loadDb();
   const ticket = db.tickets.find((item) => item.id === ticketId);
   const technician = db.technicians.find((tech) => tech.id === technicianId);
@@ -1980,7 +1986,10 @@ async function assignTicket(ticketId, technicianId, overrideReason, user, schedu
     return { status: 409, body: { error: "Override reason required for unavailable technician" } };
   }
 
-  const scheduledAt = normalizeScheduledAt(scheduledAtValue);
+  if (user.role !== "admin" && scheduledAtValue !== undefined && scheduledAtValue !== null && String(scheduledAtValue || "").trim()) {
+    return { status: 403, body: { error: "Only admin can set or change assignment time" } };
+  }
+  const scheduledAt = user.role === "admin" ? normalizeScheduledAt(scheduledAtValue) : ticket.scheduledAt || "";
   const scheduledCopy = scheduledAt ? ` for ${new Date(scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}` : "";
   const action = needsOverride
     ? `Admin override assigned to ${technician.name}${scheduledCopy}: ${overrideReason}`
@@ -2006,6 +2015,36 @@ async function assignTicket(ticketId, technicianId, overrideReason, user, schedu
   return { status: 200, body: ticket };
 }
 
+async function updateTicketSchedule(ticketId, scheduledAtValue, user) {
+  const db = await loadDb();
+  const ticket = db.tickets.find((item) => item.id === ticketId);
+  if (!ticket) return { status: 404, body: { error: "Ticket not found" } };
+  if (!user || user.role !== "admin") {
+    return { status: 403, body: { error: "Only admin can set or change assignment time" } };
+  }
+  const scheduledAt = normalizeScheduledAt(scheduledAtValue);
+  const action = scheduledAt
+    ? `Assignment time set by ${user.name} for ${new Date(scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`
+    : `Assignment time cleared by ${user.name}`;
+
+  if (useSupabase) {
+    await requireSupabase(
+      await supabase
+        .from("tickets")
+        .update({ scheduled_at: scheduledAt || null, latest_detail: action, updated_at: new Date().toISOString() })
+        .eq("id", ticketId)
+    );
+    await addSupabaseHistory(ticketId, action);
+    return { status: 200, body: { ok: true } };
+  }
+
+  ticket.scheduledAt = scheduledAt;
+  ticket.latestDetail = action;
+  ticket.history.push({ at: new Date().toISOString(), action });
+  writeJsonDb(db);
+  return { status: 200, body: ticket };
+}
+
 async function acceptTicket(ticketId, user) {
   const db = await loadDb();
   const ticket = db.tickets.find((item) => item.id === ticketId);
@@ -2015,6 +2054,9 @@ async function acceptTicket(ticketId, user) {
   }
   if (ticket.status !== "Assigned") {
     return { status: 409, body: { error: "Only newly assigned jobs can be accepted" } };
+  }
+  if (!isTicketScheduleDue(ticket)) {
+    return { status: 409, body: { error: "This job is scheduled for later. It can only be accepted at the assigned time." } };
   }
   const action = `${user.name} accepted the job`;
 
@@ -2045,6 +2087,9 @@ async function rejectTicket(ticketId, reason, user) {
   }
   if (!["Assigned", "Acknowledged"].includes(ticket.status)) {
     return { status: 409, body: { error: "Only assigned or accepted jobs can be rejected before work starts" } };
+  }
+  if (!isTicketScheduleDue(ticket)) {
+    return { status: 409, body: { error: "This job is scheduled for later. It can only be rejected at the assigned time." } };
   }
   const cleanReason = String(reason || "").trim().slice(0, 500);
   if (!cleanReason) return { status: 400, body: { error: "Rejection reason is required" } };
@@ -2099,6 +2144,9 @@ function canUpdateTicketStatus(ticket, status, user) {
   if (user.role === "technician") {
     if (ticket.assignedTo !== user.technicianId) {
       return { ok: false, error: "Technicians can only update assigned tickets" };
+    }
+    if (!isTicketScheduleDue(ticket)) {
+      return { ok: false, error: "This job is scheduled for later. It can only be worked at the assigned time." };
     }
     if (!["Acknowledged", "In Progress", "Blocked", "Resolved"].includes(status)) {
       return { ok: false, error: "Technicians can only progress active work" };
@@ -2413,7 +2461,7 @@ function scopedDbForUser(db, user) {
       technicians: db.technicians.filter((tech) => tech.id === user.technicianId),
       assets: db.assets || [],
       tasks: (db.tasks || []).filter((task) => task.assignedTo === user.technicianId),
-      tickets: db.tickets.filter((ticket) => ticket.assignedTo === user.technicianId)
+      tickets: db.tickets.filter((ticket) => ticket.assignedTo === user.technicianId && isTicketScheduleDue(ticket))
     };
   }
 
@@ -2796,6 +2844,9 @@ app.post(
       return res.status(403).json({ error: "Only authenticated operations users can issue tickets" });
     }
     const { outlet, category, impact, note, photoUrl, photoUrls, area, unknownAsset, assignedTo, scheduledAt } = req.body;
+    if (String(scheduledAt || "").trim() && user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can set or change assignment time" });
+    }
     const assetId = req.body.assetId === "__other" ? "" : req.body.assetId;
     if (!outlet || !category || !impact) {
       return res.status(400).json({ error: "outlet, category and impact are required" });
@@ -2835,6 +2886,14 @@ app.patch(
       return res.status(403).json({ error: "Only admin or manager can assign technicians" });
     }
     const result = await assignTicket(req.params.id, req.body.technicianId, req.body.overrideReason, user, req.body.scheduledAt);
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.patch(
+  "/api/tickets/:id/schedule",
+  asyncRoute(async (req, res) => {
+    const result = await updateTicketSchedule(req.params.id, req.body.scheduledAt, await userFromRequest(req));
     res.status(result.status).json(result.body);
   })
 );

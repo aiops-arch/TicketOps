@@ -178,6 +178,20 @@ function formatDateTime(value) {
   return date.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+function dateTimeInputValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function isTicketReleased(ticket) {
+  if (!ticket?.scheduledAt) return true;
+  const scheduled = new Date(ticket.scheduledAt).getTime();
+  return Number.isNaN(scheduled) || scheduled <= Date.now();
+}
+
 function formatAge(value) {
   if (!value) return "Fresh";
   const date = new Date(value);
@@ -649,7 +663,8 @@ async function assignTicket(ticketId, technicianId) {
   const ticket = (state.tickets || []).find((item) => item.id === ticketId);
   const summary = technician && ticket ? technicianAssignmentSummary(technician, ticket) : null;
   const scheduledInput = document.querySelector(`[data-assign-time="${ticketId}"]`);
-  const payload = { technicianId, scheduledAt: scheduledInput?.value || "" };
+  const payload = { technicianId };
+  if (currentUser?.role === "admin") payload.scheduledAt = scheduledInput?.value || "";
   const hardRisk = summary?.risk.filter((item) => item !== "backup skill") || [];
   if (hardRisk.includes("not registered for outlet")) {
     window.alert("This technician is not registered for this outlet. Add the outlet to the technician service area first.");
@@ -673,6 +688,16 @@ async function assignTicket(ticketId, technicianId) {
   await api(`/api/tickets/${ticketId}/assign`, {
     method: "PATCH",
     body: JSON.stringify(payload)
+  });
+  await loadState();
+}
+
+async function saveTicketSchedule(ticketId) {
+  if (currentUser?.role !== "admin") return;
+  const scheduledInput = document.querySelector(`[data-assign-time="${ticketId}"]`);
+  await api(`/api/tickets/${ticketId}/schedule`, {
+    method: "PATCH",
+    body: JSON.stringify({ scheduledAt: scheduledInput?.value || "" })
   });
   await loadState();
 }
@@ -1306,7 +1331,8 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
   if (mode === "admin" && canUseView("admin")) {
     return `
       <select data-assign="${escapeHtml(ticket.id)}" aria-label="Assign ${escapeHtml(ticket.id)}">${assignmentOptions}</select>
-      <input class="assign-time-input" data-assign-time="${escapeHtml(ticket.id)}" type="datetime-local" aria-label="Scheduled time for ${escapeHtml(ticket.id)}">
+      <input class="assign-time-input" data-assign-time="${escapeHtml(ticket.id)}" type="datetime-local" value="${escapeHtml(dateTimeInputValue(ticket.scheduledAt))}" aria-label="Admin assignment time for ${escapeHtml(ticket.id)}">
+      <button class="small-button" data-schedule-button="${escapeHtml(ticket.id)}">Set Time</button>
       <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign</button>
       ${canDeleteAssignment ? `<button class="small-button danger" data-delete-assignment="${escapeHtml(ticket.id)}">Delete</button>` : ""}
       <button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Blocked">Blocked</button>
@@ -1317,7 +1343,6 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
     return `
       ${canAssignFromRole && !["Closed", "Cancelled", "Resolved", "Verification Pending"].includes(ticket.status) && assignmentOptions ? `
         <select data-assign="${escapeHtml(ticket.id)}" aria-label="Assign ${escapeHtml(ticket.id)}">${assignmentOptions}</select>
-        <input class="assign-time-input" data-assign-time="${escapeHtml(ticket.id)}" type="datetime-local" aria-label="Scheduled time for ${escapeHtml(ticket.id)}">
         <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign</button>
       ` : ""}
       ${canVerify ? `<button class="small-button success" data-status="${escapeHtml(ticket.id)}:Closed">Approve</button>` : ""}
@@ -1925,7 +1950,7 @@ function openAssetDetail(assetId) {
 function renderTechnician() {
   const activeId = currentUser?.technicianId || document.querySelector("#activeTechnician").value || state.technicians[0]?.id;
   const activeTech = technicianById(activeId);
-  const list = state.tickets.filter((ticket) => ticket.assignedTo === activeId && ticket.status !== "Closed");
+  const list = state.tickets.filter((ticket) => ticket.assignedTo === activeId && ticket.status !== "Closed" && isTicketReleased(ticket));
   const tasks = (state.tasks || []).filter((task) => task.assignedTo === activeId);
   const today = todayInputValue();
   const todayTasks = tasks
@@ -2993,6 +3018,12 @@ document.addEventListener("click", async (event) => {
     } catch (error) {
       window.alert(error.message);
     }
+    return;
+  }
+
+  const scheduleButton = event.target.closest?.("[data-schedule-button]");
+  if (scheduleButton) {
+    await saveTicketSchedule(scheduleButton.dataset.scheduleButton);
     return;
   }
 
