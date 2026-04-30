@@ -1556,6 +1556,21 @@ function renderManager() {
     : `<div class="empty">No active tickets for this outlet.</div>`;
 }
 
+function masterEntry({ className = "", editAttr, title, detail, deleteValue }) {
+  return `
+    <div class="master-row master-entry ${className}">
+      <button type="button" class="master-row-main" ${editAttr}>
+        <strong>${title}</strong>
+        <span>${detail}</span>
+      </button>
+      <div class="master-row-actions">
+        <button type="button" class="small-button" ${editAttr}>Edit</button>
+        <button type="button" class="small-button danger master-delete-button" data-delete-master="${deleteValue}">Delete</button>
+      </div>
+    </div>
+  `;
+}
+
 function renderMasters() {
   switchMasterTab(activeMasterTab);
   document.querySelector("#outletBoard").innerHTML = state.outlets.length
@@ -1564,56 +1579,53 @@ function renderMasters() {
       const coordinates = location.latitude !== null && location.latitude !== undefined && location.longitude !== null && location.longitude !== undefined
         ? `${location.latitude}, ${location.longitude}`
         : "";
-      return `
-        <button type="button" class="master-row" data-edit-outlet="${escapeHtml(outlet)}">
-          <strong>${escapeHtml(outlet)}</strong>
-          <span>${escapeHtml([location.branch, location.address || coordinates || "Location pending"].filter(Boolean).join(" / "))} / Edit</span>
-        </button>
-        <button type="button" class="small-button danger master-delete-button" data-delete-master="outlets:${escapeHtml(outlet)}:${escapeHtml(outlet)}">Delete</button>
-      `;
+      return masterEntry({
+        editAttr: `data-edit-outlet="${escapeHtml(outlet)}"`,
+        title: escapeHtml(outlet),
+        detail: escapeHtml([location.branch, location.address || coordinates || "Location pending"].filter(Boolean).join(" / ")),
+        deleteValue: `outlets:${escapeHtml(outlet)}:${escapeHtml(outlet)}`
+      });
     }).join("")
     : `<div class="empty mini">No outlets yet.</div>`;
 
   document.querySelector("#categoryBoard").innerHTML = (state.categories || []).length
-    ? state.categories.map((category) => `
-      <button type="button" class="master-row" data-edit-category="${escapeHtml(category.id)}">
-        <strong>${escapeHtml(category.name)}</strong>
-        <span>${escapeHtml(category.description || "Category")} / Edit</span>
-      </button>
-      <button type="button" class="small-button danger master-delete-button" data-delete-master="categories:${escapeHtml(category.id)}:${escapeHtml(category.name)}">Delete</button>
-    `).join("")
+    ? state.categories.map((category) => masterEntry({
+      editAttr: `data-edit-category="${escapeHtml(category.id)}"`,
+      title: escapeHtml(category.name),
+      detail: escapeHtml(category.description || "Category"),
+      deleteValue: `categories:${escapeHtml(category.id)}:${escapeHtml(category.name)}`
+    })).join("")
     : `<div class="empty mini">No categories yet.</div>`;
 
   document.querySelector("#assetBoard").innerHTML = (state.assets || []).length
-    ? state.assets.map((asset) => `
-      <button type="button" class="master-row asset-row status-${token(asset.status)}" data-edit-asset="${escapeHtml(asset.id)}">
-        <strong>${escapeHtml(asset.name)}</strong>
-        <span>${escapeHtml(asset.outlet)} / ${escapeHtml(asset.category)} / ${escapeHtml(asset.code || "No code")} / Edit</span>
-      </button>
-      <button type="button" class="small-button danger master-delete-button" data-delete-master="assets:${escapeHtml(asset.id)}:${escapeHtml(asset.name)}">Delete</button>
-    `).join("")
+    ? state.assets.map((asset) => masterEntry({
+      className: `asset-row status-${token(asset.status)}`,
+      editAttr: `data-edit-asset="${escapeHtml(asset.id)}"`,
+      title: escapeHtml(asset.name),
+      detail: `${escapeHtml(asset.outlet)} / ${escapeHtml(asset.category)} / ${escapeHtml(asset.code || "No code")}`,
+      deleteValue: `assets:${escapeHtml(asset.id)}:${escapeHtml(asset.name)}`
+    })).join("")
     : `<div class="empty mini">No assets yet.</div>`;
 
   document.querySelector("#technicianMasterBoard").innerHTML = state.technicians.length
-    ? state.technicians.map((tech) => `
-      <button type="button" class="master-row status-${token(tech.status)}" data-edit-technician="${escapeHtml(tech.id)}">
-        <strong>${escapeHtml(tech.name)}</strong>
-        <span>${escapeHtml(tech.skill)} / ${escapeHtml(serviceAreaLabel(tech))} / Edit outlets</span>
-      </button>
-      <button type="button" class="small-button danger master-delete-button" data-delete-master="technicians:${escapeHtml(tech.id)}:${escapeHtml(tech.name)}">Delete</button>
-    `).join("")
+    ? state.technicians.map((tech) => masterEntry({
+      className: `status-${token(tech.status)}`,
+      editAttr: `data-edit-technician="${escapeHtml(tech.id)}"`,
+      title: escapeHtml(tech.name),
+      detail: `${escapeHtml(tech.skill)} / ${escapeHtml(serviceAreaLabel(tech))}`,
+      deleteValue: `technicians:${escapeHtml(tech.id)}:${escapeHtml(tech.name)}`
+    })).join("")
     : `<div class="empty mini">No technicians yet.</div>`;
 
   const peopleBoard = document.querySelector("#peopleAccessBoard");
   if (peopleBoard) {
     peopleBoard.innerHTML = directoryUsers.length
-      ? directoryUsers.map((user) => `
-        <button type="button" class="master-row" data-edit-user-access="${escapeHtml(user.id)}">
-          <strong>${escapeHtml(user.name)} / ${escapeHtml(user.role)}</strong>
-          <span>${escapeHtml(user.username)} / ${escapeHtml(userOutletLabel(user))}${user.address ? ` / ${escapeHtml(user.address)}` : ""}</span>
-        </button>
-        <button type="button" class="small-button danger master-delete-button" data-delete-master="admin/users:${escapeHtml(user.id)}:${escapeHtml(user.username)}">Delete</button>
-      `).join("")
+      ? directoryUsers.map((user) => masterEntry({
+        editAttr: `data-edit-user-access="${escapeHtml(user.id)}"`,
+        title: `${escapeHtml(user.name)} / ${escapeHtml(user.role)}`,
+        detail: `${escapeHtml(user.username)} / ${escapeHtml(userOutletLabel(user))}${user.address ? ` / ${escapeHtml(user.address)}` : ""}`,
+        deleteValue: `admin/users:${escapeHtml(user.id)}:${escapeHtml(user.username)}`
+      })).join("")
       : `<div class="empty mini">No users yet.</div>`;
   }
 }

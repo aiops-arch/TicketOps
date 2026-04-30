@@ -1371,8 +1371,8 @@ body.has-session .topbar:focus-within .tabs {
 }
 
 .master-delete-button {
-  justify-self: start;
-  margin: -4px 0 8px;
+  justify-self: end;
+  margin: 0;
 }
 
 .user-access-form .checkline,
@@ -2110,9 +2110,9 @@ input::placeholder {
 }
 
 #masters .master-list {
-  max-height: 168px;
-  overflow: auto;
-  padding-right: 4px;
+  min-height: clamp(260px, 44vh, 560px);
+  overflow: visible;
+  padding-right: 0;
 }
 
 .master-row {
@@ -2122,21 +2122,41 @@ input::placeholder {
   border-left: 4px solid var(--teal);
 }
 
-button.master-row {
+.master-row-main {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
   width: 100%;
   color: var(--ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
+  border: 0;
+  background: transparent;
+  padding: 0;
 }
 
-button.master-row:hover {
-  transform: translateY(-1px);
+.master-row-main:hover strong {
+  color: var(--accent);
 }
 
 #masters .master-row {
-  min-height: 48px;
-  padding: 9px 10px;
+  min-height: 72px;
+  padding: 12px 14px;
+}
+
+.master-entry {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.master-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  white-space: nowrap;
 }
 
 .master-row strong,
