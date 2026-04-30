@@ -1334,11 +1334,6 @@ body.has-session .topbar:focus-within .tabs {
   grid-column: auto;
 }
 
-.compact-master-section .master-form {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-}
-
 .master-form {
   display: grid;
   align-content: start;
@@ -1355,9 +1350,18 @@ body.has-session .topbar:focus-within .tabs {
   background: transparent;
 }
 
-#assetForm,
+#categoryForm {
+  grid-template-columns: minmax(240px, 1fr) auto auto;
+  align-items: end;
+}
+
+#assetForm {
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) minmax(180px, 1.2fr) minmax(140px, 0.9fr) auto auto;
+  align-items: end;
+}
+
 #technicianForm {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(180px, 1fr) minmax(150px, 0.8fr) minmax(240px, 1.3fr) auto auto;
   align-items: end;
 }
 
@@ -1366,22 +1370,29 @@ body.has-session .topbar:focus-within .tabs {
   align-items: end;
 }
 
-#assetForm strong,
-#technicianForm strong,
-#assetForm .primary-button,
-#technicianForm .primary-button {
-  grid-column: 1 / -1;
-}
-
 #outletForm .primary-button,
-#outletForm .small-button {
+#outletForm .small-button,
+#categoryForm .primary-button,
+#categoryForm .small-button,
+#assetForm .primary-button,
+#assetForm .small-button,
+#technicianForm .primary-button,
+#technicianForm .small-button,
+.user-access-form .primary-button,
+.user-access-form .small-button {
   min-height: 39px;
   white-space: nowrap;
 }
 
 .user-access-form {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 120px 180px 160px 160px 190px 160px 150px 220px 220px auto auto;
   align-items: end;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.user-access-form label {
+  min-width: 0;
 }
 
 .master-delete-button {
@@ -1389,9 +1400,9 @@ body.has-session .topbar:focus-within .tabs {
   margin: 0;
 }
 
-.user-access-form .checkline,
-.user-access-form label:has(select[multiple]) {
-  grid-row: span 2;
+.user-access-form .checkline {
+  min-height: 39px;
+  align-items: center;
 }
 
 #masters .master-form input,
@@ -1400,7 +1411,8 @@ body.has-session .topbar:focus-within .tabs {
 }
 
 #masters .master-form select[multiple] {
-  min-height: 96px;
+  min-height: 39px;
+  height: 39px;
 }
 
 .checkline {
