@@ -1313,14 +1313,12 @@ async function createTicket(payload, user) {
   if (requestedTechnician && !assignmentWindow.open) {
     return { status: 409, body: { error: `${assignmentWindow.reason}. Admin can edit Master > Dispatch Time.` } };
   }
-  const autoAssignedTechnician = assignmentWindow.open ? requestedTechnician || smartSuggestion(db, ticket) : null;
-  if (autoAssignedTechnician) {
+  const assignedTechnician = assignmentWindow.open && requestedTechnician ? requestedTechnician : null;
+  if (assignedTechnician) {
     ticket.status = "Assigned";
-    ticket.assignedTo = autoAssignedTechnician.id;
+    ticket.assignedTo = assignedTechnician.id;
     ticket.scheduledAt = scheduledAt;
-    ticket.latestDetail = requestedTechnician
-      ? `${ticket.latestDetail ? `${ticket.latestDetail}. ` : ""}Assigned to ${autoAssignedTechnician.name} by ${user?.name || user?.role || "user"}`
-      : `${ticket.latestDetail ? `${ticket.latestDetail}. ` : ""}Auto assigned to ${autoAssignedTechnician.name}: ${autoAssignedTechnician.dispatchReason}`;
+    ticket.latestDetail = `${ticket.latestDetail ? `${ticket.latestDetail}. ` : ""}Assigned to ${assignedTechnician.name} by ${user?.name || user?.role || "user"}`;
   } else if (!assignmentWindow.open) {
     ticket.latestDetail = `${ticket.latestDetail ? `${ticket.latestDetail}. ` : ""}${assignmentWindow.reason}. Waiting for assignment window.`;
   }
@@ -1347,30 +1345,26 @@ async function createTicket(payload, user) {
       })
     );
     await addSupabaseHistory(ticket.id, `Ticket created by ${user?.name || "manager"}`);
-    if (autoAssignedTechnician) {
+    if (assignedTechnician) {
       await addSupabaseHistory(
         ticket.id,
-        requestedTechnician
-          ? `Assigned to ${autoAssignedTechnician.name} by ${user?.name || user?.role || "user"}`
-          : `Auto assigned to ${autoAssignedTechnician.name}: ${autoAssignedTechnician.dispatchReason}`
+        `Assigned to ${assignedTechnician.name} by ${user?.name || user?.role || "user"}`
       );
     }
-    ticket.suggestedTechnician = autoAssignedTechnician;
+    ticket.suggestedTechnician = smartSuggestion(db, ticket);
     return ticket;
   }
 
   ticket.history.push({ at: new Date().toISOString(), action: `Ticket created by ${user?.name || "manager"}` });
-  if (autoAssignedTechnician) {
+  if (assignedTechnician) {
     ticket.history.push({
       at: new Date().toISOString(),
-      action: requestedTechnician
-        ? `Assigned to ${autoAssignedTechnician.name} by ${user?.name || user?.role || "user"}`
-        : `Auto assigned to ${autoAssignedTechnician.name}: ${autoAssignedTechnician.dispatchReason}`
+      action: `Assigned to ${assignedTechnician.name} by ${user?.name || user?.role || "user"}`
     });
   }
   db.tickets.unshift(ticket);
   writeJsonDb(db);
-  ticket.suggestedTechnician = autoAssignedTechnician;
+  ticket.suggestedTechnician = smartSuggestion(db, ticket);
   return ticket;
 }
 

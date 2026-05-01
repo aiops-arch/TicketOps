@@ -292,20 +292,25 @@ function chooseEvidencePhoto() {
   input.type = "file";
   input.accept = "image/*";
   input.capture = "environment";
+  input.style.position = "fixed";
+  input.style.left = "-9999px";
+  input.style.top = "0";
+  document.body.appendChild(input);
   return new Promise((resolve, reject) => {
-    let settled = false;
+    const cleanup = () => input.remove();
     input.addEventListener("change", async () => {
-      settled = true;
       try {
-        resolve(await readImageFile(input.files?.[0]));
+        const file = input.files?.[0];
+        resolve(file ? await readImageFile(file) : "");
       } catch (error) {
         reject(error);
+      } finally {
+        cleanup();
       }
     }, { once: true });
-    window.addEventListener("focus", () => {
-      setTimeout(() => {
-        if (!settled && !input.files?.length) resolve("");
-      }, 500);
+    input.addEventListener("cancel", () => {
+      cleanup();
+      resolve("");
     }, { once: true });
     input.click();
   });
@@ -602,7 +607,7 @@ async function createTicket(event) {
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
   const resultBox = document.querySelector("#ticketCreateResult");
   submitButton.disabled = true;
-  submitButton.textContent = "Finding technician...";
+  submitButton.textContent = "Creating...";
   resultBox.textContent = "";
 
   try {
@@ -637,10 +642,8 @@ async function createTicket(event) {
     updateTicketPriorityPreview();
     resultBox.innerHTML = `
       <strong>${escapeHtml(created.id)} / ${escapeHtml(PRIORITY_LABELS[created.priority] || created.priority)}</strong>
-      <span>${created.assignedTo && created.suggestedTechnician
-        ? `Auto assigned to ${escapeHtml(created.suggestedTechnician.name)}.`
-        : "Created in admin queue. No available technician matched right now."}</span>
-      ${created.suggestedTechnician?.dispatchReason ? `<span>${escapeHtml(created.suggestedTechnician.dispatchReason)}</span>` : ""}
+      <span>Created in admin queue for assignment.</span>
+      ${created.suggestedTechnician?.name ? `<span>Suggestion: ${escapeHtml(created.suggestedTechnician.name)}${created.suggestedTechnician.dispatchReason ? ` / ${escapeHtml(created.suggestedTechnician.dispatchReason)}` : ""}</span>` : ""}
       ${(created.photoUrls?.length || created.photoUrl) ? `<span>${created.photoUrls?.length || 1} issue photo${(created.photoUrls?.length || 1) === 1 ? "" : "s"} attached.</span>` : ""}
     `;
     await loadState();
@@ -648,7 +651,7 @@ async function createTicket(event) {
     resultBox.textContent = error.message;
   } finally {
     submitButton.disabled = false;
-    submitButton.textContent = "Create + Auto Assign";
+    submitButton.textContent = "Create Ticket";
   }
 }
 
@@ -2449,8 +2452,8 @@ function renderTechnician() {
         <label>
           Assign
           <select id="technicianTicketAssign">
-            <option value="">Auto/Admin queue</option>
-            ${state.technicians.map((tech) => `<option value="${escapeHtml(tech.id)}" ${tech.id === activeTech.id ? "selected" : ""}>${escapeHtml(tech.name)}</option>`).join("")}
+            <option value="">Admin queue</option>
+            ${state.technicians.map((tech) => `<option value="${escapeHtml(tech.id)}">${escapeHtml(tech.name)}</option>`).join("")}
           </select>
         </label>
         <label>
@@ -3237,7 +3240,11 @@ document.addEventListener("click", async (event) => {
     const [ticketId, status] = statusButton.dataset.status.split(":");
     const detail = detailForStatus(status);
     if (["Blocked", "Resolved", "Reopened"].includes(status) && !detail.trim()) return;
-    await setTicketStatus(ticketId, status, detail);
+    try {
+      await setTicketStatus(ticketId, status, detail);
+    } catch (error) {
+      window.alert(error.message);
+    }
     return;
   }
 
@@ -3292,7 +3299,11 @@ document.addEventListener("click", async (event) => {
     const task = (state.tasks || []).find((item) => item.id === taskDoneButton.dataset.taskDone);
     const evidence = await collectTaskEvidence(task);
     if (!evidence) return;
-    await updateTaskStatus(taskDoneButton.dataset.taskDone, "Done", evidence);
+    try {
+      await updateTaskStatus(taskDoneButton.dataset.taskDone, "Done", evidence);
+    } catch (error) {
+      window.alert(error.message);
+    }
     return;
   }
 
