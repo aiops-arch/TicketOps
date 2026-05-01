@@ -5738,14 +5738,23 @@ input::placeholder {
   }
 
   .ops-portal #admin {
-    grid-template-columns: minmax(380px, 0.78fr) minmax(0, 1.22fr);
+    grid-template-columns: minmax(420px, 0.72fr) minmax(0, 1.28fr);
     align-items: start;
   }
 
   .ops-portal #admin .page-stage,
   .ops-portal #admin > .dashboard-grid,
-  .ops-portal #admin > .panel:last-child {
+  .ops-portal #admin .admin-field-panel,
+  .ops-portal #admin .admin-queue-panel {
     grid-column: 1 / -1;
+  }
+
+  .ops-portal #admin .admin-access-panel {
+    grid-column: 1;
+  }
+
+  .ops-portal #admin .admin-attendance-panel {
+    grid-column: 2;
   }
 
   .ops-portal #scheduler,
@@ -5766,6 +5775,71 @@ input::placeholder {
   .ops-portal #reports .report-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+.ops-portal #admin .admin-access-panel {
+  align-content: start;
+}
+
+.ops-portal #admin .password-reset-panel {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.ops-portal #admin .password-reset-panel .password-copy p {
+  max-width: 620px;
+}
+
+.ops-portal #admin .password-stack {
+  min-width: 0;
+}
+
+.ops-portal #admin .password-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ops-portal #admin .password-form select,
+.ops-portal #admin .password-form input,
+.ops-portal #admin .password-form button {
+  width: 100%;
+}
+
+.ops-portal #admin .tech-grid {
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+}
+
+.ops-portal #admin .admin-tech-dashboard {
+  grid-template-columns: repeat(3, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.ops-portal #admin .admin-tech-card {
+  min-height: 256px;
+  padding: 14px;
+}
+
+.ops-portal #admin .admin-tech-stats {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.ops-portal #admin .admin-tech-stats span {
+  justify-items: center;
+  min-height: 58px;
+  padding: 7px 5px;
+  text-align: center;
+}
+
+.ops-portal #admin .admin-tech-stats small {
+  line-height: 1.05;
+}
+
+.ops-portal #admin .admin-tech-card p {
+  white-space: normal;
+}
+
+.ops-portal #admin .admin-queue-panel {
+  min-height: 220px;
 }
 
 @media (max-width: 1120px) {
