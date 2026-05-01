@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v10-customer-portal";
+const CACHE_NAME = "ticketops-v11-history";
 const APP_SHELL = [
   "./",
   "./index.html",

@@ -88,17 +88,32 @@ let editingAssignmentWindowId = "";
 let editingMaintenanceRuleId = "";
 let mobileNavOpen = false;
 
+function normalizeSessionUser(user) {
+  if (!user) return null;
+  const roleViews = ROLE_DEFAULT_VIEWS[user.role] || [];
+  const roleAllowlist = ROLE_VIEW_ALLOWLIST[user.role] || roleViews;
+  const mergedViews = [...(Array.isArray(user.allowedViews) ? user.allowedViews : []), ...roleViews]
+    .filter((view, index, list) => roleAllowlist.includes(view) && list.indexOf(view) === index);
+
+  return {
+    ...user,
+    allowedViews: mergedViews.length ? mergedViews : roleViews
+  };
+}
+
 function readStoredUser() {
   try {
-    return JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY)) || null;
+    const user = normalizeSessionUser(JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY)) || null);
+    if (user) localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+    return user;
   } catch {
     return null;
   }
 }
 
 function saveUser(user) {
-  currentUser = user;
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+  currentUser = normalizeSessionUser(user);
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(currentUser));
 }
 
 function clearUser() {
