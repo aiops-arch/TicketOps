@@ -574,9 +574,21 @@ function normalizeOutletList(value, db) {
 }
 
 function allowedViewsForRole(role) {
-  if (role === "admin") return ["dashboard", "manager", "admin", "masters", "scheduler", "reports"];
-  if (role === "manager") return ["dashboard", "manager", "reports"];
-  return ["dashboard", "technician", "reports"];
+  if (role === "admin") return ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"];
+  if (role === "manager") return ["dashboard", "manager", "history", "reports"];
+  return ["dashboard", "technician", "history", "reports"];
+}
+
+function normalizeAllowedViews(user) {
+  const roleViews = allowedViewsForRole(user?.role);
+  const seen = new Set();
+  return [...(user?.allowedViews || []), ...roleViews]
+    .filter((view) => roleViews.includes(view))
+    .filter((view) => {
+      if (seen.has(view)) return false;
+      seen.add(view);
+      return true;
+    });
 }
 
 function makeUniqueUsername(users, baseUsername) {
@@ -2703,7 +2715,7 @@ function generateTemporaryPassword() {
 }
 
 function mapSupabaseUser(row) {
-  return {
+  const user = {
     id: row.id,
     username: row.username,
     passwordHash: row.password_hash,
@@ -2720,6 +2732,8 @@ function mapSupabaseUser(row) {
     defaultView: row.default_view,
     allowedViews: row.allowed_views || []
   };
+  user.allowedViews = normalizeAllowedViews(user);
+  return user;
 }
 
 function allUsersFromJson() {
