@@ -54,13 +54,13 @@ const ROLE_VIEW_ALLOWLIST = {
 };
 
 const VIEW_COPY = {
-  dashboard: { index: "01", label: "Overview" },
-  manager: { index: "02", label: "Manager Desk" },
-  admin: { index: "02", label: "Admin Control" },
-  masters: { index: "03", label: "Masters" },
-  scheduler: { index: "04", label: "Scheduler" },
-  technician: { index: "02", label: "Technician Work" },
-  reports: { index: "05", label: "Reports" }
+  dashboard: { icon: "▦", label: "Overview" },
+  manager: { icon: "◉", label: "Manager Desk" },
+  admin: { icon: "⚙", label: "Admin Control" },
+  masters: { icon: "▣", label: "Masters" },
+  scheduler: { icon: "◷", label: "Scheduler" },
+  technician: { icon: "⚒", label: "Technician Work" },
+  reports: { icon: "▤", label: "Reports" }
 };
 
 let state = {
@@ -494,9 +494,9 @@ function renderAuthChrome() {
 
   document.querySelectorAll(".tab[data-view]").forEach((button) => {
     const view = button.dataset.view;
-    const copy = VIEW_COPY[view] || { index: "00", label: view };
+    const copy = VIEW_COPY[view] || { icon: "•", label: view };
     button.hidden = !canUseView(view);
-    button.innerHTML = `<span>${escapeHtml(copy.index)}</span>${escapeHtml(copy.label)}`;
+    button.innerHTML = `<span class="nav-icon" aria-hidden="true">${escapeHtml(copy.icon)}</span><span class="tab-label">${escapeHtml(copy.label)}</span>`;
   });
 }
 

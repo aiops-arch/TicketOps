@@ -90,6 +90,10 @@ body::after {
   animation: watermark-drift 18s var(--motion-smooth) infinite alternate;
 }
 
+body.has-session:not([data-view="dashboard"])::after {
+  opacity: 0.025;
+}
+
 @keyframes watermark-drift {
   0% {
     background-position: center 56%;
@@ -818,6 +822,17 @@ body.has-session .topbar:focus-within .tabs {
   color: #087189;
   font-size: 11px;
   font-weight: 900;
+}
+
+.topbar .tab .tab-label {
+  display: inline;
+  min-width: 0;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
 }
 
 .tab.is-active {
@@ -4146,12 +4161,11 @@ input::placeholder {
   }
 }
 
-/* Unified operational portal shell. This intentionally replaces the older
-   hover-rail command UI so every role feels like one coherent product. */
+/* Unified operational portal shell with a compact desktop navigation rail. */
 .ops-portal {
   --font-display: "Fraunces", Georgia, serif;
   --font-ui: "Space Grotesk", Arial, Helvetica, sans-serif;
-  padding-left: 286px;
+  padding-left: 78px;
   background: #eef6f8;
   font-family: var(--font-ui);
 }
@@ -4184,15 +4198,13 @@ input::placeholder {
   opacity: 0.5;
 }
 
-.ops-portal .topbar,
-.ops-portal .topbar:hover,
-.ops-portal .topbar:focus-within {
+.ops-portal .topbar {
   position: fixed;
   inset: 0 auto 0 0;
   display: flex;
-  width: 286px;
-  padding: 26px 14px;
-  gap: 20px;
+  width: 78px;
+  padding: 20px 10px;
+  gap: 16px;
   overflow: hidden;
   border-right: 1px solid rgba(245, 250, 255, 0.58);
   border-radius: 0;
@@ -4201,6 +4213,13 @@ input::placeholder {
   backdrop-filter: blur(12px) saturate(138%);
   transform: none;
   animation: none;
+}
+
+.ops-portal .topbar:hover,
+.ops-portal .topbar:focus-within {
+  width: 286px;
+  padding: 26px 14px;
+  gap: 20px;
 }
 
 .ops-portal .topbar::after,
@@ -4227,20 +4246,42 @@ input::placeholder {
 
 .ops-portal .brand-lockup {
   min-height: auto;
-  padding: 8px 10px 18px;
+  padding: 6px 4px 12px;
   gap: 12px;
+  justify-content: center;
 }
 
-.ops-portal .brand-mark,
-.ops-portal .topbar:hover .brand-mark {
-  width: 68px;
-  height: 42px;
+.ops-portal .topbar:hover .brand-lockup,
+.ops-portal .topbar:focus-within .brand-lockup {
+  justify-content: flex-start;
+  padding: 8px 10px 18px;
+}
+
+.ops-portal .brand-mark {
+  width: 42px;
+  height: 34px;
   filter: drop-shadow(0 8px 18px rgba(74, 199, 232, 0.14));
   transform: none;
 }
 
+.ops-portal .topbar:hover .brand-mark,
+.ops-portal .topbar:focus-within .brand-mark {
+  width: 68px;
+  height: 42px;
+}
+
 .ops-portal .brand-lockup > div {
   width: auto;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-8px);
+}
+
+.ops-portal .topbar:hover .brand-lockup > div,
+.ops-portal .topbar:focus-within .brand-lockup > div {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
 }
 
 .ops-portal .topbar h1 {
@@ -4253,15 +4294,13 @@ input::placeholder {
 .ops-portal.has-session .topbar .tabs {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: 10px;
 }
 
-.ops-portal .topbar .tab,
-.ops-portal .topbar:hover .tab,
-.ops-portal .topbar:focus-within .tab {
-  justify-content: flex-start;
+.ops-portal .topbar .tab {
+  justify-content: center;
   min-height: 48px;
-  padding: 10px 13px;
+  padding: 10px;
   border: 1px solid rgba(74, 199, 232, 0.22);
   border-radius: 15px;
   background: rgba(255, 255, 255, 0.38);
@@ -4270,6 +4309,12 @@ input::placeholder {
   font-size: 14px;
   font-weight: 800;
   text-align: left;
+}
+
+.ops-portal .topbar:hover .tab,
+.ops-portal .topbar:focus-within .tab {
+  justify-content: flex-start;
+  padding: 10px 13px;
 }
 
 .ops-portal .topbar .tab:hover,
@@ -4286,21 +4331,49 @@ input::placeholder {
   display: none;
 }
 
-.ops-portal .topbar .tab span {
+.ops-portal .topbar .tab .nav-icon {
   display: grid;
   place-items: center;
-  min-width: 36px;
-  height: 30px;
+  min-width: 34px;
+  height: 34px;
   border-radius: 12px;
   background: rgba(183, 241, 255, 0.7);
   color: var(--teal-deep);
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 900;
+}
+
+.ops-portal .topbar .tab .tab-label {
+  display: inline-block;
+  min-width: 0;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  transition: max-width 260ms var(--motion-smooth), opacity 220ms var(--motion-smooth);
+}
+
+.ops-portal .topbar:hover .tab .tab-label,
+.ops-portal .topbar:focus-within .tab .tab-label {
+  max-width: 160px;
+  opacity: 1;
 }
 
 .ops-portal .topbar-actions {
   margin-top: auto;
   padding: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ops-portal .topbar:hover .topbar-actions,
+.ops-portal .topbar:focus-within .topbar-actions {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .ops-portal .account-dock {
@@ -4448,6 +4521,13 @@ input::placeholder {
     min-height: 46px;
     justify-content: center;
     scroll-snap-align: start;
+  }
+
+  .ops-portal .topbar .tab .tab-label,
+  .ops-portal .topbar:hover .tab .tab-label,
+  .ops-portal .topbar:focus-within .tab .tab-label {
+    max-width: 160px;
+    opacity: 1;
   }
 
   .ops-portal .app-shell {
