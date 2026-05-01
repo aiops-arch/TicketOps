@@ -956,7 +956,7 @@ function withSuggestions(db, user = null) {
     tickets: db.tickets.map((ticket) => ({
       ...ticket,
       asset: assetById(db, ticket.assetId) || null,
-      suggestedTechnician: smartSuggestion(db, ticket)
+      suggestedTechnician: !ticket.assignedTo && ticket.status !== "Closed" ? smartSuggestion(db, ticket) : null
     })),
     reports: reports(db),
     notifications: notificationsForUser(db, user),
@@ -1364,7 +1364,7 @@ async function createTicket(payload, user) {
         `Assigned to ${assignedTechnician.name} by ${user?.name || user?.role || "user"}`
       );
     }
-    ticket.suggestedTechnician = smartSuggestion(db, ticket);
+    ticket.suggestedTechnician = !ticket.assignedTo && ticket.status !== "Closed" ? smartSuggestion(db, ticket) : null;
     return ticket;
   }
 
@@ -1377,7 +1377,7 @@ async function createTicket(payload, user) {
   }
   db.tickets.unshift(ticket);
   writeJsonDb(db);
-  ticket.suggestedTechnician = smartSuggestion(db, ticket);
+  ticket.suggestedTechnician = !ticket.assignedTo && ticket.status !== "Closed" ? smartSuggestion(db, ticket) : null;
   return ticket;
 }
 

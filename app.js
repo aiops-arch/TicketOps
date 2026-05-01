@@ -1498,8 +1498,8 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
 function ticketCard(ticket, mode) {
   const assigned = technicianById(ticket.assignedTo);
   const asset = (state.assets || []).find((item) => item.id === ticket.assetId);
-  const suggested = ticket.suggestedTechnician;
-  const selectedTech = suggested || assigned;
+  const suggested = !assigned && ticket.status !== "Closed" ? ticket.suggestedTechnician : null;
+  const selectedTech = assigned || suggested;
   const selectedSummary = selectedTech ? technicianAssignmentSummary(selectedTech, ticket) : null;
   const canVerify = ticket.status === "Resolved" || ticket.status === "Verification Pending";
   const canWork = ["Assigned", "Acknowledged", "In Progress", "Blocked"].includes(ticket.status);
@@ -1509,8 +1509,7 @@ function ticketCard(ticket, mode) {
   const statusClass = `status-${token(ticket.status)}`;
   const step = ticketStep(ticket.status);
   const actions = renderActionButtons(ticket, mode, canVerify, canWork);
-  const confidenceTech = assigned && suggested?.id === assigned.id ? suggested : suggested;
-  const dispatchReason = confidenceTech?.dispatchReason || (assigned ? `Assigned to ${assigned.name}` : "");
+  const dispatchReason = suggested?.dispatchReason || (assigned ? `Assigned to ${assigned.name}` : "");
   const nextAction = mode === "admin" ? ticketNextAction(ticket, assigned, suggested) : "";
   const photoUrls = (ticket.photoUrls?.length ? ticket.photoUrls : [ticket.photoUrl]).filter(Boolean);
   const resolutionPhotoUrls = (ticket.resolutionPhotoUrls || []).filter(Boolean);
