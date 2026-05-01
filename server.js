@@ -672,18 +672,16 @@ function releaseEarlyAssignments(db, technicianId, reason) {
 
 function dispatchScore(db, tech, ticket) {
   const workload = activeWorkload(db, tech.id);
-  const skillMatch = tech.skill === ticket.category;
+  const skillMatch = true;
   const outletMatch = (tech.serviceOutlets || []).includes(ticket.outlet);
   const emergencyFit = ticket.priority === "P1" && tech.status === "Emergency Available";
   const presentFit = tech.status === "Present";
-  const qualityScore = Number(tech.quality || tech.rating || 90);
 
   return {
-    score: (skillMatch ? 62 : 18) + (outletMatch ? 24 : -100) + (presentFit ? 18 : 0) + (emergencyFit ? 12 : 0) + (qualityScore / 10) - (workload * 14),
+    score: (skillMatch ? 62 : 18) + (outletMatch ? 24 : -100) + (presentFit ? 18 : 0) + (emergencyFit ? 12 : 0) - (workload * 14),
     workload,
     skillMatch,
-    outletMatch,
-    qualityScore
+    outletMatch
   };
 }
 
@@ -697,9 +695,7 @@ function smartSuggestion(db, ticket) {
         ...effective,
         workload: score.workload,
         dispatchScore: Math.round(score.score),
-        dispatchReason: score.skillMatch
-          ? `${effective.skill} match / serves ${ticket.outlet} / ${score.workload} active job${score.workload === 1 ? "" : "s"} / ${effective.status} / ${score.qualityScore}% quality`
-          : `Best available backup / serves ${ticket.outlet} / ${score.workload} active job${score.workload === 1 ? "" : "s"} / ${effective.status} / ${score.qualityScore}% quality`
+        dispatchReason: `All skills / serves ${ticket.outlet} / ${score.workload} active job${score.workload === 1 ? "" : "s"} / ${effective.status}`
       };
     });
 
@@ -1998,7 +1994,7 @@ async function assignTicket(ticketId, technicianId, overrideReason, user, schedu
 
   const effectiveTechnician = technicianWithAttendance(db, technician);
   const servesOutlet = (effectiveTechnician.serviceOutlets || []).includes(ticket.outlet);
-  const skillMatch = effectiveTechnician.skill === ticket.category;
+  const skillMatch = true;
   if (!servesOutlet) {
     return { status: 403, body: { error: "Technician is not registered for this outlet" } };
   }
@@ -2017,7 +2013,7 @@ async function assignTicket(ticketId, technicianId, overrideReason, user, schedu
   const scheduledCopy = scheduledAt ? ` for ${new Date(scheduledAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}` : "";
   const action = needsOverride
     ? `Admin override assigned to ${technician.name}${scheduledCopy}: ${overrideReason}`
-    : `${user.role === "manager" ? "Manager" : "Admin"} assigned to ${technician.name}${skillMatch ? "" : " as backup skill"}${scheduledCopy}`;
+    : `${user.role === "manager" ? "Manager" : "Admin"} assigned to ${technician.name}${scheduledCopy}`;
 
   if (useSupabase) {
     await requireSupabase(

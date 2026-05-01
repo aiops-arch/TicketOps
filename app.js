@@ -306,17 +306,20 @@ function technicianPendingTasks(technicianId) {
   ).length;
 }
 
+function technicianSkillLabel() {
+  return "All skills";
+}
+
 function technicianAssignmentSummary(tech, ticket) {
   const serviceOutlets = tech?.serviceOutlets || [];
   const servesOutlet = serviceOutlets.includes(ticket.outlet);
-  const skillMatch = tech?.skill === ticket.category;
+  const skillMatch = true;
   const assignable = ["Present", "Busy", "Emergency Available"].includes(tech?.status);
   const openJobs = technicianOpenWorkload(tech?.id);
   const pendingTasks = technicianPendingTasks(tech?.id);
   const risk = [
     !assignable ? `${tech?.status || "Unavailable"}` : "",
-    !servesOutlet ? "not registered for outlet" : "",
-    !skillMatch ? "backup skill" : ""
+    !servesOutlet ? "not registered for outlet" : ""
   ].filter(Boolean);
 
   return {
@@ -326,8 +329,8 @@ function technicianAssignmentSummary(tech, ticket) {
     openJobs,
     pendingTasks,
     risk,
-    label: `${tech?.name || "Technician"} - ${tech?.status || "Unknown"} / ${tech?.skill || "No skill"} / ${openJobs} jobs / ${pendingTasks} tasks`,
-    reason: `${skillMatch ? "Skill match" : "Backup skill"} / ${servesOutlet ? `serves ${ticket.outlet}` : `not registered for ${ticket.outlet}`} / ${openJobs} active / ${pendingTasks} pending / ${tech?.quality || 90}% quality`
+    label: `${tech?.name || "Technician"} - ${tech?.status || "Unknown"} / ${technicianSkillLabel(tech)} / ${openJobs} jobs / ${pendingTasks} tasks`,
+    reason: `${technicianSkillLabel(tech)} / ${servesOutlet ? `serves ${ticket.outlet}` : `not registered for ${ticket.outlet}`} / ${openJobs} active / ${pendingTasks} pending`
   };
 }
 
@@ -665,7 +668,7 @@ async function assignTicket(ticketId, technicianId) {
   const scheduledInput = document.querySelector(`[data-assign-time="${ticketId}"]`);
   const payload = { technicianId };
   if (currentUser?.role === "admin") payload.scheduledAt = scheduledInput?.value || "";
-  const hardRisk = summary?.risk.filter((item) => item !== "backup skill") || [];
+  const hardRisk = summary?.risk || [];
   if (hardRisk.includes("not registered for outlet")) {
     window.alert("This technician is not registered for this outlet. Add the outlet to the technician service area first.");
     return;
@@ -1316,8 +1319,8 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
     .map((tech) => {
       const selected = tech.id === ((ticket.suggestedTechnician && assignableForRole.some((item) => item.id === ticket.suggestedTechnician.id) ? ticket.suggestedTechnician.id : "") || ticket.assignedTo) ? "selected" : "";
       const summary = technicianAssignmentSummary(tech, ticket);
-      const hardRisk = summary.risk.filter((item) => item !== "backup skill");
-      const warning = hardRisk.includes("not registered for outlet") ? " [blocked]" : hardRisk.length ? " [override]" : summary.skillMatch ? "" : " [backup]";
+      const hardRisk = summary.risk;
+      const warning = hardRisk.includes("not registered for outlet") ? " [blocked]" : hardRisk.length ? " [override]" : "";
       return `<option value="${escapeHtml(tech.id)}" ${selected}>${escapeHtml(summary.label)}${escapeHtml(warning)}</option>`;
     })
     .join("");
@@ -1414,7 +1417,7 @@ function ticketCard(ticket, mode) {
       ${dispatchReason ? `<p class="ticket-meta dispatch-confidence">Dispatch: ${escapeHtml(dispatchReason)}</p>` : ""}
       ${mode === "admin" && selectedSummary ? `
         <div class="assignment-signal">
-          <span>${selectedSummary.skillMatch ? "Skill match" : "Backup skill"}</span>
+          <span>${escapeHtml(technicianSkillLabel(selectedTech))}</span>
           <span>${selectedSummary.servesOutlet ? "Outlet covered" : "Not registered for outlet"}</span>
           <span>${selectedSummary.openJobs} active jobs</span>
           <span>${selectedSummary.pendingTasks} pending tasks</span>
@@ -1543,11 +1546,10 @@ function renderDashboard() {
       <article class="dispatch-card status-${token(tech.status)}">
         <div>
           <strong>${escapeHtml(tech.name)}</strong>
-          <span>${escapeHtml(tech.skill)} / ${escapeHtml(tech.status)}</span>
+          <span>${escapeHtml(technicianSkillLabel(tech))} / ${escapeHtml(tech.status)}</span>
         </div>
         <span>${escapeHtml(serviceAreaLabel(tech))}</span>
         <div class="dispatch-score">
-          <span>${escapeHtml(tech.quality || 90)}% quality</span>
           <span>${activeJobs} active</span>
         </div>
       </article>
@@ -1647,7 +1649,7 @@ function renderMasters() {
       className: `status-${token(tech.status)}`,
       editAttr: `data-edit-technician="${escapeHtml(tech.id)}"`,
       title: escapeHtml(tech.name),
-      detail: `${escapeHtml(tech.skill)} / ${escapeHtml(serviceAreaLabel(tech))}`,
+      detail: `${escapeHtml(technicianSkillLabel(tech))} / ${escapeHtml(serviceAreaLabel(tech))}`,
       deleteValue: `technicians:${escapeHtml(tech.id)}:${escapeHtml(tech.name)}`
     })).join("")
     : `<div class="empty mini">No technicians yet.</div>`;
@@ -1695,7 +1697,7 @@ function renderAdmin() {
         <div class="tech-status-row">
           <div>
             <strong>${escapeHtml(tech.name)}</strong>
-            <span>${escapeHtml(tech.skill)} / ${techLoad} active / ${escapeHtml(tech.quality || 90)}% quality</span>
+            <span>${escapeHtml(technicianSkillLabel(tech))} / ${techLoad} active</span>
             <span>Serves: ${escapeHtml(serviceAreaLabel(tech))}</span>
             ${activePlan ? `<span>Now: ${escapeHtml(activePlan.status)} / ${escapeHtml(formatDateRange(activePlan.from, activePlan.to))}</span>` : ""}
             ${nextPlan ? `<span>Next: ${escapeHtml(nextPlan.status)} / ${escapeHtml(formatDateRange(nextPlan.from, nextPlan.to))}</span>` : ""}
@@ -1733,7 +1735,7 @@ function renderAdmin() {
           <div class="admin-tech-top">
             <div>
               <strong>${escapeHtml(tech.name)}</strong>
-              <span>${escapeHtml(tech.skill)} / ${escapeHtml(tech.status)}</span>
+              <span>${escapeHtml(technicianSkillLabel(tech))} / ${escapeHtml(tech.status)}</span>
             </div>
             <span class="badge">${completion}% checklist</span>
           </div>
@@ -1941,7 +1943,7 @@ function openAssetDetail(assetId) {
           ${technicians.length ? technicians.map((tech) => `
             <article class="asset-mini-row status-${token(tech.status)}">
               <strong>${escapeHtml(tech.name)}</strong>
-              <span>${escapeHtml(tech.skill)} / ${escapeHtml(tech.status)} / ${escapeHtml(serviceAreaLabel(tech))}</span>
+              <span>${escapeHtml(technicianSkillLabel(tech))} / ${escapeHtml(tech.status)} / ${escapeHtml(serviceAreaLabel(tech))}</span>
             </article>
           `).join("") : `<div class="empty mini">No technician currently owns this asset work.</div>`}
         </div>
@@ -2058,7 +2060,7 @@ function renderTechnician() {
         <div>
           <span class="section-kicker">Working Status</span>
           <h3>${escapeHtml(activeTech.name)}</h3>
-          <p>${escapeHtml(activeTech.skill)} / ${escapeHtml(activeTech.status)} / ${escapeHtml(serviceAreaLabel(activeTech))}</p>
+          <p>${escapeHtml(technicianSkillLabel(activeTech))} / ${escapeHtml(activeTech.status)} / ${escapeHtml(serviceAreaLabel(activeTech))}</p>
         </div>
         <div class="status-orbit" aria-hidden="true"><span></span></div>
       </section>
@@ -2098,12 +2100,11 @@ function renderTechnician() {
     <div class="technician-command-grid">
       <section class="technician-command-card">
         <div class="mini-heading">
-          <span class="section-kicker">Skill Profile</span>
+          <span class="section-kicker">Coverage</span>
           <strong>${completionRate}% today</strong>
         </div>
         <div class="profile-lines">
-          <span><strong>${escapeHtml(activeTech.skill)}</strong><small>Primary skill</small></span>
-          <span><strong>${escapeHtml(activeTech.quality || 90)}%</strong><small>Accuracy / quality</small></span>
+          <span><strong>${escapeHtml(technicianSkillLabel(activeTech))}</strong><small>Skills</small></span>
           <span><strong>${list.length}</strong><small>Active ticket load</small></span>
           <span><strong>${evidenceSubmitted.length}/${evidenceRequiredTasks.length}</strong><small>Evidence</small></span>
         </div>
@@ -2282,7 +2283,7 @@ function renderTechnician() {
         <div class="tech-status-row">
           <div>
             <strong>${escapeHtml(activeTech.status)}</strong>
-            <span>${escapeHtml(activeTech.name)} / ${escapeHtml(activeTech.quality || 90)}% quality</span>
+            <span>${escapeHtml(activeTech.name)}</span>
             <span>Serves: ${escapeHtml(serviceAreaLabel(activeTech))}</span>
             ${activePlan ? `<span>Active leave: ${escapeHtml(formatDateRange(activePlan.from, activePlan.to))}</span>` : `<span>No active leave window.</span>`}
           </div>
@@ -2415,7 +2416,7 @@ function roleReportConfig() {
         ["Total Open", reports.open || 0, "Whole-business active ticket load"],
         ["Critical Exposure", reports.critical || 0, "P1 risk count across outlets"],
         ["Blocked Exposure", reports.blocked || 0, "Work unable to move forward"],
-        ["Reopened Quality", reports.reopened || 0, "Fixes that failed verification"],
+        ["Reopened", reports.reopened || 0, "Fixes that failed verification"],
         ["Closed Tickets", reports.closed || 0, "Completed work volume"],
         ["Unassigned Queue", reports.unassigned || 0, "Dispatch process delay"],
         ["Tech Coverage", `${reports.presentTechnicians || 0}/${reports.technicianCount || 0}`, "Attendance capacity snapshot"],
@@ -2430,7 +2431,7 @@ function roleReportConfig() {
     cards: [
       ["Open Tickets", reports.open || 0, "Active work across outlets"],
       ["Blocked Tickets", reports.blocked || 0, "Admin action required"],
-      ["Reopened Tickets", reports.reopened || 0, "Quality loop pressure"],
+      ["Reopened Tickets", reports.reopened || 0, "Review loop pressure"],
       ["Present Technicians", reports.presentTechnicians || 0, "Available attendance"],
       ["Critical Tickets", reports.critical || 0, "P1 operational risk"],
       ["Checklist Today", `${reports.taskCompletionRate || 0}%`, "Daily maintenance completion"],
@@ -2486,7 +2487,6 @@ function renderReportTables() {
       <strong>${escapeHtml(tech.name)}</strong>
       <span>${escapeHtml(tech.status)}</span>
       <span>${escapeHtml(tech.openTickets || 0)} active</span>
-      <span>${escapeHtml(tech.quality || 90)}% quality</span>
       <span>${escapeHtml((tech.serviceOutlets || []).join(", ") || "All outlets")}</span>
     </article>
   `).join("");
@@ -2646,7 +2646,7 @@ function renderDirectory() {
       <div class="tech-status-row">
         <div>
           <strong>${escapeHtml(tech.name)}</strong>
-          <span>${escapeHtml(tech.skill)} / ${escapeHtml(tech.status)} / ${escapeHtml(tech.quality || 90)}% quality</span>
+          <span>${escapeHtml(technicianSkillLabel(tech))} / ${escapeHtml(tech.status)}</span>
           <span>Serves: ${escapeHtml(serviceAreaLabel(tech))}</span>
         </div>
         <span class="status-dot" aria-hidden="true"></span>
@@ -2759,13 +2759,13 @@ function updateLiveIntel() {
 
   document.querySelector("#intelDispatch").textContent = unassigned ? `${unassigned} To assign` : `${present}/${total} Ready`;
   document.querySelector("#intelDispatchDetail").textContent = unassigned
-    ? "Smart suggestions favor skill match and lower workload."
+    ? "Smart suggestions favor outlet coverage, availability, and lower workload."
     : "Attendance is feeding assignment choices in real time.";
 
   document.querySelector("#intelVerify").textContent = verificationPending ? `${verificationPending} Pending` : "Closed loop";
   document.querySelector("#intelVerifyDetail").textContent = verificationPending
     ? "Resolved tickets are waiting for manager approval."
-    : "No resolved tickets are waiting at the quality gate.";
+    : "No resolved tickets are waiting for review.";
 
   document.querySelector("#storageMode").textContent = state.storage === "supabase" ? "Supabase live store" : "Local demo store";
   document.querySelector("#syncStatus").textContent = `Synced ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
