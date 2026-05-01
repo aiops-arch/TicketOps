@@ -4783,3 +4783,418 @@ input::placeholder {
     overflow: visible;
   }
 }
+
+/* Final mobile shell override: one behavior for the live web app. */
+@media (max-width: 820px) {
+  html,
+  body,
+  .ops-portal {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .ops-portal,
+  .ops-portal:has(.topbar:hover),
+  .ops-portal:has(.topbar:focus-within) {
+    padding: 0 !important;
+  }
+
+  .ops-portal .topbar,
+  .ops-portal .topbar:hover,
+  .ops-portal .topbar:focus-within {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 100;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    width: 100% !important;
+    min-height: 60px;
+    max-height: 60px;
+    padding: 8px 10px;
+    overflow: visible;
+    border: 0;
+    border-bottom: 1px solid rgba(111, 151, 158, 0.26);
+    border-radius: 0;
+    background: rgba(247, 251, 252, 0.98);
+    box-shadow: 0 12px 28px rgba(14, 31, 41, 0.14);
+    backdrop-filter: blur(18px) saturate(150%);
+  }
+
+  .ops-portal .brand-lockup,
+  .ops-portal .topbar:hover .brand-lockup,
+  .ops-portal .topbar:focus-within .brand-lockup {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    gap: 8px;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+
+  .ops-portal .brand-lockup > div,
+  .ops-portal .topbar:hover .brand-lockup > div,
+  .ops-portal .topbar:focus-within .brand-lockup > div {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+
+  .ops-portal .brand-mark,
+  .ops-portal .topbar:hover .brand-mark,
+  .ops-portal .topbar:focus-within .brand-mark {
+    width: 42px;
+    height: 32px;
+    transform: none;
+  }
+
+  .ops-portal .topbar h1 {
+    max-width: calc(100vw - 154px);
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1.1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ops-portal .topbar-actions,
+  .ops-portal .topbar:hover .topbar-actions,
+  .ops-portal .topbar:focus-within .topbar-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+
+  .ops-portal .account-dock {
+    display: flex;
+    width: auto;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .ops-portal .live-pill,
+  .ops-portal .user-pill,
+  .ops-portal #resetData {
+    display: none !important;
+  }
+
+  .ops-portal .account-actions {
+    display: flex;
+    gap: 6px;
+    padding: 0;
+  }
+
+  .ops-portal .account-actions .ghost-button {
+    width: auto;
+    min-width: 58px;
+    min-height: 40px;
+    padding: 0 10px;
+    border-radius: 10px;
+    font-size: 12px;
+  }
+
+  .ops-portal .menu-toggle,
+  .ops-portal .menu-toggle:not(.is-hidden) {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 64px;
+    min-height: 40px;
+    padding: 0 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .ops-portal.has-session .topbar .tabs,
+  .ops-portal.has-session .topbar:hover .tabs,
+  .ops-portal.has-session .topbar:focus-within .tabs {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    bottom: 0;
+    z-index: 99;
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    width: min(84vw, 320px);
+    height: calc(100dvh - 60px);
+    max-height: none;
+    padding: 12px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-right: 1px solid rgba(111, 151, 158, 0.26);
+    border-bottom: 0;
+    border-radius: 0;
+    background: rgba(247, 251, 252, 0.99);
+    box-shadow: 18px 0 42px rgba(14, 31, 41, 0.18);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-105%);
+    transition: opacity 180ms var(--motion-smooth), transform 180ms var(--motion-smooth);
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .ops-portal.mobile-nav-open.has-session .topbar .tabs,
+  .ops-portal.mobile-nav-open.has-session .topbar:hover .tabs,
+  .ops-portal.mobile-nav-open.has-session .topbar:focus-within .tabs {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+  }
+
+  .ops-portal.has-session .topbar .tab,
+  .ops-portal.has-session .topbar:hover .tab,
+  .ops-portal.has-session .topbar:focus-within .tab {
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
+    justify-content: flex-start;
+    padding: 8px 10px;
+    border-radius: 10px;
+  }
+
+  .ops-portal.has-session .topbar .tab .tab-label,
+  .ops-portal.has-session .topbar:hover .tab .tab-label,
+  .ops-portal.has-session .topbar:focus-within .tab .tab-label {
+    max-width: none;
+    opacity: 1;
+  }
+
+  .ops-portal .login-screen,
+  .ops-portal .app-shell,
+  .ops-portal:has(.topbar:hover) .login-screen,
+  .ops-portal:has(.topbar:focus-within) .login-screen,
+  .ops-portal:has(.topbar:hover) .app-shell,
+  .ops-portal:has(.topbar:focus-within) .app-shell {
+    width: 100% !important;
+    margin: 0;
+  }
+
+  .ops-portal .login-screen {
+    min-height: 100dvh;
+    padding: 76px 12px 24px;
+  }
+
+  .ops-portal .app-shell {
+    padding: 72px 10px 24px;
+  }
+
+  .ops-portal.mobile-nav-open {
+    overflow: hidden;
+  }
+
+  .ops-portal .intel-strip {
+    display: flex;
+    gap: 8px;
+    margin: 0 -10px 10px;
+    padding: 0 10px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+  }
+
+  .ops-portal .intel-card {
+    flex: 0 0 min(78vw, 260px);
+    min-width: 0;
+    min-height: 76px;
+    padding: 10px 12px;
+    scroll-snap-align: start;
+  }
+
+  .ops-portal .command-hero,
+  .ops-portal .command-grid,
+  .ops-portal .report-card-grid,
+  .ops-portal .hero-metrics,
+  .ops-portal .outlet-health-grid,
+  .ops-portal .outlet-stats,
+  .ops-portal .master-form-grid,
+  .ops-portal .master-sections,
+  .ops-portal .master-board,
+  .ops-portal .ticket-form,
+  .ops-portal .scheduler-form,
+  .ops-portal .scheduler-layout,
+  .ops-portal .attendance-form,
+  .ops-portal .attendance-layout,
+  .ops-portal .technician-command-grid,
+  .ops-portal .technician-context-grid,
+  .ops-portal .technician-dashboard,
+  .ops-portal .technician-work-grid,
+  .ops-portal .admin-tech-dashboard,
+  .ops-portal .dashboard-grid,
+  .ops-portal .tech-grid,
+  .ops-portal .report-grid,
+  .ops-portal .settings-grid,
+  .ops-portal .directory-grid,
+  .ops-portal .system-grid,
+  .ops-portal .asset-detail-grid,
+  .ops-portal .password-reset-panel {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ops-portal .dashboard-panel.wide,
+  .ops-portal .settings-card.wide,
+  .ops-portal .full-span {
+    grid-column: auto !important;
+  }
+
+  .ops-portal .panel,
+  .ops-portal .command-hero,
+  .ops-portal .ticket-card,
+  .ops-portal .master-section,
+  .ops-portal .master-row,
+  .ops-portal .admin-tech-card,
+  .ops-portal .tech-card,
+  .ops-portal .report-card,
+  .ops-portal .metric,
+  .ops-portal .ticket-form,
+  .ops-portal .scheduler-form {
+    min-width: 0;
+    border-radius: 10px;
+  }
+
+  .ops-portal .panel,
+  .ops-portal .command-hero {
+    padding: 12px;
+  }
+
+  .ops-portal .panel-heading,
+  .ops-portal .ticket-top,
+  .ops-portal .master-section-heading {
+    display: flex;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ops-portal .command-hero h2 {
+    font-size: 26px;
+    line-height: 1.06;
+  }
+
+  .ops-portal .hero-metrics {
+    gap: 8px;
+  }
+
+  .ops-portal .ticket-card,
+  .ops-portal #adminTickets .ticket-card,
+  .ops-portal .task-row,
+  .ops-portal .rule-row,
+  .ops-portal .activity-item,
+  .ops-portal .asset-detail-header,
+  .ops-portal .settings-card.wide {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ops-portal .ticket-progress,
+  .ops-portal .ticket-flow,
+  .ops-portal .badge-row,
+  .ops-portal .ticket-photo,
+  .ops-portal .ticket-card > .ticket-meta,
+  .ops-portal .actions,
+  .ops-portal #adminTickets .actions {
+    grid-column: auto !important;
+    grid-row: auto !important;
+  }
+
+  .ops-portal .ticket-flow {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .ops-portal .actions,
+  .ops-portal #adminTickets .actions,
+  .ops-portal .task-actions,
+  .ops-portal .master-row-actions,
+  .ops-portal .rule-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    justify-items: stretch;
+    gap: 8px;
+  }
+
+  .ops-portal .actions .small-button,
+  .ops-portal .task-actions .small-button,
+  .ops-portal .master-row-actions .small-button,
+  .ops-portal .rule-actions .small-button,
+  .ops-portal .actions select,
+  .ops-portal .primary-button,
+  .ops-portal .small-button {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .ops-portal .master-tabs {
+    flex-wrap: nowrap;
+    margin: 0 -12px 10px;
+    padding: 0 12px 8px;
+    overflow-x: auto;
+  }
+
+  .ops-portal .master-tab {
+    flex: 0 0 auto;
+    min-height: 40px;
+  }
+
+  .ops-portal #categoryForm,
+  .ops-portal #assetForm,
+  .ops-portal #technicianForm,
+  .ops-portal #outletForm,
+  .ops-portal .assignment-window-form,
+  .ops-portal .user-access-form {
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow: visible;
+  }
+
+  .ops-portal input,
+  .ops-portal select,
+  .ops-portal textarea {
+    min-width: 0;
+    max-width: 100%;
+    font-size: 16px;
+  }
+
+  .ops-portal select[multiple] {
+    min-height: 126px;
+  }
+}
+
+@media (max-width: 820px) and (orientation: landscape) {
+  .ops-portal .login-screen {
+    padding-top: 70px;
+  }
+
+  .ops-portal .app-shell {
+    padding-top: 68px;
+  }
+
+  .ops-portal .intel-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    overflow: visible;
+  }
+
+  .ops-portal .intel-card {
+    flex: initial;
+  }
+}

@@ -113,13 +113,17 @@ function isLandscapeMobileNav() {
   return window.matchMedia("(max-width: 820px) and (orientation: landscape)").matches;
 }
 
+function isMobileNav() {
+  return window.matchMedia("(max-width: 820px)").matches;
+}
+
 function updateMobileNav() {
-  const open = isPortraitMobileNav() ? mobileNavOpen : isLandscapeMobileNav() ? true : mobileNavOpen;
+  const open = isMobileNav() && mobileNavOpen;
   document.body.classList.toggle("mobile-nav-open", open);
   const toggle = document.querySelector("#sidebarToggle");
   if (toggle) {
     toggle.setAttribute("aria-expanded", open ? "true" : "false");
-    toggle.textContent = open ? "✕" : "☰";
+    toggle.textContent = open ? "Close" : "Menu";
   }
 }
 
@@ -562,7 +566,7 @@ function renderAuthChrome() {
   document.querySelector("#userPill").classList.remove("is-hidden");
   document.querySelector("#logoutButton").classList.remove("is-hidden");
   document.querySelector("#resetData").classList.toggle("is-hidden", currentUser?.role !== "admin");
-  document.querySelector("#sidebarToggle")?.classList.toggle("is-hidden", !currentUser || !isPortraitMobileNav());
+  document.querySelector("#sidebarToggle")?.classList.toggle("is-hidden", !currentUser || !isMobileNav());
   updateMobileNav();
 
   document.querySelectorAll(".tab[data-view]").forEach((button) => {
@@ -3450,6 +3454,6 @@ setInterval(() => {
 }, 15000);
 
 window.addEventListener("resize", () => {
-  if (!isPortraitMobileNav()) closeMobileNav();
+  if (!isMobileNav()) closeMobileNav();
   if (currentUser) renderAuthChrome();
 });
