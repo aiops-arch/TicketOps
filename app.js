@@ -106,15 +106,15 @@ function clearUser() {
 }
 
 function isPortraitMobileNav() {
-  return window.matchMedia("(max-width: 820px) and (orientation: portrait)").matches;
+  return window.matchMedia("(max-width: 767px) and (orientation: portrait)").matches;
 }
 
 function isLandscapeMobileNav() {
-  return window.matchMedia("(max-width: 820px) and (orientation: landscape)").matches;
+  return window.matchMedia("(max-width: 767px) and (orientation: landscape)").matches;
 }
 
 function isMobileNav() {
-  return window.matchMedia("(max-width: 820px)").matches;
+  return window.matchMedia("(max-width: 767px)").matches;
 }
 
 function updateMobileNav() {
@@ -123,7 +123,8 @@ function updateMobileNav() {
   const toggle = document.querySelector("#sidebarToggle");
   if (toggle) {
     toggle.setAttribute("aria-expanded", open ? "true" : "false");
-    toggle.textContent = open ? "Close" : "Menu";
+    toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    toggle.textContent = open ? "\u00d7" : "\u2630";
   }
 }
 
@@ -1608,18 +1609,22 @@ function outletHealthCards() {
     const blocked = outletTickets.filter((ticket) => ticket.status === "Blocked").length;
     const unassigned = outletTickets.filter((ticket) => !ticket.assignedTo).length;
     const health = critical ? "Critical" : blocked ? "Blocked" : unassigned ? "Dispatch" : outletTickets.length ? "Active" : "Healthy";
+    const expanded = health !== "Healthy";
     return `
-      <article class="outlet-card status-${token(health)}">
-        <div>
+      <article class="outlet-card status-${token(health)} ${expanded ? "is-expanded" : "is-healthy"}">
+        <div class="outlet-card-main">
+          <span class="health-dot" aria-hidden="true"></span>
           <strong>${escapeHtml(outlet)}</strong>
           <span>${escapeHtml(health)}</span>
         </div>
-        <div class="outlet-stats">
-          <span>${outletTickets.length}<small>open</small></span>
-          <span>${critical}<small>critical</small></span>
-          <span>${blocked}<small>blocked</small></span>
-          <span>${unassigned}<small>unassigned</small></span>
-        </div>
+        ${expanded ? `
+          <div class="outlet-stats">
+            <span>${outletTickets.length}<small>open</small></span>
+            <span>${critical}<small>critical</small></span>
+            <span>${blocked}<small>blocked</small></span>
+            <span>${unassigned}<small>unassigned</small></span>
+          </div>
+        ` : ""}
       </article>
     `;
   }).join("");
@@ -3105,6 +3110,10 @@ document.querySelector("#logoutButton").addEventListener("click", () => {
 document.querySelector("#sidebarToggle").addEventListener("click", () => {
   if (!currentUser) return;
   toggleMobileNav();
+});
+document.querySelector("#navBackdrop").addEventListener("click", closeMobileNav);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeMobileNav();
 });
 document.querySelector("#resetData").addEventListener("click", async () => {
   if (currentUser?.role !== "admin") return;
