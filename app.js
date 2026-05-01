@@ -281,6 +281,9 @@ function ticketAdminBucket(ticket) {
 }
 
 function ticketNextAction(ticket, assigned, suggested) {
+  if (ticket.scheduledAt && !isTicketReleased(ticket)) {
+    return `${assigned?.name || "Technician"} receives this at ${formatDateTime(ticket.scheduledAt)}`;
+  }
   if (ticket.status === "Blocked") return "Admin: unblock part, vendor, or decision";
   if (["Resolved", "Verification Pending"].includes(ticket.status)) return "Manager: verify and close";
   if (!ticket.assignedTo) {
@@ -291,6 +294,22 @@ function ticketNextAction(ticket, assigned, suggested) {
   if (ticket.status === "In Progress") return `${assigned?.name || "Technician"}: resolve or block`;
   if (ticket.status === "Reopened") return `${assigned?.name || "Technician"}: fix rejected work`;
   return "Monitor progress";
+}
+
+function ticketWorkflowSteps(ticket) {
+  const steps = [
+    { label: "Setup", done: true },
+    { label: "Ticket", done: Boolean(ticket.id) },
+    { label: "Dispatch", done: Boolean(ticket.assignedTo), active: !ticket.assignedTo },
+    { label: "Time", done: !ticket.scheduledAt || isTicketReleased(ticket), active: Boolean(ticket.assignedTo && ticket.scheduledAt && !isTicketReleased(ticket)) },
+    { label: "Work", done: ["Resolved", "Verification Pending", "Closed"].includes(ticket.status), active: ["Assigned", "Acknowledged", "In Progress", "Blocked", "Reopened"].includes(ticket.status) && (!ticket.scheduledAt || isTicketReleased(ticket)) },
+    { label: "Review", done: ticket.status === "Closed", active: ["Resolved", "Verification Pending"].includes(ticket.status) },
+    { label: "Close", done: ticket.status === "Closed" }
+  ];
+  return steps.map((step) => ({
+    ...step,
+    className: step.done ? "is-done" : step.active ? "is-active" : ""
+  }));
 }
 
 function technicianOpenWorkload(technicianId) {
@@ -1275,7 +1294,7 @@ function renderSelects() {
     document.querySelector("#managerScope").textContent = `${userOutletLabel(currentUser)} auto dispatch`;
   } else {
     outletSelect.disabled = false;
-    document.querySelector("#managerScope").textContent = "Skill + time auto dispatch";
+    document.querySelector("#managerScope").textContent = "Coverage + time auto dispatch";
   }
 
   renderTicketAssets();
@@ -1327,10 +1346,11 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
 
   if (mode === "admin" && canUseView("admin")) {
     return `
+      <div class="action-group-title">Dispatch</div>
       <select data-assign="${escapeHtml(ticket.id)}" aria-label="Assign ${escapeHtml(ticket.id)}">${assignmentOptions}</select>
-      <input class="assign-time-input" data-assign-time="${escapeHtml(ticket.id)}" type="datetime-local" value="${escapeHtml(dateTimeInputValue(ticket.scheduledAt))}" aria-label="Admin assignment time for ${escapeHtml(ticket.id)}">
-      <button class="small-button" data-schedule-button="${escapeHtml(ticket.id)}">Set Time</button>
-      <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign</button>
+      <input class="assign-time-input" data-assign-time="${escapeHtml(ticket.id)}" type="datetime-local" value="${escapeHtml(dateTimeInputValue(ticket.scheduledAt))}" aria-label="Admin dispatch time for ${escapeHtml(ticket.id)}">
+      <button class="small-button" data-schedule-button="${escapeHtml(ticket.id)}">Set Dispatch Time</button>
+      <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign Job</button>
       ${canDeleteAssignment ? `<button class="small-button danger" data-delete-assignment="${escapeHtml(ticket.id)}">Delete</button>` : ""}
       <button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Blocked">Blocked</button>
     `;
@@ -1339,10 +1359,12 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
   if (mode === "manager" && canUseView("manager")) {
     return `
       ${canAssignFromRole && !["Closed", "Cancelled", "Resolved", "Verification Pending"].includes(ticket.status) && assignmentOptions ? `
+        <div class="action-group-title">Dispatch</div>
         <select data-assign="${escapeHtml(ticket.id)}" aria-label="Assign ${escapeHtml(ticket.id)}">${assignmentOptions}</select>
-        <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign</button>
+        <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign Job</button>
       ` : ""}
-      ${canVerify ? `<button class="small-button success" data-status="${escapeHtml(ticket.id)}:Closed">Approve</button>` : ""}
+      ${canVerify ? `<div class="action-group-title">Review</div>` : ""}
+      ${canVerify ? `<button class="small-button success" data-status="${escapeHtml(ticket.id)}:Closed">Close Job</button>` : ""}
       ${canVerify ? `<button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Reopened">Reject / Reopen</button>` : ""}
       ${canDeleteAssignment ? `<button class="small-button danger" data-delete-assignment="${escapeHtml(ticket.id)}">Delete</button>` : ""}
     `;
@@ -1350,11 +1372,12 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
 
   if (mode === "technician" && canWork && canUseView("technician")) {
     return `
+      <div class="action-group-title">Field Actions</div>
       ${ticket.status === "Assigned" ? `<button class="small-button primary" data-accept-ticket="${escapeHtml(ticket.id)}">Accept Job</button>` : ""}
       ${["Assigned", "Acknowledged"].includes(ticket.status) ? `<button class="small-button danger" data-reject-ticket="${escapeHtml(ticket.id)}">Reject with reason</button>` : ""}
       ${ticket.status === "Acknowledged" ? `<button class="small-button primary" data-status="${escapeHtml(ticket.id)}:In Progress">Start</button>` : ""}
       <button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Blocked">Need Part/Vendor</button>
-      <button class="small-button success" data-status="${escapeHtml(ticket.id)}:Resolved">Resolve</button>
+      <button class="small-button success" data-status="${escapeHtml(ticket.id)}:Resolved">Complete + Photo</button>
     `;
   }
 
@@ -1380,6 +1403,7 @@ function ticketCard(ticket, mode) {
   const nextAction = mode === "admin" ? ticketNextAction(ticket, assigned, suggested) : "";
   const photoUrls = (ticket.photoUrls?.length ? ticket.photoUrls : [ticket.photoUrl]).filter(Boolean);
   const resolutionPhotoUrls = (ticket.resolutionPhotoUrls || []).filter(Boolean);
+  const workflowSteps = ticketWorkflowSteps(ticket);
 
   return `
     <article class="ticket-card ${priorityClass}">
@@ -1391,6 +1415,11 @@ function ticketCard(ticket, mode) {
         </div>
         <span class="badge ${priorityClass}">${escapeHtml(PRIORITY_LABELS[ticket.priority] || ticket.priority)}</span>
       </div>
+      <div class="ticket-flow" aria-label="Ticket workflow">
+        ${workflowSteps.map((item) => `
+          <span class="${escapeHtml(item.className)}">${escapeHtml(item.label)}</span>
+        `).join("")}
+      </div>
       <div class="ticket-progress" aria-label="Ticket progress">
         <div class="progress-copy">
           <span>${escapeHtml(step.label)}</span>
@@ -1401,13 +1430,13 @@ function ticketCard(ticket, mode) {
       <div class="badge-row">
         <span class="badge ${statusClass}">${escapeHtml(ticket.status)}</span>
         <span class="badge">${escapeHtml(assigned ? assigned.name : "Unassigned")}</span>
-        ${ticket.scheduledAt ? `<span class="badge">Scheduled ${escapeHtml(formatDateTime(ticket.scheduledAt))}</span>` : ""}
+        ${ticket.scheduledAt ? `<span class="badge">Dispatch ${escapeHtml(formatDateTime(ticket.scheduledAt))}</span>` : ""}
         ${photoUrls.length ? `<span class="badge photo-badge">${photoUrls.length} Photo${photoUrls.length === 1 ? "" : "s"}</span>` : ""}
         ${resolutionPhotoUrls.length ? `<span class="badge status-closed">Completion Photo</span>` : ""}
         ${suggested ? `<span class="badge confidence">Score ${escapeHtml(suggested.dispatchScore || "OK")}: ${escapeHtml(suggested.name)}</span>` : ""}
         ${selectedSummary?.risk.length ? `<span class="badge status-blocked">Override risk: ${escapeHtml(selectedSummary.risk.join(", "))}</span>` : ""}
       </div>
-      ${nextAction ? `<p class="ticket-meta next-action">${escapeHtml(nextAction)}</p>` : ""}
+      ${nextAction ? `<p class="ticket-meta next-action">Next: ${escapeHtml(nextAction)}</p>` : ""}
       ${photoUrls.length ? `
         <button class="ticket-photo" type="button" data-photo-open="${escapeHtml(ticket.id)}" aria-label="Open issue photo for ${escapeHtml(ticket.id)}">
           <img src="${escapeHtml(photoUrls[0])}" alt="Issue photo for ${escapeHtml(ticket.id)}">
@@ -1594,15 +1623,18 @@ function masterEntry({ className = "", editAttr, title, detail, deleteValue }) {
 
 function renderAssignmentTimeRow(ticket) {
   const assigned = technicianById(ticket.assignedTo);
+  const releaseCopy = ticket.scheduledAt
+    ? `${isTicketReleased(ticket) ? "Released" : "Will release"} at ${formatDateTime(ticket.scheduledAt)}`
+    : "No dispatch time set. Technician sees it immediately after assignment.";
   return `
     <div class="master-row master-entry time-master-row priority-${token(ticket.priority)}">
       <div class="master-row-main">
         <strong>${escapeHtml(ticket.id)} / ${escapeHtml(ticket.outlet)} / ${escapeHtml(ticket.category)}</strong>
-        <span>${escapeHtml(ticket.status)} / ${escapeHtml(assigned?.name || "Unassigned")} / ${ticket.scheduledAt ? `Allowed at ${escapeHtml(formatDateTime(ticket.scheduledAt))}` : "No time set"}</span>
+        <span>${escapeHtml(ticket.status)} / ${escapeHtml(assigned?.name || "Unassigned")} / ${escapeHtml(releaseCopy)}</span>
       </div>
       <div class="master-row-actions time-master-actions">
-        <input class="assign-time-input" data-assign-time="${escapeHtml(ticket.id)}" type="datetime-local" value="${escapeHtml(dateTimeInputValue(ticket.scheduledAt))}" aria-label="Admin assignment time for ${escapeHtml(ticket.id)}">
-        <button type="button" class="small-button" data-schedule-button="${escapeHtml(ticket.id)}">Set Time</button>
+        <input class="assign-time-input" data-assign-time="${escapeHtml(ticket.id)}" type="datetime-local" value="${escapeHtml(dateTimeInputValue(ticket.scheduledAt))}" aria-label="Admin dispatch time for ${escapeHtml(ticket.id)}">
+        <button type="button" class="small-button" data-schedule-button="${escapeHtml(ticket.id)}">Set Dispatch Time</button>
       </div>
     </div>
   `;
@@ -1673,7 +1705,7 @@ function renderMasters() {
       .sort((a, b) => String(a.scheduledAt || "9999").localeCompare(String(b.scheduledAt || "9999")) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
     assignmentTimeBoard.innerHTML = timeTickets.length
       ? timeTickets.map(renderAssignmentTimeRow).join("")
-      : `<div class="empty mini">No active tickets need assignment timing.</div>`;
+      : `<div class="empty mini">No active tickets need dispatch timing.</div>`;
   }
 }
 

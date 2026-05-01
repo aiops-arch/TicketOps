@@ -2530,6 +2530,41 @@ input::placeholder {
   min-width: 0;
 }
 
+.ticket-flow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+  grid-column: 1 / span 2;
+}
+
+.ticket-flow span {
+  min-height: 25px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(74, 142, 162, 0.16);
+  border-radius: 8px;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.3);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.ticket-flow span.is-done {
+  border-color: rgba(47, 128, 93, 0.22);
+  background: rgba(86, 168, 117, 0.14);
+  color: #2c6945;
+}
+
+.ticket-flow span.is-active {
+  border-color: rgba(74, 199, 232, 0.34);
+  background: rgba(74, 199, 232, 0.16);
+  color: var(--teal-deep);
+}
+
 .progress-copy {
   display: flex;
   justify-content: space-between;
@@ -2582,6 +2617,19 @@ input::placeholder {
 .actions select {
   grid-column: 1 / -1;
   min-width: 0;
+}
+
+.actions .action-group-title {
+  grid-column: 1 / -1;
+  color: var(--teal-deep);
+  font-size: 11px;
+  font-weight: 1000;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.actions .assign-time-input {
+  grid-column: 1 / -1;
 }
 
 .actions .small-button {
@@ -4081,6 +4129,7 @@ input::placeholder {
   }
 
   .ticket-progress,
+  .ticket-flow,
   .badge-row,
   .ticket-photo,
   .ticket-card > .ticket-meta,
@@ -4091,6 +4140,10 @@ input::placeholder {
 
   .badge-row {
     flex-wrap: wrap;
+  }
+
+  .ticket-flow {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .actions,
