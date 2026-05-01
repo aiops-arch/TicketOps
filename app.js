@@ -1380,9 +1380,8 @@ function renderSelects() {
 
 function renderActionButtons(ticket, mode, canVerify, canWork) {
   const canDeleteAssignment = Boolean(ticket.assignedTo) && (currentUser?.role === "admin" || ticket.createdBy === currentUser?.id);
-  const canAssignFromRole = ["admin", "manager"].includes(currentUser?.role);
   const assignableForRole = state.technicians
-    .filter((tech) => currentUser?.role !== "manager" || ((tech.serviceOutlets || []).includes(ticket.outlet) && ["Present", "Busy", "Emergency Available"].includes(tech.status)));
+    .filter((tech) => ["Present", "Busy", "Emergency Available"].includes(tech.status));
   const assignmentOptions = assignableForRole
     .map((tech) => {
       const selected = tech.id === ((ticket.suggestedTechnician && assignableForRole.some((item) => item.id === ticket.suggestedTechnician.id) ? ticket.suggestedTechnician.id : "") || ticket.assignedTo) ? "selected" : "";
@@ -1400,20 +1399,6 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
       <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign Job</button>
       ${canDeleteAssignment ? `<button class="small-button danger" data-delete-assignment="${escapeHtml(ticket.id)}">Delete</button>` : ""}
       <button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Blocked">Blocked</button>
-    `;
-  }
-
-  if (mode === "manager" && canUseView("manager")) {
-    return `
-      ${canAssignFromRole && !["Closed", "Cancelled", "Resolved", "Verification Pending"].includes(ticket.status) && assignmentOptions ? `
-        <div class="action-group-title">Dispatch</div>
-        <select data-assign="${escapeHtml(ticket.id)}" aria-label="Assign ${escapeHtml(ticket.id)}">${assignmentOptions}</select>
-        <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign Job</button>
-      ` : ""}
-      ${canVerify ? `<div class="action-group-title">Review</div>` : ""}
-      ${canVerify ? `<button class="small-button success" data-status="${escapeHtml(ticket.id)}:Closed">Close Job</button>` : ""}
-      ${canVerify ? `<button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Reopened">Reject / Reopen</button>` : ""}
-      ${canDeleteAssignment ? `<button class="small-button danger" data-delete-assignment="${escapeHtml(ticket.id)}">Delete</button>` : ""}
     `;
   }
 

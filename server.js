@@ -1306,6 +1306,9 @@ async function createTicket(payload, user) {
   if (unknownAsset) {
     ticket.latestDetail = `Manager marked asset as Other / unknown${cleanArea ? ` in ${cleanArea}` : ""}`;
   }
+  if (user?.role === "manager" && requestedTechnician) {
+    return { status: 403, body: { error: "Only admin can assign technicians" } };
+  }
   const assignmentWindow = assignmentWindowStatus(db);
   if (requestedTechnician && !assignmentWindow.open) {
     return { status: 409, body: { error: `${assignmentWindow.reason}. Admin can edit Master > Dispatch Time.` } };
@@ -2237,10 +2240,10 @@ async function assignTicket(ticketId, technicianId, overrideReason, user, schedu
   const technician = db.technicians.find((tech) => tech.id === technicianId);
   if (!ticket) return { status: 404, body: { error: "Ticket not found" } };
   if (!technician) return { status: 404, body: { error: "Technician not found" } };
-  if (!user || !["admin", "manager"].includes(user.role)) {
-    return { status: 403, body: { error: "Only admin or manager can assign technicians" } };
+  if (!user || user.role !== "admin") {
+    return { status: 403, body: { error: "Only admin can assign technicians" } };
   }
-  if (["admin", "manager"].includes(user.role) && !canUserAccessOutlet(user, db, ticket.outlet)) {
+  if (!canUserAccessOutlet(user, db, ticket.outlet)) {
     return { status: 403, body: { error: "You can only assign tickets from your outlet access" } };
   }
   const assignmentWindow = assignmentWindowStatus(db);
@@ -2255,9 +2258,6 @@ async function assignTicket(ticketId, technicianId, overrideReason, user, schedu
     return { status: 403, body: { error: "Technician is not registered for this outlet" } };
   }
   const needsOverride = !ASSIGNABLE_STATUSES.includes(effectiveTechnician.status);
-  if (user.role === "manager" && needsOverride) {
-    return { status: 403, body: { error: "Manager can only assign available technicians who serve this outlet" } };
-  }
   if (needsOverride && !overrideReason) {
     return { status: 409, body: { error: "Override reason required for unavailable technician" } };
   }
@@ -3213,8 +3213,8 @@ app.patch(
   "/api/tickets/:id/assign",
   asyncRoute(async (req, res) => {
     const user = await userFromRequest(req);
-    if (!user || !["admin", "manager"].includes(user.role)) {
-      return res.status(403).json({ error: "Only admin or manager can assign technicians" });
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can assign technicians" });
     }
     const result = await assignTicket(req.params.id, req.body.technicianId, req.body.overrideReason, user, req.body.scheduledAt);
     res.status(result.status).json(result.body);
