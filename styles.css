@@ -4586,81 +4586,6 @@ input::placeholder {
   .ops-portal:has(.topbar:hover),
   .ops-portal:has(.topbar:focus-within) {
     padding-left: 0;
-    padding-bottom: 92px;
-  }
-
-  .ops-portal .topbar,
-  .ops-portal .topbar:hover,
-  .ops-portal .topbar:focus-within {
-    position: fixed;
-    left: 10px;
-    right: 10px;
-    bottom: max(10px, env(safe-area-inset-bottom));
-    top: auto;
-    z-index: 60;
-    display: block;
-    width: auto;
-    height: auto;
-    min-height: 0;
-    padding: 8px;
-    border: 1px solid rgba(148, 183, 188, 0.32);
-    border-radius: 18px;
-    background: rgba(247, 251, 252, 0.86);
-    box-shadow: 0 18px 40px rgba(14, 31, 41, 0.16);
-    backdrop-filter: blur(20px) saturate(150%);
-  }
-
-  .ops-portal .brand-lockup,
-  .ops-portal .topbar-actions {
-    display: none;
-  }
-
-  .ops-portal.has-session .topbar .tabs,
-  .ops-portal.has-session .topbar:hover .tabs,
-  .ops-portal.has-session .topbar:focus-within .tabs {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-  }
-
-  .ops-portal .topbar .tab,
-  .ops-portal .topbar:hover .tab,
-  .ops-portal .topbar:focus-within .tab {
-    flex: 0 0 auto;
-    min-width: 116px;
-    min-height: 46px;
-    justify-content: center;
-    scroll-snap-align: start;
-  }
-
-  .ops-portal .topbar .tab .tab-label,
-  .ops-portal .topbar:hover .tab .tab-label,
-  .ops-portal .topbar:focus-within .tab .tab-label {
-    max-width: 160px;
-    opacity: 1;
-  }
-
-  .ops-portal .app-shell {
-    padding: 12px 12px 96px;
-  }
-
-  .ops-portal .intel-strip {
-    display: flex;
-    grid-template-columns: none;
-    overflow-x: auto;
-  }
-
-  .ops-portal .intel-card {
-    flex: 0 0 min(72vw, 240px);
-  }
-}
-
-@media (max-width: 820px) and (orientation: portrait) {
-  .ops-portal,
-  .ops-portal:has(.topbar:hover),
-  .ops-portal:has(.topbar:focus-within) {
-    padding-left: 0;
     padding-bottom: 0;
   }
 
@@ -4668,8 +4593,6 @@ input::placeholder {
   .ops-portal .topbar:hover,
   .ops-portal .topbar:focus-within {
     top: 0;
-    right: 0;
-    bottom: auto;
     left: 0;
     z-index: 70;
     display: grid;
@@ -4677,11 +4600,11 @@ input::placeholder {
     align-items: center;
     gap: 8px;
     width: 100%;
-    min-height: 64px;
+    min-height: 62px;
     padding: 10px 12px;
     border: 0;
     border-bottom: 1px solid rgba(148, 183, 188, 0.24);
-    border-radius: 0 0 18px 18px;
+    border-radius: 0 0 16px 16px;
     background: rgba(247, 251, 252, 0.94);
     box-shadow: 0 18px 40px rgba(14, 31, 41, 0.16);
     backdrop-filter: blur(20px) saturate(150%);
@@ -4703,7 +4626,7 @@ input::placeholder {
   }
 
   .ops-portal .brand-lockup > div {
-    max-width: calc(100vw - 168px);
+    max-width: calc(100vw - 176px);
     opacity: 1;
     pointer-events: auto;
     transform: none;
@@ -4726,6 +4649,7 @@ input::placeholder {
     gap: 8px;
   }
 
+  .ops-portal .live-pill,
   .ops-portal .user-pill {
     display: none;
   }
@@ -4744,22 +4668,28 @@ input::placeholder {
 
   .ops-portal.has-session .topbar .tabs {
     position: fixed;
-    top: 72px;
-    right: 12px;
-    left: 12px;
+    top: 62px;
+    left: 0;
     z-index: 69;
     display: grid;
     gap: 8px;
-    max-height: calc(100dvh - 88px);
-    overflow: auto;
-    padding: 10px;
-    border: 1px solid rgba(148, 183, 188, 0.28);
-    border-radius: 18px;
+    align-content: start;
+    width: min(100vw, 340px);
+    max-height: calc(100dvh - 62px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+    padding: 12px;
+    border-right: 1px solid rgba(148, 183, 188, 0.28);
+    border-bottom: 1px solid rgba(148, 183, 188, 0.28);
+    border-radius: 0 0 18px 0;
     background: rgba(247, 251, 252, 0.98);
     box-shadow: 0 22px 54px rgba(14, 31, 41, 0.18);
     opacity: 0;
     pointer-events: none;
-    transform: translateY(-8px);
+    transform: translateX(-8px);
     transition: opacity 180ms var(--motion-smooth), transform 180ms var(--motion-smooth);
   }
 
@@ -4781,12 +4711,12 @@ input::placeholder {
   }
 
   .ops-portal .app-shell {
-    padding: 86px 12px 24px;
+    padding: 74px 12px 24px;
   }
 
   .ops-portal .login-screen {
     min-height: 100vh;
-    padding: 90px 12px 24px;
+    padding: 80px 12px 24px;
   }
 
   .ops-portal .intel-strip {
@@ -4796,10 +4726,60 @@ input::placeholder {
   }
 
   .ops-portal .intel-card {
-    flex: 0 0 min(74vw, 240px);
+    flex: 0 0 min(72vw, 240px);
   }
 
   .ops-portal.mobile-nav-open {
     overflow: hidden;
+  }
+}
+
+@media (max-width: 820px) and (orientation: landscape) {
+  .ops-portal .menu-toggle {
+    display: none;
+  }
+
+  .ops-portal .topbar,
+  .ops-portal .topbar:hover,
+  .ops-portal .topbar:focus-within {
+    width: 320px;
+  }
+
+  .ops-portal .brand-lockup > div {
+    max-width: 170px;
+  }
+
+  .ops-portal.has-session .topbar .tabs {
+    top: 0;
+    width: 320px;
+    max-height: 100dvh;
+    overflow-y: scroll;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable both-edges;
+    padding-top: 70px;
+    padding-bottom: 16px;
+    border-radius: 0;
+    border-right: 1px solid rgba(148, 183, 188, 0.28);
+    border-bottom: 0;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+
+  .ops-portal .app-shell {
+    padding-left: 332px;
+    padding-top: 16px;
+  }
+
+  .ops-portal .login-screen {
+    padding-left: 332px;
+    padding-top: 24px;
+  }
+
+  .ops-portal .intel-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
   }
 }

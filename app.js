@@ -109,8 +109,12 @@ function isPortraitMobileNav() {
   return window.matchMedia("(max-width: 820px) and (orientation: portrait)").matches;
 }
 
+function isLandscapeMobileNav() {
+  return window.matchMedia("(max-width: 820px) and (orientation: landscape)").matches;
+}
+
 function updateMobileNav() {
-  const open = mobileNavOpen && isPortraitMobileNav();
+  const open = isPortraitMobileNav() ? mobileNavOpen : isLandscapeMobileNav() ? true : mobileNavOpen;
   document.body.classList.toggle("mobile-nav-open", open);
   const toggle = document.querySelector("#sidebarToggle");
   if (toggle) {
@@ -558,7 +562,7 @@ function renderAuthChrome() {
   document.querySelector("#userPill").classList.remove("is-hidden");
   document.querySelector("#logoutButton").classList.remove("is-hidden");
   document.querySelector("#resetData").classList.toggle("is-hidden", currentUser?.role !== "admin");
-  document.querySelector("#sidebarToggle")?.classList.toggle("is-hidden", !currentUser);
+  document.querySelector("#sidebarToggle")?.classList.toggle("is-hidden", !currentUser || !isPortraitMobileNav());
   updateMobileNav();
 
   document.querySelectorAll(".tab[data-view]").forEach((button) => {
@@ -3434,4 +3438,5 @@ setInterval(() => {
 
 window.addEventListener("resize", () => {
   if (!isPortraitMobileNav()) closeMobileNav();
+  if (currentUser) renderAuthChrome();
 });
