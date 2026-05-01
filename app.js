@@ -1701,11 +1701,17 @@ function renderDashboard() {
 }
 
 function renderManager() {
-  const list = ticketsForCurrentUser(state.tickets)
-    .filter((ticket) => ticket.status !== "Closed");
+  const scopedTickets = ticketsForCurrentUser(state.tickets);
+  const list = scopedTickets.filter((ticket) => ticket.status !== "Closed");
+  const closed = scopedTickets
+    .filter((ticket) => ticket.status === "Closed")
+    .sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
   document.querySelector("#managerTickets").innerHTML = list.length
     ? list.map((ticket) => ticketCard(ticket, "manager")).join("")
     : `<div class="empty">No active tickets for this outlet.</div>`;
+  document.querySelector("#managerClosedTickets").innerHTML = closed.length
+    ? closed.map((ticket) => ticketCard(ticket, "archive")).join("")
+    : `<div class="empty">No closed tickets yet.</div>`;
 }
 
 function masterEntry({ className = "", editAttr, title, detail, deleteValue }) {
@@ -1878,6 +1884,9 @@ function renderAdmin() {
   const workload = state.reports.technicianWorkload || [];
   const today = todayInputValue();
   const openTickets = state.tickets.filter((ticket) => ticket.status !== "Closed");
+  const closedTickets = state.tickets
+    .filter((ticket) => ticket.status === "Closed")
+    .sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
   document.querySelector("#attendanceBoard").innerHTML = state.technicians.map((tech) => {
     const techLoad = workload.find((item) => item.id === tech.id)?.openTickets || 0;
     const statusClass = `status-${token(tech.status)}`;
@@ -1950,6 +1959,9 @@ function renderAdmin() {
   document.querySelector("#adminTickets").innerHTML = openTickets.length
     ? renderAdminTicketQueue(openTickets)
     : `<div class="empty">The admin queue is clear.</div>`;
+  document.querySelector("#adminClosedTickets").innerHTML = closedTickets.length
+    ? closedTickets.map((ticket) => ticketCard(ticket, "archive")).join("")
+    : `<div class="empty">No closed tickets yet.</div>`;
 }
 
 function renderAdminTicketQueue(tickets) {

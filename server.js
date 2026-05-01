@@ -1124,6 +1124,7 @@ function mapTicket(row, history = []) {
     resolutionPhotoUrls: row.resolution_photo_urls || [],
     createdBy: row.created_by || "",
     createdAt: row.created_at,
+    updatedAt: row.updated_at || row.created_at,
     history
   };
 }
