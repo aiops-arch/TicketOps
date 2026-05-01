@@ -5,6 +5,7 @@ const AUTH_STORAGE_KEY = "ticketops-auth-user-v2";
 const MAX_TICKET_PHOTOS = 5;
 const MAX_IMAGE_EDGE = 1600;
 const IMAGE_QUALITY = 0.72;
+const ASSIGNMENT_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const STATUS_STEPS = {
   New: { label: "Queued", percent: 12 },
@@ -70,6 +71,7 @@ let state = {
   assets: [],
   technicians: [],
   tickets: [],
+  assignmentTimeWindows: [],
   reports: {}
 };
 
@@ -81,6 +83,7 @@ let editingTechnicianId = "";
 let editingOutletName = "";
 let editingAssetId = "";
 let activeMasterTab = "outlets";
+let editingAssignmentWindowId = "";
 
 function readStoredUser() {
   try {
@@ -1348,8 +1351,6 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
     return `
       <div class="action-group-title">Dispatch</div>
       <select data-assign="${escapeHtml(ticket.id)}" aria-label="Assign ${escapeHtml(ticket.id)}">${assignmentOptions}</select>
-      <input class="assign-time-input" data-assign-time="${escapeHtml(ticket.id)}" type="datetime-local" value="${escapeHtml(dateTimeInputValue(ticket.scheduledAt))}" aria-label="Admin dispatch time for ${escapeHtml(ticket.id)}">
-      <button class="small-button" data-schedule-button="${escapeHtml(ticket.id)}">Set Dispatch Time</button>
       <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign Job</button>
       ${canDeleteAssignment ? `<button class="small-button danger" data-delete-assignment="${escapeHtml(ticket.id)}">Delete</button>` : ""}
       <button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Blocked">Blocked</button>
@@ -1621,23 +1622,81 @@ function masterEntry({ className = "", editAttr, title, detail, deleteValue }) {
   `;
 }
 
-function renderAssignmentTimeRow(ticket) {
-  const assigned = technicianById(ticket.assignedTo);
-  const releaseCopy = ticket.scheduledAt
-    ? `${isTicketReleased(ticket) ? "Released" : "Will release"} at ${formatDateTime(ticket.scheduledAt)}`
-    : "No dispatch time set. Technician sees it immediately after assignment.";
+function assignmentDayLabel(days = []) {
+  const clean = [...new Set(days.map((day) => Number(day)).filter((day) => Number.isInteger(day)))].sort((a, b) => a - b);
+  return clean.length === 7 ? "All days" : clean.map((day) => ASSIGNMENT_DAY_LABELS[day]).filter(Boolean).join(", ") || "No days";
+}
+
+function selectedAssignmentDays() {
+  return [...document.querySelectorAll('input[name="assignmentWindowDays"]:checked')].map((input) => Number(input.value));
+}
+
+function renderAssignmentTimeRow(window) {
   return `
-    <div class="master-row master-entry time-master-row priority-${token(ticket.priority)}">
+    <div class="master-row master-entry time-master-row ${window.active === false ? "is-paused" : ""}">
       <div class="master-row-main">
-        <strong>${escapeHtml(ticket.id)} / ${escapeHtml(ticket.outlet)} / ${escapeHtml(ticket.category)}</strong>
-        <span>${escapeHtml(ticket.status)} / ${escapeHtml(assigned?.name || "Unassigned")} / ${escapeHtml(releaseCopy)}</span>
+        <strong>${escapeHtml(window.name)}</strong>
+        <span>${escapeHtml(assignmentDayLabel(window.days))} / ${escapeHtml(window.startTime)} to ${escapeHtml(window.endTime)} / ${window.active === false ? "Paused" : "Active"}</span>
       </div>
       <div class="master-row-actions time-master-actions">
-        <input class="assign-time-input" data-assign-time="${escapeHtml(ticket.id)}" type="datetime-local" value="${escapeHtml(dateTimeInputValue(ticket.scheduledAt))}" aria-label="Admin dispatch time for ${escapeHtml(ticket.id)}">
-        <button type="button" class="small-button" data-schedule-button="${escapeHtml(ticket.id)}">Set Dispatch Time</button>
+        <button type="button" class="small-button" data-edit-assignment-window="${escapeHtml(window.id)}">Edit</button>
+        <button type="button" class="small-button danger master-delete-button" data-delete-master="assignment-windows:${escapeHtml(window.id)}:${escapeHtml(window.name)}">Delete</button>
       </div>
     </div>
   `;
+}
+
+async function saveAssignmentWindow(event) {
+  event.preventDefault();
+  if (!canUseView("masters") || currentUser?.role !== "admin") return;
+  const submitButton = event.currentTarget.querySelector("button[type='submit']");
+  const resultBox = document.querySelector("#masterCreateResult");
+  submitButton.disabled = true;
+  submitButton.textContent = editingAssignmentWindowId ? "Updating..." : "Adding...";
+  resultBox.textContent = "";
+  try {
+    const allDays = document.querySelector("#assignmentWindowAllDays").checked;
+    const window = await api(editingAssignmentWindowId ? `/api/assignment-windows/${editingAssignmentWindowId}` : "/api/assignment-windows", {
+      method: editingAssignmentWindowId ? "PATCH" : "POST",
+      body: JSON.stringify({
+        name: document.querySelector("#assignmentWindowName").value,
+        startTime: document.querySelector("#assignmentWindowStart").value,
+        endTime: document.querySelector("#assignmentWindowEnd").value,
+        allDays,
+        days: allDays ? [] : selectedAssignmentDays(),
+        active: true
+      })
+    });
+    const wasEditing = Boolean(editingAssignmentWindowId);
+    resetAssignmentWindowForm();
+    resultBox.textContent = `${window.name} dispatch window ${wasEditing ? "updated" : "added"}.`;
+    await loadState();
+  } catch (error) {
+    resultBox.textContent = error.message;
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = editingAssignmentWindowId ? "Update Window" : "Add Window";
+  }
+}
+
+function resetAssignmentWindowForm() {
+  editingAssignmentWindowId = "";
+  document.querySelector("#assignmentWindowForm")?.reset();
+  document.querySelector("#assignmentWindowSubmit").textContent = "Add Window";
+}
+
+function fillAssignmentWindowForm(windowId) {
+  const window = (state.assignmentTimeWindows || []).find((item) => item.id === windowId);
+  if (!window) return;
+  editingAssignmentWindowId = window.id;
+  document.querySelector("#assignmentWindowName").value = window.name || "";
+  document.querySelector("#assignmentWindowStart").value = window.startTime || "";
+  document.querySelector("#assignmentWindowEnd").value = window.endTime || "";
+  document.querySelector("#assignmentWindowAllDays").checked = (window.days || []).length === 7;
+  [...document.querySelectorAll('input[name="assignmentWindowDays"]')].forEach((input) => {
+    input.checked = (window.days || []).includes(Number(input.value));
+  });
+  document.querySelector("#assignmentWindowSubmit").textContent = "Update Window";
 }
 
 function renderMasters() {
@@ -1700,12 +1759,11 @@ function renderMasters() {
 
   const assignmentTimeBoard = document.querySelector("#assignmentTimeBoard");
   if (assignmentTimeBoard) {
-    const timeTickets = (state.tickets || [])
-      .filter((ticket) => !["Closed", "Cancelled"].includes(ticket.status))
-      .sort((a, b) => String(a.scheduledAt || "9999").localeCompare(String(b.scheduledAt || "9999")) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-    assignmentTimeBoard.innerHTML = timeTickets.length
-      ? timeTickets.map(renderAssignmentTimeRow).join("")
-      : `<div class="empty mini">No active tickets need dispatch timing.</div>`;
+    const windows = [...(state.assignmentTimeWindows || [])]
+      .sort((a, b) => String(a.startTime || "").localeCompare(String(b.startTime || "")) || String(a.name || "").localeCompare(String(b.name || "")));
+    assignmentTimeBoard.innerHTML = windows.length
+      ? windows.map(renderAssignmentTimeRow).join("")
+      : `<div class="empty mini">No dispatch time windows yet. Until a window is added, assignment is open all day.</div>`;
   }
 }
 
@@ -2938,6 +2996,8 @@ document.querySelector("#technicianForm").addEventListener("submit", saveTechnic
 document.querySelector("#technicianCancel").addEventListener("click", resetTechnicianForm);
 document.querySelector("#userAccessForm").addEventListener("submit", saveUserAccess);
 document.querySelector("#userAccessCancel").addEventListener("click", resetUserAccessForm);
+document.querySelector("#assignmentWindowForm").addEventListener("submit", saveAssignmentWindow);
+document.querySelector("#assignmentWindowCancel").addEventListener("click", resetAssignmentWindowForm);
 document.querySelector("#maintenanceRuleForm").addEventListener("submit", createMaintenanceRule);
 document.querySelector("#activeTechnician").addEventListener("change", renderTechnician);
 document.querySelectorAll("[data-master-tab]").forEach((button) => {
@@ -3049,6 +3109,12 @@ document.addEventListener("click", async (event) => {
   if (ruleToggle) {
     const [ruleId, active] = ruleToggle.dataset.ruleToggle.split(":");
     await toggleMaintenanceRule(ruleId, active === "true");
+    return;
+  }
+
+  const editAssignmentWindow = event.target.closest?.("[data-edit-assignment-window]");
+  if (editAssignmentWindow) {
+    fillAssignmentWindowForm(editAssignmentWindow.dataset.editAssignmentWindow);
     return;
   }
 
@@ -3230,6 +3296,13 @@ document.addEventListener("submit", async (event) => {
 });
 
 document.addEventListener("change", async (event) => {
+  if (event.target.id === "assignmentWindowAllDays") {
+    [...document.querySelectorAll('input[name="assignmentWindowDays"]')].forEach((input) => {
+      input.checked = event.target.checked;
+    });
+    return;
+  }
+
   const techId = event.target.dataset.techStatus;
   if (!techId) return;
   await updateTechnicianStatus(techId, event.target.value);

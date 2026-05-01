@@ -1393,10 +1393,50 @@ body.has-session .topbar:focus-within .tabs {
 #assetForm .small-button,
 #technicianForm .primary-button,
 #technicianForm .small-button,
+.assignment-window-form .primary-button,
+.assignment-window-form .small-button,
 .user-access-form .primary-button,
 .user-access-form .small-button {
   min-height: 39px;
   white-space: nowrap;
+}
+
+.assignment-window-form {
+  grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.6fr) minmax(120px, 0.6fr) 120px minmax(320px, 1.4fr) auto auto;
+  align-items: end;
+}
+
+.day-picker {
+  min-height: 39px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.day-picker label {
+  min-width: 46px;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid rgba(74, 142, 162, 0.18);
+  border-radius: 8px;
+  padding: 4px 7px;
+  background: rgba(255, 255, 255, 0.34);
+  color: var(--teal-deep);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.day-picker input {
+  width: auto;
+  min-height: 0 !important;
+}
+
+.master-row.is-paused {
+  opacity: 0.62;
 }
 
 .user-access-form {

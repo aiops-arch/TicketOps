@@ -35,6 +35,7 @@ const ATTENDANCE_STATUSES = ["Present", "Absent", "On Leave", "Off Duty", "Emerg
 const PASSWORD_ITERATIONS = 120000;
 const PASSWORD_KEY_LENGTH = 32;
 const PASSWORD_DIGEST = "sha256";
+const ASSIGNMENT_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
   const hash = crypto.pbkdf2Sync(String(password || ""), salt, PASSWORD_ITERATIONS, PASSWORD_KEY_LENGTH, PASSWORD_DIGEST).toString("hex");
@@ -210,6 +211,7 @@ const seed = {
   ],
   tasks: [],
   maintenanceRules: [],
+  assignmentTimeWindows: [],
   technicians: [
     { id: "T1", name: "Vicky", skill: "AC", status: "Present", workload: 0, quality: 92, serviceOutlets: ["aiko surat", "Capiche"] },
     { id: "T2", name: "Rahul Patil", skill: "Refrigeration", status: "Present", workload: 0, quality: 95, serviceOutlets: ["aiko surat"] },
@@ -337,6 +339,7 @@ function readJsonDb() {
   if (!Array.isArray(db.categories)) db.categories = seed.categories;
   if (!Array.isArray(db.assets)) db.assets = seed.assets;
   if (!Array.isArray(db.tasks)) db.tasks = [];
+  if (!Array.isArray(db.assignmentTimeWindows)) db.assignmentTimeWindows = [];
   if (!Array.isArray(db.maintenanceRules)) {
     db.maintenanceRules = defaultMaintenanceRules();
     shouldPersist = true;
@@ -395,6 +398,68 @@ function normalizeScheduledAt(value) {
   return Number.isNaN(date.getTime()) ? "" : date.toISOString();
 }
 
+function normalizeTimeValue(value) {
+  const raw = String(value || "").trim();
+  return /^\d{2}:\d{2}$/.test(raw) ? raw : "";
+}
+
+function normalizeAssignmentDays(days, allDays = false) {
+  if (allDays) return [...ASSIGNMENT_DAYS];
+  const clean = [...new Set((Array.isArray(days) ? days : [])
+    .map((day) => Number(day))
+    .filter((day) => Number.isInteger(day) && ASSIGNMENT_DAYS.includes(day)))];
+  return clean.sort((a, b) => a - b);
+}
+
+function assignmentWindowPayload(payload, db, existing = null) {
+  const name = String(payload.name || existing?.name || "").trim();
+  const days = normalizeAssignmentDays(payload.days, Boolean(payload.allDays));
+  const startTime = normalizeTimeValue(payload.startTime || payload.start_time || existing?.startTime);
+  const endTime = normalizeTimeValue(payload.endTime || payload.end_time || existing?.endTime);
+  const active = payload.active === undefined ? existing?.active !== false : Boolean(payload.active);
+  if (!name) return { error: "Window name is required" };
+  if (!days.length) return { error: "Select at least one day" };
+  if (!startTime || !endTime) return { error: "Start and end time are required" };
+  if (startTime >= endTime) return { error: "End time must be after start time" };
+  return {
+    id: existing?.id || nextAssignmentWindowId(db.assignmentTimeWindows || []),
+    name,
+    days,
+    startTime,
+    endTime,
+    active
+  };
+}
+
+function currentAssignmentClock(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(date);
+  const part = (type) => parts.find((item) => item.type === type)?.value || "";
+  const weekdayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return {
+    day: weekdayMap[part("weekday")] ?? date.getDay(),
+    time: `${part("hour").padStart(2, "0")}:${part("minute").padStart(2, "0")}`
+  };
+}
+
+function assignmentWindowStatus(db, date = new Date()) {
+  const windows = (db.assignmentTimeWindows || []).filter((window) => window.active !== false);
+  if (!windows.length) return { open: true, reason: "No assignment time windows configured" };
+  const now = currentAssignmentClock(date);
+  const match = windows.find((window) =>
+    (window.days || []).includes(now.day) &&
+    now.time >= window.startTime &&
+    now.time <= window.endTime
+  );
+  if (match) return { open: true, window: match, reason: `${match.name} is open` };
+  return { open: false, reason: "Ticket assignment is outside the admin time window" };
+}
+
 function isTicketScheduleDue(ticket) {
   if (!ticket?.scheduledAt) return true;
   const scheduled = new Date(ticket.scheduledAt).getTime();
@@ -436,6 +501,14 @@ function nextMaintenanceRuleId(rules) {
     return Number.isFinite(number) ? Math.max(highest, number) : highest;
   }, 0);
   return `MR-${max + 1}`;
+}
+
+function nextAssignmentWindowId(windows) {
+  const max = (windows || []).reduce((highest, window) => {
+    const number = Number(String(window.id || "").replace("AW-", ""));
+    return Number.isFinite(number) ? Math.max(highest, number) : highest;
+  }, 0);
+  return `AW-${max + 1}`;
 }
 
 function slugUsername(name) {
@@ -1060,13 +1133,25 @@ function mapMaintenanceRule(row) {
   };
 }
 
+function mapAssignmentWindow(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    days: row.days || [],
+    startTime: String(row.start_time || "").slice(0, 5),
+    endTime: String(row.end_time || "").slice(0, 5),
+    active: row.active !== false,
+    createdAt: row.created_at
+  };
+}
+
 async function requireSupabase(result) {
   if (result.error) throw result.error;
   return result.data;
 }
 
 async function loadSupabaseDb() {
-  const [outletsResult, categoriesResult, assetsResult, tasksResult, techniciansResult, ticketsResult, historyResult, attendancePlansResult, maintenanceRulesResult] = await Promise.all([
+  const [outletsResult, categoriesResult, assetsResult, tasksResult, techniciansResult, ticketsResult, historyResult, attendancePlansResult, maintenanceRulesResult, assignmentWindowsResult] = await Promise.all([
     supabase.from("outlets").select("name,branch,address,latitude,longitude").order("name"),
     supabase.from("categories").select("id,name,description").order("name"),
     supabase.from("assets").select("id,outlet,category,name,code,status,notes,created_at").order("created_at", { ascending: false }),
@@ -1075,7 +1160,8 @@ async function loadSupabaseDb() {
     supabase.from("tickets").select("*").order("created_at", { ascending: false }),
     supabase.from("ticket_history").select("ticket_id,action,created_at").order("created_at", { ascending: true }),
     supabase.from("attendance_plans").select("id,technician_id,status,from_date,to_date,reason,created_by,active,created_at").order("from_date"),
-    supabase.from("maintenance_rules").select("id,category,title,phase,rule_group,frequency,active,created_at").order("created_at", { ascending: false })
+    supabase.from("maintenance_rules").select("id,category,title,phase,rule_group,frequency,active,created_at").order("created_at", { ascending: false }),
+    supabase.from("assignment_time_windows").select("id,name,days,start_time,end_time,active,created_at").order("created_at", { ascending: false })
   ]);
 
   const outlets = await requireSupabase(outletsResult);
@@ -1087,6 +1173,7 @@ async function loadSupabaseDb() {
   const history = await requireSupabase(historyResult);
   const attendancePlans = await requireSupabase(attendancePlansResult);
   const maintenanceRules = await requireSupabase(maintenanceRulesResult);
+  const assignmentTimeWindows = await requireSupabase(assignmentWindowsResult);
 
   return {
     outlets: outlets.map((outlet) => outlet.name),
@@ -1103,6 +1190,7 @@ async function loadSupabaseDb() {
     assets: assets.map(mapAsset),
     tasks: tasks.map(mapTask),
     maintenanceRules: maintenanceRules.map(mapMaintenanceRule),
+    assignmentTimeWindows: assignmentTimeWindows.map(mapAssignmentWindow),
     technicians: technicians.map((tech) => ({
       ...tech,
       serviceOutlets: tech.service_outlets || [],
@@ -1177,7 +1265,11 @@ async function createTicket(payload, user) {
   if (unknownAsset) {
     ticket.latestDetail = `Manager marked asset as Other / unknown${cleanArea ? ` in ${cleanArea}` : ""}`;
   }
-  const autoAssignedTechnician = requestedTechnician || smartSuggestion(db, ticket);
+  const assignmentWindow = assignmentWindowStatus(db);
+  if (requestedTechnician && !assignmentWindow.open) {
+    return { status: 409, body: { error: `${assignmentWindow.reason}. Admin can edit Master > Dispatch Time.` } };
+  }
+  const autoAssignedTechnician = assignmentWindow.open ? requestedTechnician || smartSuggestion(db, ticket) : null;
   if (autoAssignedTechnician) {
     ticket.status = "Assigned";
     ticket.assignedTo = autoAssignedTechnician.id;
@@ -1185,6 +1277,8 @@ async function createTicket(payload, user) {
     ticket.latestDetail = requestedTechnician
       ? `${ticket.latestDetail ? `${ticket.latestDetail}. ` : ""}Assigned to ${autoAssignedTechnician.name} by ${user?.name || user?.role || "user"}`
       : `${ticket.latestDetail ? `${ticket.latestDetail}. ` : ""}Auto assigned to ${autoAssignedTechnician.name}: ${autoAssignedTechnician.dispatchReason}`;
+  } else if (!assignmentWindow.open) {
+    ticket.latestDetail = `${ticket.latestDetail ? `${ticket.latestDetail}. ` : ""}${assignmentWindow.reason}. Waiting for assignment window.`;
   }
 
   if (useSupabase) {
@@ -1878,6 +1972,66 @@ async function updateAdminUser(userId, payload) {
   return { status: 200, body: { ok: true } };
 }
 
+async function createAssignmentWindow(payload) {
+  const db = await loadDb();
+  const window = assignmentWindowPayload(payload, db);
+  if (window.error) return { status: 400, body: { error: window.error } };
+
+  if (useSupabase) {
+    await requireSupabase(await supabase.from("assignment_time_windows").insert({
+      id: window.id,
+      name: window.name,
+      days: window.days,
+      start_time: window.startTime,
+      end_time: window.endTime,
+      active: window.active
+    }));
+    return { status: 201, body: window };
+  }
+
+  db.assignmentTimeWindows = [window, ...(db.assignmentTimeWindows || [])];
+  writeJsonDb(db);
+  return { status: 201, body: window };
+}
+
+async function updateAssignmentWindow(windowId, payload) {
+  const db = await loadDb();
+  const existing = (db.assignmentTimeWindows || []).find((window) => window.id === windowId);
+  if (!existing) return { status: 404, body: { error: "Assignment time window not found" } };
+  const window = assignmentWindowPayload(payload, db, existing);
+  if (window.error) return { status: 400, body: { error: window.error } };
+
+  if (useSupabase) {
+    await requireSupabase(await supabase.from("assignment_time_windows").update({
+      name: window.name,
+      days: window.days,
+      start_time: window.startTime,
+      end_time: window.endTime,
+      active: window.active,
+      updated_at: new Date().toISOString()
+    }).eq("id", windowId));
+    return { status: 200, body: window };
+  }
+
+  db.assignmentTimeWindows = (db.assignmentTimeWindows || []).map((item) => item.id === windowId ? window : item);
+  writeJsonDb(db);
+  return { status: 200, body: window };
+}
+
+async function deleteAssignmentWindow(windowId) {
+  const db = await loadDb();
+  if (!(db.assignmentTimeWindows || []).some((window) => window.id === windowId)) {
+    return { status: 404, body: { error: "Assignment time window not found" } };
+  }
+  if (useSupabase) {
+    await requireSupabase(await supabase.from("assignment_time_windows").delete().eq("id", windowId));
+    return { status: 200, body: { ok: true } };
+  }
+  db.assignmentTimeWindows = (db.assignmentTimeWindows || []).filter((window) => window.id !== windowId);
+  writeJsonDb(db);
+  return { status: 200, body: { ok: true } };
+}
+
 async function createMaintenanceRule(payload) {
   const db = await loadDb();
   const category = String(payload.category || "").trim();
@@ -1990,6 +2144,10 @@ async function assignTicket(ticketId, technicianId, overrideReason, user, schedu
   }
   if (["admin", "manager"].includes(user.role) && !canUserAccessOutlet(user, db, ticket.outlet)) {
     return { status: 403, body: { error: "You can only assign tickets from your outlet access" } };
+  }
+  const assignmentWindow = assignmentWindowStatus(db);
+  if (!assignmentWindow.open) {
+    return { status: 409, body: { error: `${assignmentWindow.reason}. Admin can edit Master > Dispatch Time.` } };
   }
 
   const effectiveTechnician = technicianWithAttendance(db, technician);
@@ -2846,6 +3004,42 @@ app.delete(
       return res.status(403).json({ error: "Only admin can delete users" });
     }
     const result = await deleteAdminUser(req.params.id, user);
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.post(
+  "/api/assignment-windows",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can create assignment time windows" });
+    }
+    const result = await createAssignmentWindow(req.body);
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.patch(
+  "/api/assignment-windows/:id",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can update assignment time windows" });
+    }
+    const result = await updateAssignmentWindow(req.params.id, req.body);
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.delete(
+  "/api/assignment-windows/:id",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can delete assignment time windows" });
+    }
+    const result = await deleteAssignmentWindow(req.params.id);
     res.status(result.status).json(result.body);
   })
 );

@@ -527,8 +527,37 @@
                   <span class="section-kicker">Admin Only</span>
                   <h3>Dispatch Time</h3>
                 </div>
-                <span class="heading-chip">Release jobs at the right time</span>
+                <span class="heading-chip">Assignment allowed only in these windows</span>
               </div>
+              <form id="assignmentWindowForm" class="master-form assignment-window-form">
+                <label>
+                  Window name
+                  <input id="assignmentWindowName" required placeholder="Example: Morning dispatch">
+                </label>
+                <label>
+                  Start time
+                  <input id="assignmentWindowStart" type="time" required>
+                </label>
+                <label>
+                  End time
+                  <input id="assignmentWindowEnd" type="time" required>
+                </label>
+                <label class="checkline">
+                  <input id="assignmentWindowAllDays" type="checkbox">
+                  <span>All days</span>
+                </label>
+                <div class="day-picker" aria-label="Dispatch days">
+                  <label><input type="checkbox" name="assignmentWindowDays" value="1"><span>Mon</span></label>
+                  <label><input type="checkbox" name="assignmentWindowDays" value="2"><span>Tue</span></label>
+                  <label><input type="checkbox" name="assignmentWindowDays" value="3"><span>Wed</span></label>
+                  <label><input type="checkbox" name="assignmentWindowDays" value="4"><span>Thu</span></label>
+                  <label><input type="checkbox" name="assignmentWindowDays" value="5"><span>Fri</span></label>
+                  <label><input type="checkbox" name="assignmentWindowDays" value="6"><span>Sat</span></label>
+                  <label><input type="checkbox" name="assignmentWindowDays" value="0"><span>Sun</span></label>
+                </div>
+                <button id="assignmentWindowSubmit" type="submit" class="primary-button">Add Window</button>
+                <button id="assignmentWindowCancel" type="button" class="small-button">Clear</button>
+              </form>
               <div id="assignmentTimeBoard" class="master-list"></div>
             </section>
           </div>

@@ -138,6 +138,19 @@ create table if not exists maintenance_rules (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists assignment_time_windows (
+  id text primary key,
+  name text not null,
+  days integer[] not null default '{}',
+  start_time time not null,
+  end_time time not null,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (array_length(days, 1) > 0),
+  check (start_time < end_time)
+);
+
 create table if not exists ticket_history (
   id uuid primary key default gen_random_uuid(),
   ticket_id text not null references tickets(id) on delete cascade,
@@ -178,6 +191,7 @@ create index if not exists idx_assets_status on assets(status);
 create index if not exists idx_tasks_assigned_date on tasks(assigned_to, task_date);
 create index if not exists idx_tasks_status on tasks(status);
 create index if not exists idx_tasks_asset on tasks(asset_id);
+create index if not exists idx_assignment_time_windows_active on assignment_time_windows(active);
 create index if not exists idx_maintenance_rules_category on maintenance_rules(category);
 create index if not exists idx_maintenance_rules_frequency_active on maintenance_rules(frequency, active);
 create index if not exists idx_ticket_history_ticket_id on ticket_history(ticket_id);
