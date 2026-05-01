@@ -85,6 +85,7 @@ let editingAssetId = "";
 let activeMasterTab = "outlets";
 let editingAssignmentWindowId = "";
 let editingMaintenanceRuleId = "";
+let mobileNavOpen = false;
 
 function readStoredUser() {
   try {
@@ -102,6 +103,35 @@ function saveUser(user) {
 function clearUser() {
   currentUser = null;
   localStorage.removeItem(AUTH_STORAGE_KEY);
+}
+
+function isPortraitMobileNav() {
+  return window.matchMedia("(max-width: 820px) and (orientation: portrait)").matches;
+}
+
+function updateMobileNav() {
+  const open = mobileNavOpen && isPortraitMobileNav();
+  document.body.classList.toggle("mobile-nav-open", open);
+  const toggle = document.querySelector("#sidebarToggle");
+  if (toggle) {
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    toggle.textContent = open ? "✕" : "☰";
+  }
+}
+
+function openMobileNav() {
+  mobileNavOpen = true;
+  updateMobileNav();
+}
+
+function closeMobileNav() {
+  mobileNavOpen = false;
+  updateMobileNav();
+}
+
+function toggleMobileNav() {
+  mobileNavOpen = !mobileNavOpen;
+  updateMobileNav();
 }
 
 function escapeHtml(value) {
@@ -502,6 +532,7 @@ async function handleLogin(event) {
 }
 
 function showLogin() {
+  closeMobileNav();
   document.body.classList.remove("has-session");
   document.querySelector("#loginScreen").classList.remove("is-hidden");
   document.querySelector("#appShell").classList.add("is-hidden");
@@ -527,6 +558,8 @@ function renderAuthChrome() {
   document.querySelector("#userPill").classList.remove("is-hidden");
   document.querySelector("#logoutButton").classList.remove("is-hidden");
   document.querySelector("#resetData").classList.toggle("is-hidden", currentUser?.role !== "admin");
+  document.querySelector("#sidebarToggle")?.classList.toggle("is-hidden", !currentUser);
+  updateMobileNav();
 
   document.querySelectorAll(".tab[data-view]").forEach((button) => {
     const view = button.dataset.view;
@@ -2966,6 +2999,7 @@ function switchView(viewName) {
   document.body.dataset.view = nextView;
   document.querySelectorAll(".tab[data-view]").forEach((tab) => tab.classList.toggle("is-active", tab.dataset.view === nextView));
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("is-active", view.id === nextView));
+  closeMobileNav();
 }
 
 function showConnectionError(error) {
@@ -3052,6 +3086,10 @@ document.querySelectorAll("[data-master-tab]").forEach((button) => {
 document.querySelector("#logoutButton").addEventListener("click", () => {
   clearUser();
   showLogin();
+});
+document.querySelector("#sidebarToggle").addEventListener("click", () => {
+  if (!currentUser) return;
+  toggleMobileNav();
 });
 document.querySelector("#resetData").addEventListener("click", async () => {
   if (currentUser?.role !== "admin") return;
@@ -3264,6 +3302,7 @@ document.addEventListener("click", async (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeAssetDetail();
+  if (event.key === "Escape") closeMobileNav();
 });
 
 document.addEventListener("submit", async (event) => {
@@ -3392,3 +3431,7 @@ setInterval(() => {
   if (document.hidden || !currentUser) return;
   loadState().catch((error) => console.warn(error));
 }, 15000);
+
+window.addEventListener("resize", () => {
+  if (!isPortraitMobileNav()) closeMobileNav();
+});
