@@ -1444,6 +1444,14 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
     })
     .join("");
 
+  if (canVerify && ["admin", "manager"].includes(mode) && ["admin", "manager"].includes(currentUser?.role)) {
+    return `
+      <div class="action-group-title">Verification</div>
+      <button class="small-button success" data-status="${escapeHtml(ticket.id)}:Closed">Approve + Close</button>
+      <button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Reopened">Reopen</button>
+    `;
+  }
+
   if (mode === "admin" && canUseView("admin")) {
     return `
       <div class="action-group-title">Dispatch</div>
@@ -1525,6 +1533,12 @@ function ticketCard(ticket, mode) {
         <button class="ticket-photo" type="button" data-photo-open="${escapeHtml(ticket.id)}" aria-label="Open issue photo for ${escapeHtml(ticket.id)}">
           <img src="${escapeHtml(photoUrls[0])}" alt="Issue photo for ${escapeHtml(ticket.id)}">
           <span>${photoUrls.length} issue photo${photoUrls.length === 1 ? "" : "s"} attached</span>
+        </button>
+      ` : ""}
+      ${resolutionPhotoUrls.length ? `
+        <button class="ticket-photo completion-photo" type="button" data-resolution-photo-open="${escapeHtml(ticket.id)}" aria-label="Open completion photo for ${escapeHtml(ticket.id)}">
+          <img src="${escapeHtml(resolutionPhotoUrls[0])}" alt="Completion photo for ${escapeHtml(ticket.id)}">
+          <span>${resolutionPhotoUrls.length} completion photo${resolutionPhotoUrls.length === 1 ? "" : "s"} attached</span>
         </button>
       ` : ""}
       ${dispatchReason ? `<p class="ticket-meta dispatch-confidence">Dispatch: ${escapeHtml(dispatchReason)}</p>` : ""}
@@ -3181,6 +3195,20 @@ document.addEventListener("click", async (event) => {
       const viewer = window.open("", "_blank");
       if (viewer) {
         viewer.document.write(`<title>${escapeHtml(ticket.id)} issue photos</title>${photos.map((photo, index) => `<img src="${escapeHtml(photo)}" alt="Issue photo ${index + 1}" style="max-width:100%;height:auto;display:block;margin:0 auto 16px;">`).join("")}`);
+        viewer.document.close();
+      }
+    }
+    return;
+  }
+
+  const resolutionPhotoButton = event.target.closest?.("[data-resolution-photo-open]");
+  if (resolutionPhotoButton) {
+    const ticket = state.tickets.find((item) => item.id === resolutionPhotoButton.dataset.resolutionPhotoOpen);
+    const photos = (ticket?.resolutionPhotoUrls || []).filter(Boolean);
+    if (photos.length) {
+      const viewer = window.open("", "_blank");
+      if (viewer) {
+        viewer.document.write(`<title>${escapeHtml(ticket.id)} completion photos</title>${photos.map((photo, index) => `<img src="${escapeHtml(photo)}" alt="Completion photo ${index + 1}" style="max-width:100%;height:auto;display:block;margin:0 auto 16px;">`).join("")}`);
         viewer.document.close();
       }
     }
