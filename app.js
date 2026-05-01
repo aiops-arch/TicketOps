@@ -84,6 +84,7 @@ let editingOutletName = "";
 let editingAssetId = "";
 let activeMasterTab = "outlets";
 let editingAssignmentWindowId = "";
+let editingMaintenanceRuleId = "";
 
 function readStoredUser() {
   try {
@@ -324,12 +325,22 @@ function technicianOpenWorkload(technicianId) {
 function technicianPendingTasks(technicianId) {
   const today = todayInputValue();
   return (state.tasks || []).filter((task) =>
-    task.assignedTo === technicianId && task.date === today && task.status !== "Done"
+    task.assignedTo === technicianId && task.date === today && task.status === "Pending"
   ).length;
 }
 
 function technicianSkillLabel() {
   return "All skills";
+}
+
+function maintenanceRuleTechnicianLabel(rule) {
+  if (!rule?.assignedTechnicianId) return "Balanced";
+  return technicianById(rule.assignedTechnicianId)?.name || "Assigned technician";
+}
+
+function maintenanceRuleForTask(task) {
+  if (!task?.ruleId) return null;
+  return (state.maintenanceRules || []).find((rule) => rule.id === task.ruleId) || null;
 }
 
 function technicianAssignmentSummary(tech, ticket) {
@@ -1032,28 +1043,50 @@ async function createMaintenanceRule(event) {
   if (!canUseView("scheduler")) return;
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
   const resultBox = document.querySelector("#ruleCreateResult");
+  const isEditing = Boolean(editingMaintenanceRuleId);
   submitButton.disabled = true;
-  submitButton.textContent = "Adding...";
+  submitButton.textContent = isEditing ? "Updating..." : "Adding...";
   resultBox.textContent = "";
   try {
-    const rule = await api("/api/maintenance-rules", {
-      method: "POST",
+    const rule = await api(isEditing ? `/api/maintenance-rules/${editingMaintenanceRuleId}` : "/api/maintenance-rules", {
+      method: isEditing ? "PATCH" : "POST",
       body: JSON.stringify({
         category: document.querySelector("#ruleCategory").value,
         title: document.querySelector("#ruleTitle").value,
         phase: document.querySelector("#rulePhase").value,
-        frequency: document.querySelector("#ruleFrequency").value
+        frequency: document.querySelector("#ruleFrequency").value,
+        assignedTechnicianId: document.querySelector("#ruleTechnician").value,
+        allowOutsideWindow: document.querySelector("#ruleAllowOutsideWindow").checked
       })
     });
-    document.querySelector("#ruleTitle").value = "";
-    resultBox.textContent = `${rule.frequency} rule added for ${rule.category}.`;
+    resetMaintenanceRuleForm();
+    resultBox.textContent = `${rule.frequency} rule ${isEditing ? "updated" : "added"} for ${rule.category}.`;
     await loadState();
   } catch (error) {
     resultBox.textContent = error.message;
   } finally {
     submitButton.disabled = false;
-    submitButton.textContent = "Add Rule";
+    submitButton.textContent = isEditing ? "Update Rule" : "Add Rule";
   }
+}
+
+function resetMaintenanceRuleForm() {
+  editingMaintenanceRuleId = "";
+  document.querySelector("#maintenanceRuleForm")?.reset();
+  document.querySelector("#ruleSubmit").textContent = "Add Rule";
+}
+
+function fillMaintenanceRuleForm(ruleId) {
+  const rule = (state.maintenanceRules || []).find((item) => item.id === ruleId);
+  if (!rule) return;
+  editingMaintenanceRuleId = rule.id;
+  document.querySelector("#ruleCategory").value = rule.category || "";
+  document.querySelector("#ruleTitle").value = rule.title || "";
+  document.querySelector("#rulePhase").value = rule.phase || "Checklist";
+  document.querySelector("#ruleFrequency").value = rule.frequency || "daily";
+  document.querySelector("#ruleTechnician").value = rule.assignedTechnicianId || "";
+  document.querySelector("#ruleAllowOutsideWindow").checked = Boolean(rule.allowOutsideWindow);
+  document.querySelector("#ruleSubmit").textContent = "Update Rule";
 }
 
 async function toggleMaintenanceRule(ruleId, active) {
@@ -1106,9 +1139,10 @@ async function collectTaskEvidence(task) {
 }
 
 async function updateTaskStatus(taskId, status = "Done", evidence = {}) {
+  const normalizedStatus = String(status || "").trim().toLowerCase().replace(/\s+/g, "_");
   await api(`/api/technician/tasks/${taskId}/status`, {
     method: "POST",
-    body: JSON.stringify({ status: status.toLowerCase(), ...evidence })
+    body: JSON.stringify({ status: normalizedStatus, ...evidence })
   });
   await loadState();
 }
@@ -1165,6 +1199,7 @@ function renderSelects() {
   const accessOutlets = document.querySelector("#accessOutlets");
   const ticketCategory = document.querySelector("#ticketCategory");
   const ruleCategory = document.querySelector("#ruleCategory");
+  const ruleTechnician = document.querySelector("#ruleTechnician");
   const activeTechnician = document.querySelector("#activeTechnician");
   const activeTechnicianControl = document.querySelector("#activeTechnicianControl");
   const selectedTechnician = activeTechnician.value;
@@ -1178,6 +1213,7 @@ function renderSelects() {
   const selectedAccessSkill = accessSkill?.value;
   const selectedAccessOutlets = selectedOptionValues(accessOutlets);
   const selectedTicketCategory = ticketCategory?.value;
+  const selectedRuleTechnician = ruleTechnician?.value;
   const categories = state.categories?.length
     ? state.categories
     : ["AC", "Refrigeration", "Electrical", "Plumbing", "Kitchen Equipment", "Gas", "POS / IT", "Civil"].map((name) => ({ name }));
@@ -1287,6 +1323,16 @@ function renderSelects() {
       .join("");
     if (selectedRuleCategory && categories.some((category) => category.name === selectedRuleCategory)) {
       ruleCategory.value = selectedRuleCategory;
+    }
+  }
+
+  if (ruleTechnician) {
+    ruleTechnician.innerHTML = [
+      `<option value="">Balanced / auto assign</option>`,
+      ...(state.technicians || []).map((tech) => `<option value="${escapeHtml(tech.id)}">${escapeHtml(tech.name)}</option>`)
+    ].join("");
+    if (selectedRuleTechnician && (state.technicians || []).some((tech) => tech.id === selectedRuleTechnician)) {
+      ruleTechnician.value = selectedRuleTechnician;
     }
   }
 
@@ -1809,7 +1855,8 @@ function renderAdmin() {
       const techTasks = (state.tasks || []).filter((task) => task.assignedTo === tech.id);
       const todayTasks = techTasks.filter((task) => task.date === today);
       const doneTasks = todayTasks.filter((task) => task.status === "Done").length;
-      const pendingTasks = todayTasks.length - doneTasks;
+      const pendingTasks = todayTasks.filter((task) => task.status === "Pending").length;
+      const notDoneTasks = todayTasks.filter((task) => task.status === "Not Done").length;
       const blockedTickets = techTickets.filter((ticket) => ticket.status === "Blocked").length;
       const nextTicket = techTickets.find((ticket) => ["Assigned", "Acknowledged", "In Progress", "Blocked"].includes(ticket.status));
       const nextTask = todayTasks.find((task) => task.status !== "Done");
@@ -1832,6 +1879,7 @@ function renderAdmin() {
           <div class="admin-tech-stats">
             <span><strong>${doneTasks}</strong><small>done</small></span>
             <span><strong>${pendingTasks}</strong><small>pending</small></span>
+            <span><strong>${notDoneTasks}</strong><small>not done</small></span>
             <span><strong>${techTickets.length}</strong><small>tickets</small></span>
             <span><strong>${blockedTickets}</strong><small>blocked</small></span>
           </div>
@@ -1899,11 +1947,14 @@ function renderMaintenanceScheduler() {
       <article class="rule-row ${rule.active === false ? "is-paused" : ""}">
         <div>
           <strong>${escapeHtml(rule.title)}</strong>
-          <span>${escapeHtml(rule.category)} / ${escapeHtml(rule.phase || "Checklist")} / ${escapeHtml(rule.frequency)}</span>
+          <span>${escapeHtml(rule.category)} / ${escapeHtml(rule.phase || "Checklist")} / ${escapeHtml(rule.frequency)} / ${escapeHtml(maintenanceRuleTechnicianLabel(rule))}${rule.allowOutsideWindow ? " / outside window allowed" : ""}</span>
         </div>
-        <button class="small-button ${rule.active === false ? "success" : "warning"}" data-rule-toggle="${escapeHtml(rule.id)}:${rule.active === false ? "true" : "false"}">
-          ${rule.active === false ? "Enable" : "Pause"}
-        </button>
+        <div class="rule-actions">
+          <button class="small-button" data-edit-rule="${escapeHtml(rule.id)}">Edit</button>
+          <button class="small-button ${rule.active === false ? "success" : "warning"}" data-rule-toggle="${escapeHtml(rule.id)}:${rule.active === false ? "true" : "false"}">
+            ${rule.active === false ? "Enable" : "Pause"}
+          </button>
+        </div>
       </article>
     `).join("")
     : `<div class="empty mini">No scheduler rules yet.</div>`;
@@ -1924,7 +1975,9 @@ function renderMaintenanceScheduler() {
     const outletAssets = (state.assets || []).filter((asset) => asset.status === "Active" && asset.outlet === outlet);
     previewRules.forEach((rule) => {
       const asset = outletAssets.find((item) => item.category === rule.category) || outletAssets[0];
-      const technician = pickPreviewTechnician();
+      const technician = rule.assignedTechnicianId
+        ? previewTechnicians.find((tech) => tech.id === rule.assignedTechnicianId) || pickPreviewTechnician()
+        : pickPreviewTechnician();
       if (!asset || !technician) return;
       preview.push({ rule, outlet, asset, technician });
       previewLoad.set(technician.id, (previewLoad.get(technician.id) || 0) + 1);
@@ -1936,7 +1989,7 @@ function renderMaintenanceScheduler() {
       <article class="rule-row">
         <div>
           <strong>${escapeHtml(item.rule.phase || "Checklist")}: ${escapeHtml(item.rule.title)}</strong>
-          <span>${escapeHtml(item.outlet)} / ${escapeHtml(item.asset.name)} / ${escapeHtml(item.technician.name)}</span>
+          <span>${escapeHtml(item.outlet)} / ${escapeHtml(item.asset.name)} / ${escapeHtml(item.technician.name)}${item.rule.allowOutsideWindow ? " / outside window allowed" : ""}</span>
         </div>
       </article>
     `).join("") + (preview.length > 12 ? `<div class="empty mini">${preview.length - 12} more tasks will generate.</div>` : "")
@@ -1963,11 +2016,11 @@ function openAssetDetail(assetId) {
   const technicians = assetCurrentTechnicians(asset.id);
   const historyItems = [
     ...assetTasks
-      .filter((task) => task.status === "Done")
+      .filter((task) => ["Done", "Not Done"].includes(task.status))
       .map((task) => ({
         at: task.completedAt || task.date,
         title: task.title,
-        detail: `${technicianById(task.assignedTo)?.name || "Technician"} completed checklist`
+        detail: `${technicianById(task.assignedTo)?.name || "Technician"} ${task.status === "Done" ? "completed checklist" : "marked not done"}`
       })),
     ...assetTickets.flatMap((ticket) => (ticket.history || []).map((item) => ({
       at: item.at || ticket.createdAt,
@@ -2017,7 +2070,7 @@ function openAssetDetail(assetId) {
             <article class="asset-mini-row status-${token(task.status)}">
               <strong>${escapeHtml(task.title.replace(`${taskPhase(task.title)}: `, ""))}</strong>
               <span>${escapeHtml(task.status)} / ${escapeHtml(technicianById(task.assignedTo)?.name || "Technician")}${task.evidencePhotoUrl || task.evidenceComment ? " / evidence attached" : taskRequiresEvidence(task) ? " / photo required" : ""}</span>
-              ${task.evidenceComment ? `<span>${escapeHtml(task.evidenceComment)}</span>` : ""}
+              ${task.status === "Not Done" && task.evidenceComment ? `<span>${escapeHtml(task.evidenceComment)}</span>` : ""}
               ${task.evidencePhotoUrl ? `<button type="button" class="small-button" data-task-photo="${escapeHtml(task.id)}">Open Evidence</button>` : ""}
             </article>
           `).join("") : `<div class="empty mini">No checklist task for this asset today.</div>`}
@@ -2068,10 +2121,13 @@ function renderTechnician() {
   const todayTasks = tasks
     .filter((task) => task.date === today)
     .sort((a, b) => taskPhaseRank(a.title) - taskPhaseRank(b.title) || String(a.title).localeCompare(String(b.title)));
-  const overdueTasks = tasks.filter((task) => task.date < today && task.status !== "Done");
+  const overdueTasks = tasks.filter((task) => task.date < today && task.status === "Pending");
   const weekStart = addDaysInputValue(-6);
   const weeklyCompleted = tasks.filter((task) => task.status === "Done" && task.date >= weekStart).length;
   const weeklyResolved = list.filter((ticket) => ["Resolved", "Verification Pending", "Closed"].includes(ticket.status) && String(ticket.createdAt || "").slice(0, 10) >= weekStart).length;
+  const doneTasks = todayTasks.filter((task) => task.status === "Done");
+  const pendingTasks = todayTasks.filter((task) => task.status === "Pending");
+  const notDoneTasks = todayTasks.filter((task) => task.status === "Not Done");
   const sortedList = [...list].sort((a, b) => {
     const priorityRank = { P1: 1, P2: 2, P3: 3, P4: 4 };
     return (priorityRank[a.priority] || 9) - (priorityRank[b.priority] || 9)
@@ -2110,8 +2166,6 @@ function renderTechnician() {
     groups[phase].push(task);
     return groups;
   }, {});
-  const doneTasks = todayTasks.filter((task) => task.status === "Done");
-  const pendingTasks = todayTasks.filter((task) => task.status !== "Done");
   const evidenceRequiredTasks = todayTasks.filter((task) => taskRequiresEvidence(task));
   const evidenceSubmitted = todayTasks.filter((task) => task.evidencePhotoUrl || task.evidenceComment);
   const completionRate = todayTasks.length ? Math.round((doneTasks.length / todayTasks.length) * 100) : 100;
@@ -2158,6 +2212,7 @@ function renderTechnician() {
       <section class="technician-metrics">
         <article class="metric-done"><span>Tasks Done</span><strong>${doneTasks.length}</strong></article>
         <article class="metric-pending"><span>Pending</span><strong>${pendingTasks.length}</strong></article>
+        <article class="metric-blocked"><span>Not Done</span><strong>${notDoneTasks.length}</strong></article>
         <article class="metric-overdue"><span>Overdue</span><strong>${overdueTasks.length}</strong></article>
         <article class="metric-ticket"><span>Open Tickets</span><strong>${list.length}</strong></article>
         <article class="metric-blocked"><span>Blocked</span><strong>${blocked}</strong></article>
@@ -2243,7 +2298,7 @@ function renderTechnician() {
       <section class="technician-work-panel">
         <div class="mini-heading">
           <span class="section-kicker">Today Checklist</span>
-          <strong>${todayTasks.filter((task) => task.status === "Done").length}/${todayTasks.length} done</strong>
+          <strong>${doneTasks.length}/${todayTasks.length} done</strong>
         </div>
         <div class="task-list">
           ${todayTasks.length ? Object.entries(tasksByPhase).map(([phase, tasks]) => `
@@ -2259,12 +2314,17 @@ function renderTechnician() {
                     <span>${escapeHtml(task.asset?.name || "Asset")} / ${escapeHtml(task.outlet || "")}${task.notes ? ` / ${escapeHtml(task.notes)}` : ""}</span>
                     <div class="task-tags">
                       ${taskRequiresEvidence(task) ? `<span>Photo required</span>` : `<span>Note optional</span>`}
+                      ${maintenanceRuleForTask(task)?.allowOutsideWindow ? `<span>Outside window allowed</span>` : task.ruleId ? `<span>Window required</span>` : ""}
                       ${task.evidencePhotoUrl || task.evidenceComment ? `<span>Evidence saved</span>` : ""}
+                      ${task.status === "Not Done" ? `<span>Not done</span>` : ""}
                     </div>
+                    ${task.status === "Not Done" && task.evidenceComment ? `<small>${escapeHtml(task.evidenceComment)}</small>` : ""}
                   </div>
                   ${task.status === "Done"
                     ? `<span class="badge status-closed">${task.evidencePhotoUrl || task.evidenceComment ? "Done + Evidence" : "Done"}</span>`
-                    : `<button class="small-button success task-done-button" data-task-done="${escapeHtml(task.id)}">${taskRequiresEvidence(task) ? "Complete + Photo" : "Complete"}</button>`}
+                    : task.status === "Not Done"
+                      ? `<span class="badge status-blocked">Not done</span>`
+                      : `<div class="task-actions"><button class="small-button success task-done-button" data-task-done="${escapeHtml(task.id)}">${taskRequiresEvidence(task) ? "Complete + Photo" : "Complete"}</button><button class="small-button warning task-not-done-button" data-task-not-done="${escapeHtml(task.id)}">Not done</button></div>`}
                 </article>
               `).join("")}
             </div>
@@ -2999,6 +3059,7 @@ document.querySelector("#userAccessCancel").addEventListener("click", resetUserA
 document.querySelector("#assignmentWindowForm").addEventListener("submit", saveAssignmentWindow);
 document.querySelector("#assignmentWindowCancel").addEventListener("click", resetAssignmentWindowForm);
 document.querySelector("#maintenanceRuleForm").addEventListener("submit", createMaintenanceRule);
+document.querySelector("#ruleCancel").addEventListener("click", resetMaintenanceRuleForm);
 document.querySelector("#activeTechnician").addEventListener("change", renderTechnician);
 document.querySelectorAll("[data-master-tab]").forEach((button) => {
   button.addEventListener("click", () => switchMasterTab(button.dataset.masterTab));
@@ -3112,6 +3173,12 @@ document.addEventListener("click", async (event) => {
     return;
   }
 
+  const editRule = event.target.closest?.("[data-edit-rule]");
+  if (editRule) {
+    fillMaintenanceRuleForm(editRule.dataset.editRule);
+    return;
+  }
+
   const editAssignmentWindow = event.target.closest?.("[data-edit-assignment-window]");
   if (editAssignmentWindow) {
     fillAssignmentWindowForm(editAssignmentWindow.dataset.editAssignmentWindow);
@@ -3179,6 +3246,20 @@ document.addEventListener("click", async (event) => {
     const evidence = await collectTaskEvidence(task);
     if (!evidence) return;
     await updateTaskStatus(taskDoneButton.dataset.taskDone, "Done", evidence);
+    return;
+  }
+
+  const taskNotDoneButton = event.target.closest?.("[data-task-not-done]");
+  if (taskNotDoneButton) {
+    const task = (state.tasks || []).find((item) => item.id === taskNotDoneButton.dataset.taskNotDone);
+    if (!task) return;
+    const reason = window.prompt("Why is the checkup not done?", "Could not complete this time");
+    if (reason === null) return;
+    if (!reason.trim()) {
+      window.alert("Reason is required.");
+      return;
+    }
+    await updateTaskStatus(task.id, "Not Done", { comment: reason.trim() });
     return;
   }
 

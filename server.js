@@ -303,6 +303,8 @@ function defaultMaintenanceRules() {
       phase: template.phase,
       group: template.group,
       frequency: "daily",
+      assignedTechnicianId: "",
+      allowOutsideWindow: false,
       active: true,
       createdAt: new Date("2026-04-27T00:00:00.000Z").toISOString()
     })),
@@ -313,6 +315,8 @@ function defaultMaintenanceRules() {
       phase: "Weekly",
       group: "Weekly Maintenance",
       frequency: "weekly",
+      assignedTechnicianId: "",
+      allowOutsideWindow: false,
       active: true,
       createdAt: new Date("2026-04-27T00:00:00.000Z").toISOString()
     }))
@@ -403,6 +407,13 @@ function normalizeTimeValue(value) {
   return /^\d{2}:\d{2}$/.test(raw) ? raw : "";
 }
 
+function normalizeMaybeBoolean(value, fallback = false) {
+  if (value === undefined || value === null || value === "") return Boolean(fallback);
+  if (typeof value === "boolean") return value;
+  const normalized = String(value).trim().toLowerCase();
+  return ["true", "1", "yes", "on"].includes(normalized);
+}
+
 function normalizeAssignmentDays(days, allDays = false) {
   if (allDays) return [...ASSIGNMENT_DAYS];
   const clean = [...new Set((Array.isArray(days) ? days : [])
@@ -458,6 +469,28 @@ function assignmentWindowStatus(db, date = new Date()) {
   );
   if (match) return { open: true, window: match, reason: `${match.name} is open` };
   return { open: false, reason: "Ticket assignment is outside the admin time window" };
+}
+
+function maintenanceRuleById(db, ruleId) {
+  return (db.maintenanceRules || []).find((rule) => rule.id === ruleId) || null;
+}
+
+function maintenanceRuleTechnician(db, rule, loadMap = null, fallbackTechnicians = null) {
+  const technicians = fallbackTechnicians || checklistTechnicians(db);
+  const assigned = rule?.assignedTechnicianId
+    ? technicians.find((tech) => tech.id === rule.assignedTechnicianId)
+    : null;
+  if (assigned) return assigned;
+  if (!loadMap) return balancedChecklistTechnician(technicians, new Map(technicians.map((tech) => [tech.id, 0])));
+  return balancedChecklistTechnician(technicians, loadMap);
+}
+
+function canCompleteMaintenanceTask(db, task, rule = null) {
+  const activeWindow = assignmentWindowStatus(db);
+  if (activeWindow.open) return true;
+  if (rule?.allowOutsideWindow) return true;
+  if (!task?.ruleId) return true;
+  return false;
 }
 
 function isTicketScheduleDue(ticket) {
@@ -633,7 +666,8 @@ function rebalanceTodayChecklistTasks(db) {
     .filter((task) => task.date === today && task.status !== "Done" && isChecklistTask(task))
     .sort((a, b) => String(a.outlet || "").localeCompare(String(b.outlet || "")) || String(a.title || "").localeCompare(String(b.title || "")))
     .forEach((task) => {
-      const technician = balancedChecklistTechnician(technicians, loadMap);
+      const rule = maintenanceRuleById(db, task.ruleId);
+      const technician = maintenanceRuleTechnician(db, rule, loadMap, technicians);
       if (!technician) return;
       if (task.assignedTo !== technician.id) {
         task.assignedTo = technician.id;
@@ -657,7 +691,7 @@ function generateTodayTasks(db) {
     tech.id,
     (db.tasks || []).filter((task) => task.date === today && task.assignedTo === tech.id && isChecklistTask(task)).length
   ]));
-  const existingTaskKeys = new Set((db.tasks || []).map((task) => `${task.date}|${task.outlet}|${task.title}`));
+  const existingTaskKeys = new Set((db.tasks || []).map((task) => `${task.date}|${task.outlet}|${task.ruleId || task.title}`));
   const existingTaskIds = new Set((db.tasks || []).map((task) => task.id));
   let sequence = (db.tasks || []).filter((task) => task.date === today).length + 1;
 
@@ -677,11 +711,11 @@ function generateTodayTasks(db) {
 
     rules.forEach((rule) => {
       const asset = outletAssets.find((item) => item.category === rule.category) || outletAssets[0];
-      const technician = balancedChecklistTechnician(technicians, loadMap);
+      const technician = maintenanceRuleTechnician(db, rule, loadMap, technicians);
 
       if (!asset || !technician) return;
       const title = `${rule.phase || "Checklist"}: ${rule.title}`;
-      const taskKey = `${today}|${outlet}|${title}`;
+      const taskKey = `${today}|${outlet}|${rule.id}`;
       if (existingTaskKeys.has(taskKey)) return;
       existingTaskKeys.add(taskKey);
 
@@ -691,10 +725,11 @@ function generateTodayTasks(db) {
         assetId: asset.id,
         outlet,
         assignedTo: technician.id,
+        ruleId: rule.id,
         status: "Pending",
         date: today,
         completedAt: "",
-        notes: `${rule.group || "Maintenance"} / ${rule.frequency === "weekly" ? "Weekly" : "Daily"}`
+        notes: `${rule.group || "Maintenance"} / ${rule.frequency === "weekly" ? "Weekly" : "Daily"}${rule.allowOutsideWindow ? " / outside window allowed" : ""}`
       });
       loadMap.set(technician.id, (loadMap.get(technician.id) || 0) + 1);
     });
@@ -783,7 +818,8 @@ function reports(db) {
   const today = dateKey();
   const todayTasks = tasks.filter((task) => task.date === today);
   const completedToday = todayTasks.filter((task) => task.status === "Done").length;
-  const pendingToday = todayTasks.filter((task) => task.status !== "Done").length;
+  const pendingToday = todayTasks.filter((task) => task.status === "Pending").length;
+  const notDoneToday = todayTasks.filter((task) => task.status === "Not Done").length;
   const closedTickets = db.tickets.filter((ticket) => ticket.status === "Closed");
   const alerts = openTickets.flatMap((ticket) => {
     const ticketAlerts = [];
@@ -807,6 +843,7 @@ function reports(db) {
     assets: assets.length,
     activeAssets: assets.filter((asset) => asset.status === "Active").length,
     pendingTasks: pendingToday,
+    notDoneTasks: notDoneToday,
     completedTasks: completedToday,
     taskCompletionRate: todayTasks.length ? Math.round((completedToday / todayTasks.length) * 100) : 100,
     verificationPending: openTickets.filter((ticket) => ticket.status === "Resolved" || ticket.status === "Verification Pending").length,
@@ -928,7 +965,7 @@ function technicianDashboard(db, technicianId) {
       id: task.id,
       title: task.title,
       asset_name: assetById(db, task.assetId)?.name || "Asset",
-      status: task.status === "Done" ? "done" : "pending"
+      status: task.status === "Done" ? "done" : task.status === "Not Done" ? "not_done" : "pending"
     }));
   const openTickets = tickets.filter((ticket) => !["Closed", "Cancelled"].includes(ticket.status));
 
@@ -936,6 +973,7 @@ function technicianDashboard(db, technicianId) {
     today: {
       completed_tasks: todayTasks.filter((task) => task.status === "done").length,
       pending_tasks: todayTasks.filter((task) => task.status === "pending").length,
+      not_done_tasks: todayTasks.filter((task) => task.status === "not_done").length,
       overdue_tasks: tasks.filter((task) => task.date < today && task.status !== "Done").length,
       open_tickets: openTickets.length
     },
@@ -966,7 +1004,7 @@ function todayTasksForTechnician(db, technicianId) {
       id: task.id,
       title: task.title,
       asset_name: assetById(db, task.assetId)?.name || "Asset",
-      status: task.status === "Done" ? "done" : "pending"
+      status: task.status === "Done" ? "done" : task.status === "Not Done" ? "not_done" : "pending"
     }));
 }
 
@@ -1110,6 +1148,7 @@ function mapTask(row) {
     assetId: row.asset_id,
     outlet: row.outlet,
     assignedTo: row.assigned_to,
+    ruleId: row.rule_id || "",
     status: row.status,
     date: row.task_date,
     completedAt: row.completed_at || "",
@@ -1128,6 +1167,8 @@ function mapMaintenanceRule(row) {
     phase: row.phase || "Checklist",
     group: row.rule_group || "Maintenance",
     frequency: row.frequency,
+    assignedTechnicianId: row.assigned_technician_id || "",
+    allowOutsideWindow: row.allow_outside_window === true,
     active: row.active !== false,
     createdAt: row.created_at
   };
@@ -1155,12 +1196,12 @@ async function loadSupabaseDb() {
     supabase.from("outlets").select("name,branch,address,latitude,longitude").order("name"),
     supabase.from("categories").select("id,name,description").order("name"),
     supabase.from("assets").select("id,outlet,category,name,code,status,notes,created_at").order("created_at", { ascending: false }),
-    supabase.from("tasks").select("id,title,asset_id,outlet,assigned_to,status,task_date,completed_at,evidence_comment,evidence_photo_url,evidence_at,notes").order("task_date", { ascending: false }),
+    supabase.from("tasks").select("id,title,asset_id,outlet,assigned_to,rule_id,status,task_date,completed_at,evidence_comment,evidence_photo_url,evidence_at,notes").order("task_date", { ascending: false }),
     supabase.from("technicians").select("id,name,skill,status,quality,service_outlets").order("id"),
     supabase.from("tickets").select("*").order("created_at", { ascending: false }),
     supabase.from("ticket_history").select("ticket_id,action,created_at").order("created_at", { ascending: true }),
     supabase.from("attendance_plans").select("id,technician_id,status,from_date,to_date,reason,created_by,active,created_at").order("from_date"),
-    supabase.from("maintenance_rules").select("id,category,title,phase,rule_group,frequency,active,created_at").order("created_at", { ascending: false }),
+    supabase.from("maintenance_rules").select("id,category,title,phase,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }),
     supabase.from("assignment_time_windows").select("id,name,days,start_time,end_time,active,created_at").order("created_at", { ascending: false })
   ]);
 
@@ -2038,9 +2079,14 @@ async function createMaintenanceRule(payload) {
   const title = String(payload.title || "").trim();
   const phase = String(payload.phase || "Checklist").trim();
   const frequency = String(payload.frequency || "daily").trim().toLowerCase();
+  const assignedTechnicianId = String(payload.assignedTechnicianId || "").trim();
+  const allowOutsideWindow = normalizeMaybeBoolean(payload.allowOutsideWindow, false);
   if (!category || !title) return { status: 400, body: { error: "Category and task title are required" } };
   if (!db.categories.some((item) => item.name === category)) return { status: 400, body: { error: "Category is invalid" } };
   if (!["daily", "weekly"].includes(frequency)) return { status: 400, body: { error: "Frequency must be daily or weekly" } };
+  if (assignedTechnicianId && !db.technicians.some((tech) => tech.id === assignedTechnicianId)) {
+    return { status: 400, body: { error: "Assigned technician is invalid" } };
+  }
 
   const rule = {
     id: nextMaintenanceRuleId(db.maintenanceRules || []),
@@ -2049,6 +2095,8 @@ async function createMaintenanceRule(payload) {
     phase: frequency === "weekly" ? "Weekly" : phase,
     group: String(payload.group || "Maintenance").trim() || "Maintenance",
     frequency,
+    assignedTechnicianId,
+    allowOutsideWindow,
     active: true,
     createdAt: new Date().toISOString()
   };
@@ -2062,6 +2110,8 @@ async function createMaintenanceRule(payload) {
         phase: rule.phase,
         rule_group: rule.group,
         frequency: rule.frequency,
+        assigned_technician_id: rule.assignedTechnicianId || null,
+        allow_outside_window: rule.allowOutsideWindow,
         active: rule.active
       })
     );
@@ -2077,18 +2127,52 @@ async function updateMaintenanceRule(ruleId, payload) {
   const db = await loadDb();
   const rule = (db.maintenanceRules || []).find((item) => item.id === ruleId);
   if (!rule) return { status: 404, body: { error: "Maintenance rule not found" } };
-  const active = Boolean(payload.active);
+  const active = payload.active === undefined ? rule.active : Boolean(payload.active);
+  const assignedTechnicianId = payload.assignedTechnicianId === undefined ? rule.assignedTechnicianId || "" : String(payload.assignedTechnicianId || "").trim();
+  const allowOutsideWindow = payload.allowOutsideWindow === undefined ? Boolean(rule.allowOutsideWindow) : normalizeMaybeBoolean(payload.allowOutsideWindow, false);
+  const category = String(payload.category || rule.category || "").trim();
+  const title = String(payload.title || rule.title || "").trim();
+  const phase = String(payload.phase || rule.phase || "Checklist").trim();
+  const frequency = String(payload.frequency || rule.frequency || "daily").trim().toLowerCase();
+  const group = String(payload.group || rule.group || "Maintenance").trim() || "Maintenance";
+  if (!category || !title) return { status: 400, body: { error: "Category and task title are required" } };
+  if (!db.categories.some((item) => item.name === category)) return { status: 400, body: { error: "Category is invalid" } };
+  if (!["daily", "weekly"].includes(frequency)) return { status: 400, body: { error: "Frequency must be daily or weekly" } };
+  if (assignedTechnicianId && !db.technicians.some((tech) => tech.id === assignedTechnicianId)) {
+    return { status: 400, body: { error: "Assigned technician is invalid" } };
+  }
+  const updated = {
+    ...rule,
+    category,
+    title,
+    phase: frequency === "weekly" ? "Weekly" : phase,
+    group,
+    frequency,
+    assignedTechnicianId,
+    allowOutsideWindow,
+    active
+  };
 
   if (useSupabase) {
     await requireSupabase(
-      await supabase.from("maintenance_rules").update({ active, updated_at: new Date().toISOString() }).eq("id", ruleId)
+      await supabase.from("maintenance_rules").update({
+        category: updated.category,
+        title: updated.title,
+        phase: updated.phase,
+        rule_group: updated.group,
+        frequency: updated.frequency,
+        assigned_technician_id: updated.assignedTechnicianId || null,
+        allow_outside_window: updated.allowOutsideWindow,
+        active: updated.active,
+        updated_at: new Date().toISOString()
+      }).eq("id", ruleId)
     );
-    return { status: 200, body: { ...rule, active } };
+    return { status: 200, body: updated };
   }
 
-  rule.active = active;
+  Object.assign(rule, updated);
   writeJsonDb(db);
-  return { status: 200, body: rule };
+  return { status: 200, body: updated };
 }
 
 async function updateTaskStatus(taskId, status, user, evidence = {}) {
@@ -2098,18 +2182,32 @@ async function updateTaskStatus(taskId, status, user, evidence = {}) {
   if (user?.role === "technician" && task.assignedTo !== user.technicianId) {
     return { status: 403, body: { error: "Technicians can only update their own checklist" } };
   }
-  if (status !== "Done") return { status: 400, body: { error: "Only marking a task done is allowed" } };
-  if (task.status === "Done") return { status: 409, body: { error: "Task is already completed" } };
+  const normalizedStatus = String(status || "").trim().toLowerCase().replace(/\s+/g, "_");
+  if (!["done", "not_done"].includes(normalizedStatus)) {
+    return { status: 400, body: { error: "Only done or not done is allowed" } };
+  }
+  if (["Done", "Not Done"].includes(task.status)) {
+    return { status: 409, body: { error: "Task is already updated" } };
+  }
   const evidenceComment = String(evidence.comment || "").trim().slice(0, 500);
   const evidencePhotoUrl = sanitizePhotoUrl(evidence.photoUrl);
-  if (!evidencePhotoUrl) {
+  const rule = maintenanceRuleById(db, task.ruleId);
+  if (normalizedStatus === "done" && !evidencePhotoUrl) {
     return { status: 400, body: { error: "Photo evidence is required to complete this task" } };
   }
+  if (normalizedStatus === "done" && !canCompleteMaintenanceTask(db, task, rule)) {
+    return { status: 409, body: { error: rule?.allowOutsideWindow
+      ? "This maintenance task can only be marked done when the admin dispatch window is open"
+      : "This maintenance task can only be marked done in an active admin dispatch window" } };
+  }
+  if (normalizedStatus === "not_done" && !evidenceComment) {
+    return { status: 400, body: { error: "Reason is required when marking a task not done" } };
+  }
 
-  task.status = status;
-  task.completedAt = status === "Done" ? new Date().toISOString() : "";
+  task.status = normalizedStatus === "done" ? "Done" : "Not Done";
+  task.completedAt = new Date().toISOString();
   task.evidenceComment = evidenceComment;
-  task.evidencePhotoUrl = evidencePhotoUrl;
+  task.evidencePhotoUrl = normalizedStatus === "done" ? evidencePhotoUrl : "";
   task.evidenceAt = task.completedAt;
 
   if (useSupabase) {
@@ -2799,15 +2897,16 @@ app.post(
     if (!user || user.role !== "technician") {
       return res.status(403).json({ error: "Technician access only" });
     }
-    if (String(req.body.status || "").toLowerCase() !== "done") {
-      return res.status(400).json({ error: "Only status done is allowed" });
+    const status = String(req.body.status || "").toLowerCase();
+    if (!["done", "not_done"].includes(status)) {
+      return res.status(400).json({ error: "Only status done or not_done is allowed" });
     }
-    const result = await updateTaskStatus(req.params.id, "Done", user, {
+    const result = await updateTaskStatus(req.params.id, status === "done" ? "Done" : "Not Done", user, {
       comment: req.body.comment,
       photoUrl: req.body.photoUrl
     });
     if (result.status === 200) {
-      return res.json({ id: req.params.id, status: "done" });
+      return res.json({ id: req.params.id, status });
     }
     res.status(result.status).json(result.body);
   })

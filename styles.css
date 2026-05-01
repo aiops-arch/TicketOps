@@ -1498,7 +1498,7 @@ body.has-session .topbar:focus-within .tabs {
 
 .scheduler-form {
   display: grid;
-  grid-template-columns: minmax(160px, 0.75fr) minmax(280px, 1.4fr) minmax(150px, 0.7fr) minmax(130px, 0.6fr) auto;
+  grid-template-columns: minmax(160px, 0.75fr) minmax(280px, 1.4fr) minmax(150px, 0.7fr) minmax(130px, 0.6fr) minmax(160px, 0.8fr) minmax(220px, 1fr) auto auto;
   gap: 10px;
   align-items: end;
   padding: 10px;
@@ -1561,6 +1561,14 @@ body.has-session .topbar:focus-within .tabs {
   font-size: 11px;
   font-weight: 900;
   line-height: 1.35;
+}
+
+.rule-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .attendance-form .primary-button {
@@ -2103,6 +2111,10 @@ input::placeholder {
   border-left-color: var(--green);
 }
 
+.task-row.status-not-done {
+  border-left-color: var(--gold);
+}
+
 .task-row.requires-evidence {
   border-left-color: var(--coral);
 }
@@ -2151,6 +2163,12 @@ input::placeholder {
 
 .task-done-button {
   min-width: 118px;
+}
+
+.task-actions {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
 }
 
 .weekly-stat-grid {

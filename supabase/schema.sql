@@ -111,6 +111,7 @@ create table if not exists tasks (
   asset_id text not null references assets(id),
   outlet text not null references outlets(name),
   assigned_to text not null references technicians(id),
+  rule_id text,
   status text not null default 'Pending',
   task_date date not null,
   completed_at timestamptz,
@@ -125,6 +126,7 @@ create table if not exists tasks (
 alter table tasks add column if not exists evidence_comment text;
 alter table tasks add column if not exists evidence_photo_url text;
 alter table tasks add column if not exists evidence_at timestamptz;
+alter table tasks add column if not exists rule_id text;
 
 create table if not exists maintenance_rules (
   id text primary key,
@@ -133,10 +135,17 @@ create table if not exists maintenance_rules (
   phase text not null default 'Checklist',
   rule_group text not null default 'Maintenance',
   frequency text not null check (frequency in ('daily', 'weekly')),
+  assigned_technician_id text references technicians(id),
+  allow_outside_window boolean not null default false,
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table maintenance_rules add column if not exists assigned_technician_id text references technicians(id);
+alter table maintenance_rules add column if not exists allow_outside_window boolean not null default false;
+alter table tasks drop constraint if exists tasks_rule_id_fkey;
+alter table tasks add constraint tasks_rule_id_fkey foreign key (rule_id) references maintenance_rules(id);
 
 create table if not exists assignment_time_windows (
   id text primary key,
@@ -255,29 +264,31 @@ on conflict (id) do update set
   allowed_views = excluded.allowed_views,
   updated_at = now();
 
-insert into maintenance_rules (id, category, title, phase, rule_group, frequency, active)
+insert into maintenance_rules (id, category, title, phase, rule_group, frequency, assigned_technician_id, allow_outside_window, active)
 values
-  ('MR-D-001', 'Refrigeration', 'Refrigerator temperature checked (2-5 C)', 'Morning Opening', 'Equipment Check', 'daily', true),
-  ('MR-D-002', 'Refrigeration', 'Freezer working (-18 C or below)', 'Morning Opening', 'Equipment Check', 'daily', true),
-  ('MR-D-003', 'Kitchen Equipment', 'Gas stove / burners functional', 'Morning Opening', 'Equipment Check', 'daily', true),
-  ('MR-D-004', 'Plumbing', 'Water supply working', 'Morning Opening', 'Utilities Check', 'daily', true),
-  ('MR-W-001', 'Refrigeration', 'Clean refrigerator coils', 'Weekly', 'Weekly Maintenance', 'weekly', true),
-  ('MR-W-002', 'Plumbing', 'Inspect plumbing for leaks', 'Weekly', 'Weekly Maintenance', 'weekly', true)
+  ('MR-D-001', 'Refrigeration', 'Refrigerator temperature checked (2-5 C)', 'Morning Opening', 'Equipment Check', 'daily', null, false, true),
+  ('MR-D-002', 'Refrigeration', 'Freezer working (-18 C or below)', 'Morning Opening', 'Equipment Check', 'daily', null, false, true),
+  ('MR-D-003', 'Kitchen Equipment', 'Gas stove / burners functional', 'Morning Opening', 'Equipment Check', 'daily', null, false, true),
+  ('MR-D-004', 'Plumbing', 'Water supply working', 'Morning Opening', 'Utilities Check', 'daily', null, false, true),
+  ('MR-W-001', 'Refrigeration', 'Clean refrigerator coils', 'Weekly', 'Weekly Maintenance', 'weekly', null, false, true),
+  ('MR-W-002', 'Plumbing', 'Inspect plumbing for leaks', 'Weekly', 'Weekly Maintenance', 'weekly', null, false, true)
 on conflict (id) do update set
   category = excluded.category,
   title = excluded.title,
   phase = excluded.phase,
   rule_group = excluded.rule_group,
   frequency = excluded.frequency,
+  assigned_technician_id = excluded.assigned_technician_id,
+  allow_outside_window = excluded.allow_outside_window,
   active = excluded.active,
   updated_at = now();
 
-insert into tasks (id, title, asset_id, outlet, assigned_to, status, task_date)
+insert into tasks (id, title, asset_id, outlet, assigned_to, rule_id, status, task_date)
 values
-  ('TASK-20260427-001', 'Morning Opening: Refrigerator temperature checked (2-5 C)', 'A-1001', 'aiko surat', 'T2', 'Pending', '2026-04-27'),
-  ('TASK-20260427-002', 'Morning Opening: Freezer working (-18 C or below)', 'A-1001', 'aiko surat', 'T2', 'Pending', '2026-04-27'),
-  ('TASK-20260427-003', 'Morning Opening: Water supply working', 'A-1002', 'Capiche', 'T3', 'Pending', '2026-04-27'),
-  ('TASK-20260427-004', 'Closing: Grease traps cleaned', 'A-1002', 'Capiche', 'T3', 'Pending', '2026-04-27')
+  ('TASK-20260427-001', 'Morning Opening: Refrigerator temperature checked (2-5 C)', 'A-1001', 'aiko surat', 'T2', 'MR-D-001', 'Pending', '2026-04-27'),
+  ('TASK-20260427-002', 'Morning Opening: Freezer working (-18 C or below)', 'A-1001', 'aiko surat', 'T2', 'MR-D-002', 'Pending', '2026-04-27'),
+  ('TASK-20260427-003', 'Morning Opening: Water supply working', 'A-1002', 'Capiche', 'T3', 'MR-D-004', 'Pending', '2026-04-27'),
+  ('TASK-20260427-004', 'Closing: Grease traps cleaned', 'A-1002', 'Capiche', 'T3', null, 'Pending', '2026-04-27')
 on conflict (id) do nothing;
 
 insert into tickets (id, outlet, category, impact, note, priority, status, assigned_to, latest_detail, created_at)

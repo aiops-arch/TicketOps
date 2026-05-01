@@ -335,7 +335,18 @@
                 <option value="weekly">Weekly</option>
               </select>
             </label>
-            <button type="submit" class="primary-button">Add Rule</button>
+            <label>
+              Assigned technician
+              <select id="ruleTechnician">
+                <option value="">Balanced / auto assign</option>
+              </select>
+            </label>
+            <label class="checkline">
+              <input id="ruleAllowOutsideWindow" type="checkbox">
+              <span>Allow outside dispatch window</span>
+            </label>
+            <button id="ruleSubmit" type="submit" class="primary-button">Add Rule</button>
+            <button id="ruleCancel" type="button" class="small-button">Clear</button>
           </form>
           <p id="ruleCreateResult" class="form-hint" aria-live="polite"></p>
           <div class="scheduler-layout">
