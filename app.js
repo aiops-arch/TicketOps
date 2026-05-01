@@ -40,17 +40,17 @@ function ticketRequiresPhoto({ impact = "", category = "", note = "" } = {}) {
 }
 
 const ROLE_DEFAULT_VIEWS = {
-  admin: ["dashboard", "manager", "admin", "masters", "scheduler", "reports"],
-  manager: ["dashboard", "manager", "reports"],
-  technician: ["dashboard", "technician", "reports"],
+  admin: ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"],
+  manager: ["dashboard", "manager", "history", "reports"],
+  technician: ["dashboard", "technician", "history", "reports"],
   auditor: ["dashboard", "reports"]
 };
 
 const UTILITY_VIEWS = [];
 const ROLE_VIEW_ALLOWLIST = {
-  admin: ["dashboard", "manager", "admin", "masters", "scheduler", "reports"],
-  manager: ["dashboard", "manager", "reports"],
-  technician: ["dashboard", "technician", "reports"],
+  admin: ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"],
+  manager: ["dashboard", "manager", "history", "reports"],
+  technician: ["dashboard", "technician", "history", "reports"],
   auditor: ["dashboard", "reports"]
 };
 
@@ -61,6 +61,7 @@ const VIEW_COPY = {
   masters: { icon: "▣", label: "Masters" },
   scheduler: { icon: "◷", label: "Scheduler" },
   technician: { icon: "⚒", label: "Technician Work" },
+  history: { icon: "H", label: "Closed History" },
   reports: { icon: "▤", label: "Reports" }
 };
 
@@ -450,6 +451,9 @@ function allowedViews() {
   const baseViews = currentUser?.allowedViews?.length
     ? [...currentUser.allowedViews]
     : [...(ROLE_DEFAULT_VIEWS[currentUser?.role] || [])];
+  for (const view of ROLE_DEFAULT_VIEWS[currentUser?.role] || []) {
+    if (!baseViews.includes(view)) baseViews.push(view);
+  }
   const roleAllowlist = ROLE_VIEW_ALLOWLIST[currentUser?.role] || baseViews;
   const views = baseViews.filter((view) => roleAllowlist.includes(view));
 
@@ -1703,15 +1707,9 @@ function renderDashboard() {
 function renderManager() {
   const scopedTickets = ticketsForCurrentUser(state.tickets);
   const list = scopedTickets.filter((ticket) => ticket.status !== "Closed");
-  const closed = scopedTickets
-    .filter((ticket) => ticket.status === "Closed")
-    .sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
   document.querySelector("#managerTickets").innerHTML = list.length
     ? list.map((ticket) => ticketCard(ticket, "manager")).join("")
     : `<div class="empty">No active tickets for this outlet.</div>`;
-  document.querySelector("#managerClosedTickets").innerHTML = closed.length
-    ? closed.map((ticket) => ticketCard(ticket, "archive")).join("")
-    : `<div class="empty">No closed tickets yet.</div>`;
 }
 
 function masterEntry({ className = "", editAttr, title, detail, deleteValue }) {
@@ -1884,9 +1882,6 @@ function renderAdmin() {
   const workload = state.reports.technicianWorkload || [];
   const today = todayInputValue();
   const openTickets = state.tickets.filter((ticket) => ticket.status !== "Closed");
-  const closedTickets = state.tickets
-    .filter((ticket) => ticket.status === "Closed")
-    .sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
   document.querySelector("#attendanceBoard").innerHTML = state.technicians.map((tech) => {
     const techLoad = workload.find((item) => item.id === tech.id)?.openTickets || 0;
     const statusClass = `status-${token(tech.status)}`;
@@ -1959,9 +1954,6 @@ function renderAdmin() {
   document.querySelector("#adminTickets").innerHTML = openTickets.length
     ? renderAdminTicketQueue(openTickets)
     : `<div class="empty">The admin queue is clear.</div>`;
-  document.querySelector("#adminClosedTickets").innerHTML = closedTickets.length
-    ? closedTickets.map((ticket) => ticketCard(ticket, "archive")).join("")
-    : `<div class="empty">No closed tickets yet.</div>`;
 }
 
 function renderAdminTicketQueue(tickets) {
@@ -2177,6 +2169,38 @@ function openAssetDetail(assetId) {
   `;
 
   overlay.classList.remove("is-hidden");
+}
+
+function historyScopeLabel() {
+  if (currentUser?.role === "admin") return "All outlets and technicians";
+  if (currentUser?.role === "manager") return userOutletLabel(currentUser);
+  if (currentUser?.role === "technician") return technicianById(currentUser.technicianId)?.name || "My closed jobs";
+  return "Closed tickets";
+}
+
+function renderClosedHistory() {
+  const closedTickets = ticketsForCurrentUser(state.tickets)
+    .filter((ticket) => ticket.status === "Closed")
+    .sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
+  const withCompletionPhotos = closedTickets.filter((ticket) => (ticket.resolutionPhotoUrls || []).length).length;
+  const withIssuePhotos = closedTickets.filter((ticket) => (ticket.photoUrls?.length ? ticket.photoUrls : [ticket.photoUrl]).filter(Boolean).length).length;
+
+  document.querySelector("#historyTitle").textContent = currentUser?.role === "technician" ? "My Closed Jobs" : "Closed Ticket History";
+  document.querySelector("#historyScope").textContent = historyScopeLabel();
+  document.querySelector("#historyStats").innerHTML = [
+    ["Closed", closedTickets.length, "Approved completed tickets"],
+    ["Completion Photos", withCompletionPhotos, "Technician proof attached"],
+    ["Issue Photos", withIssuePhotos, "Original issue photo attached"]
+  ].map(([label, value, detail]) => `
+    <article class="metric">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+      <p>${escapeHtml(detail)}</p>
+    </article>
+  `).join("");
+  document.querySelector("#closedTicketHistory").innerHTML = closedTickets.length
+    ? closedTickets.map((ticket) => ticketCard(ticket, "archive")).join("")
+    : `<div class="empty">No closed tickets found for this login.</div>`;
 }
 
 function renderTechnician() {
@@ -3036,6 +3060,13 @@ function render() {
   } else {
     document.querySelector("#reportExportActions").innerHTML = "";
     document.querySelector("#reportsBoard").innerHTML = "";
+  }
+
+  if (canUseView("history")) {
+    renderClosedHistory();
+  } else {
+    document.querySelector("#historyStats").innerHTML = "";
+    document.querySelector("#closedTicketHistory").innerHTML = "";
   }
 
   renderUtilityViews();

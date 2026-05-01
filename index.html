@@ -29,6 +29,7 @@
         <button class="tab" data-view="scheduler"><span class="nav-icon">◷</span><span class="tab-label">Scheduler</span></button>
         <button class="tab" data-view="masters"><span class="nav-icon">▣</span><span class="tab-label">Masters</span></button>
         <button class="tab" data-view="technician"><span class="nav-icon">⚒</span><span class="tab-label">Technician</span></button>
+        <button class="tab" data-view="history"><span class="nav-icon">H</span><span class="tab-label">History</span></button>
         <button class="tab" data-view="reports"><span class="nav-icon">▤</span><span class="tab-label">Reports</span></button>
       </nav>
       <div class="topbar-actions" aria-label="Account controls">
@@ -235,17 +236,6 @@
           </div>
           <div id="managerTickets" class="card-list"></div>
         </div>
-
-        <div class="panel">
-          <div class="panel-heading">
-            <div>
-              <span class="section-kicker">Archive</span>
-              <h2>Closed Tickets</h2>
-            </div>
-            <span class="heading-chip">Completed history</span>
-          </div>
-          <div id="managerClosedTickets" class="card-list"></div>
-        </div>
       </section>
 
       <section id="admin" class="view">
@@ -311,18 +301,20 @@
           </div>
           <div id="adminTickets" class="card-list"></div>
         </div>
+      </section>
 
+      <section id="history" class="view">
         <div class="panel">
           <div class="panel-heading">
             <div>
               <span class="section-kicker">Archive</span>
-              <h2>Closed Ticket History</h2>
+              <h2 id="historyTitle">Closed Ticket History</h2>
             </div>
-            <span class="heading-chip">Approved work</span>
+            <span id="historyScope" class="heading-chip">Approved work</span>
           </div>
-          <div id="adminClosedTickets" class="card-list"></div>
+          <div id="historyStats" class="dashboard-grid"></div>
+          <div id="closedTicketHistory" class="card-list"></div>
         </div>
-
       </section>
 
       <section id="scheduler" class="view">
