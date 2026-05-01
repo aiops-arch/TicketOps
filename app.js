@@ -1671,12 +1671,25 @@ function renderDashboard() {
   const readyTechs = state.technicians.filter((tech) => ["Present", "Emergency Available"].includes(tech.status)).length;
   const actions = actionItems();
   const activities = latestActivities();
+  const closedTickets = ticketsForCurrentUser(state.tickets).filter((ticket) => ticket.status === "Closed").length;
+  const blocked = scopedTickets.filter((ticket) => ticket.status === "Blocked").length;
+  const unassigned = scopedTickets.filter((ticket) => !ticket.assignedTo).length;
+  const assigned = scopedTickets.filter((ticket) => ticket.assignedTo).length;
+  const critical = scopedTickets.filter((ticket) => ticket.priority === "P1").length;
+  const totalForCharts = Math.max(scopedTickets.length, 1);
+  const readyPercent = state.technicians.length ? Math.round((readyTechs / state.technicians.length) * 100) : 0;
 
   document.querySelector("#dashboardTitle").textContent = dashboardTitle();
   document.querySelector("#dashboardSubtitle").textContent = dashboardSubtitle();
   document.querySelector("#dashOpen").textContent = reports.open ?? scopedTickets.length;
   document.querySelector("#dashCritical").textContent = reports.critical || 0;
   document.querySelector("#dashReady").textContent = `${readyTechs}/${state.technicians.length || 0}`;
+  document.querySelector("#dashboardCharts").innerHTML = `
+    ${donutChart("Ticket Mix", scopedTickets.length, totalForCharts + closedTickets, "Open vs closed work", "teal")}
+    ${donutChart("Dispatch", assigned, totalForCharts, `${unassigned} waiting for admin`, "blue")}
+    ${donutChart("SLA Risk", critical + blocked, totalForCharts, `${critical} critical / ${blocked} blocked`, "coral")}
+    ${donutChart("Ready Techs", readyTechs, Math.max(state.technicians.length, 1), `${readyPercent}% available now`, "green")}
+  `;
 
   document.querySelector("#outletHealthBoard").innerHTML = outletHealthCards() || `<div class="empty mini">No outlet data yet.</div>`;
 
@@ -1716,6 +1729,24 @@ function renderDashboard() {
         </article>
       `).join("")
     : `<div class="empty mini">No activity recorded yet.</div>`;
+}
+
+function donutChart(label, value, total, detail, tone = "teal") {
+  const cleanTotal = Math.max(Number(total) || 0, 1);
+  const cleanValue = Math.max(0, Math.min(Number(value) || 0, cleanTotal));
+  const percent = Math.round((cleanValue / cleanTotal) * 100);
+  return `
+    <article class="ops-chart chart-${escapeHtml(tone)}">
+      <div class="chart-ring" style="--value: ${percent}">
+        <strong>${escapeHtml(percent)}%</strong>
+      </div>
+      <div>
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(cleanValue)} / ${escapeHtml(cleanTotal)}</strong>
+        <p>${escapeHtml(detail)}</p>
+      </div>
+    </article>
+  `;
 }
 
 function renderManager() {
@@ -2971,6 +3002,71 @@ function renderUtilityViews() {
   renderSystem();
 }
 
+function renderStagePulse() {
+  const tickets = ticketsForCurrentUser(state.tickets);
+  const open = tickets.filter((ticket) => ticket.status !== "Closed");
+  const closed = tickets.filter((ticket) => ticket.status === "Closed");
+  const waiting = open.filter((ticket) => !ticket.assignedTo);
+  const verify = open.filter((ticket) => ["Resolved", "Verification Pending"].includes(ticket.status));
+  const blocked = open.filter((ticket) => ticket.status === "Blocked");
+  const readyTechs = state.technicians.filter((tech) => ["Present", "Emergency Available"].includes(tech.status));
+  const activeRules = (state.maintenanceRules || []).filter((rule) => rule.active !== false);
+  const windows = (state.assignmentTimeWindows || []).filter((window) => window.active !== false);
+  const visibleOutlets = currentUser?.role === "manager" ? outletAccessForUser(currentUser).length : state.outlets.length;
+  const activeAssets = (state.assets || []).filter((asset) => asset.status !== "Inactive").length;
+  const activeTech = currentUser?.technicianId ? technicianById(currentUser.technicianId) : null;
+  const myOpen = activeTech ? open.filter((ticket) => ticket.assignedTo === activeTech.id) : open;
+
+  const groups = {
+    managerPulse: [
+      ["Open", open.length],
+      ["Verify", verify.length],
+      ["Blocked", blocked.length]
+    ],
+    adminPulse: [
+      ["Unassigned", waiting.length],
+      ["Ready Techs", `${readyTechs.length}/${state.technicians.length}`],
+      ["Verify", verify.length]
+    ],
+    historyPulse: [
+      ["Closed", closed.length],
+      ["Photos", closed.filter((ticket) => (ticket.resolutionPhotoUrls || []).length).length],
+      ["Outlets", visibleOutlets]
+    ],
+    schedulerPulse: [
+      ["Rules", activeRules.length],
+      ["Windows", windows.length],
+      ["Assets", activeAssets]
+    ],
+    mastersPulse: [
+      ["Outlets", state.outlets.length],
+      ["Assets", state.assets.length],
+      ["Techs", state.technicians.length]
+    ],
+    technicianPulse: [
+      ["My Open", myOpen.length],
+      ["Blocked", myOpen.filter((ticket) => ticket.status === "Blocked").length],
+      ["Status", activeTech?.status || "Ready"]
+    ],
+    reportsPulse: [
+      ["Open", open.length],
+      ["Closed", closed.length],
+      ["Critical", open.filter((ticket) => ticket.priority === "P1").length]
+    ]
+  };
+
+  Object.entries(groups).forEach(([id, values]) => {
+    const target = document.querySelector(`#${id}`);
+    if (!target) return;
+    target.innerHTML = values.map(([label, value]) => `
+      <article>
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+      </article>
+    `).join("");
+  });
+}
+
 function renderAlerts() {
   const alerts = state.reports.alerts || [];
   if (!alerts.length) return "";
@@ -3029,6 +3125,7 @@ function updateLiveIntel() {
 function render() {
   renderAuthChrome();
   renderDashboard();
+  renderStagePulse();
 
   if (canUseView("manager")) {
     renderManager();

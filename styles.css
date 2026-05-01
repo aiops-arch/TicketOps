@@ -607,6 +607,201 @@ body.has-session:not([data-view="dashboard"]) .intel-strip {
   display: none;
 }
 
+.page-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr);
+  gap: 18px;
+  align-items: stretch;
+  min-height: 150px;
+  padding: clamp(18px, 3vw, 30px);
+  overflow: hidden;
+  border: 1px solid rgba(181, 198, 193, 0.7);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(242, 248, 246, 0.74)),
+    var(--surface);
+  box-shadow: 0 18px 50px rgba(18, 38, 34, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  animation: panel-arrive 520ms var(--motion-smooth) both;
+}
+
+.page-stage::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(90deg, rgba(47, 117, 111, 0.1), transparent 42%),
+    repeating-linear-gradient(90deg, rgba(23, 33, 31, 0.026) 0 1px, transparent 1px 54px);
+  opacity: 0.85;
+}
+
+.page-stage > * {
+  position: relative;
+  z-index: 1;
+}
+
+.page-stage h2 {
+  margin: 4px 0 8px;
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 0.98;
+}
+
+.page-stage p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.manager-stage {
+  border-left: 5px solid var(--green);
+}
+
+.admin-stage {
+  border-left: 5px solid var(--blue);
+}
+
+.history-stage {
+  border-left: 5px solid var(--plum);
+}
+
+.scheduler-stage {
+  border-left: 5px solid var(--gold);
+}
+
+.masters-stage {
+  border-left: 5px solid var(--teal);
+}
+
+.technician-stage {
+  border-left: 5px solid var(--accent);
+}
+
+.reports-stage {
+  border-left: 5px solid var(--coral);
+}
+
+.stage-pulse {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-self: center;
+}
+
+.stage-pulse article {
+  display: grid;
+  align-content: center;
+  min-height: 92px;
+  padding: 13px;
+  border: 1px solid rgba(203, 216, 211, 0.86);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-soft);
+}
+
+.stage-pulse span,
+.ops-chart span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.stage-pulse strong {
+  display: block;
+  margin-top: 8px;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: clamp(20px, 2.2vw, 30px);
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ops-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ops-chart {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  min-height: 112px;
+  padding: 14px;
+  border: 1px solid rgba(203, 216, 211, 0.85);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px) saturate(120%);
+  animation: panel-arrive 560ms var(--motion-smooth) both;
+}
+
+.ops-chart:nth-child(2) {
+  animation-delay: 50ms;
+}
+
+.ops-chart:nth-child(3) {
+  animation-delay: 100ms;
+}
+
+.ops-chart:nth-child(4) {
+  animation-delay: 150ms;
+}
+
+.chart-ring {
+  --chart-color: var(--teal);
+  display: grid;
+  place-items: center;
+  width: 82px;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, #fff 0 55%, transparent 56%),
+    conic-gradient(var(--chart-color) calc(var(--value) * 1%), rgba(218, 228, 224, 0.9) 0);
+  box-shadow: inset 0 0 0 1px rgba(23, 33, 31, 0.06), 0 8px 18px rgba(18, 38, 34, 0.08);
+}
+
+.chart-ring strong {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.chart-blue .chart-ring {
+  --chart-color: var(--blue);
+}
+
+.chart-coral .chart-ring {
+  --chart-color: var(--coral);
+}
+
+.chart-green .chart-ring {
+  --chart-color: var(--green);
+}
+
+.ops-chart > div:last-child {
+  min-width: 0;
+}
+
+.ops-chart > div:last-child strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 19px;
+}
+
+.ops-chart p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .intel-card,
 .metric,
 .ticket-card,
@@ -5354,5 +5549,275 @@ input::placeholder {
 
   .ops-portal .intel-card {
     flex: initial;
+  }
+}
+
+/* UI/UX refresh layer */
+.ops-portal .view.is-active {
+  gap: 18px;
+}
+
+.ops-portal .panel {
+  padding: 16px;
+  border: 1px solid rgba(203, 216, 211, 0.78);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 14px 40px rgba(18, 38, 34, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px) saturate(124%);
+  animation: panel-arrive 440ms var(--motion-smooth) both;
+}
+
+.ops-portal .panel-heading {
+  padding: 0 0 8px;
+  border-bottom: 1px solid rgba(203, 216, 211, 0.7);
+}
+
+.ops-portal .panel-heading h2 {
+  font-size: 22px;
+}
+
+.ops-portal .command-hero {
+  min-height: 174px;
+  padding: clamp(18px, 3vw, 30px);
+  border: 1px solid rgba(181, 198, 193, 0.78);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(235, 246, 244, 0.76)),
+    #fff;
+}
+
+.ops-portal .command-hero h2 {
+  font-size: clamp(34px, 4vw, 56px);
+}
+
+.ops-portal .hero-metrics article,
+.ops-portal .metric,
+.ops-portal .outlet-card,
+.ops-portal .action-item,
+.ops-portal .dispatch-card,
+.ops-portal .ticket-card,
+.ops-portal .tech-card,
+.ops-portal .admin-tech-card,
+.ops-portal .report-card,
+.ops-portal .master-row,
+.ops-portal .rule-row {
+  border-width: 1px;
+  border-radius: 14px;
+}
+
+.ops-portal .ticket-card {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.ops-portal .ticket-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  content: "";
+  background: var(--teal);
+}
+
+.ops-portal .ticket-card.priority-p1::before {
+  background: var(--coral);
+}
+
+.ops-portal .ticket-card.priority-p2::before {
+  background: var(--gold);
+}
+
+.ops-portal .ticket-title {
+  font-size: 18px;
+}
+
+.ops-portal .ticket-id {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin-right: 6px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(47, 117, 111, 0.12);
+  color: var(--teal-deep);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.ops-portal .badge {
+  border: 1px solid rgba(203, 216, 211, 0.72);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.ops-portal .ticket-flow span,
+.ops-portal .progress-track,
+.ops-portal .mini-progress {
+  border-radius: 999px;
+}
+
+.ops-portal .progress-fill,
+.ops-portal .mini-progress span {
+  position: relative;
+  overflow: hidden;
+}
+
+.ops-portal .progress-fill::after,
+.ops-portal .mini-progress span::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.38), transparent);
+  animation: shimmer 2.8s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.ops-portal .tech-grid,
+.ops-portal .admin-tech-dashboard,
+.ops-portal .report-grid {
+  gap: 12px;
+}
+
+.ops-portal .master-section {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.ops-portal .master-tab {
+  min-height: 44px;
+  border-radius: 999px;
+}
+
+.ops-portal .primary-button {
+  background: linear-gradient(135deg, var(--teal), #2d8a7d);
+}
+
+.ops-portal .primary-button,
+.ops-portal .small-button,
+.ops-portal .ghost-button,
+.ops-portal .tab {
+  min-height: 44px;
+}
+
+.ops-portal .ticket-form,
+.ops-portal .scheduler-form {
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+@media (min-width: 1180px) {
+  .ops-portal .app-shell {
+    padding-inline: clamp(22px, 3vw, 44px);
+  }
+
+  .ops-portal #manager {
+    grid-template-columns: minmax(360px, 0.78fr) minmax(0, 1.22fr);
+    align-items: start;
+  }
+
+  .ops-portal #manager .page-stage {
+    grid-column: 1 / -1;
+  }
+
+  .ops-portal #manager .intake-panel {
+    position: sticky;
+    top: 16px;
+  }
+
+  .ops-portal #admin {
+    grid-template-columns: minmax(380px, 0.78fr) minmax(0, 1.22fr);
+    align-items: start;
+  }
+
+  .ops-portal #admin .page-stage,
+  .ops-portal #admin > .dashboard-grid,
+  .ops-portal #admin > .panel:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .ops-portal #scheduler,
+  .ops-portal #masters,
+  .ops-portal #technician,
+  .ops-portal #reports,
+  .ops-portal #history {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ops-portal #admin .dashboard-grid {
+    position: sticky;
+    top: 14px;
+    z-index: 5;
+  }
+
+  .ops-portal #history .card-list,
+  .ops-portal #reports .report-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1120px) {
+  .ops-portal .ops-chart-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ops-portal .page-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .ops-portal .page-stage {
+    min-height: 0;
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .ops-portal .page-stage h2 {
+    font-size: 25px;
+  }
+
+  .ops-portal .page-stage p {
+    font-size: 13px;
+  }
+
+  .ops-portal .stage-pulse,
+  .ops-portal .ops-chart-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ops-portal .stage-pulse article {
+    min-height: 64px;
+  }
+
+  .ops-portal .ops-chart {
+    grid-template-columns: 74px minmax(0, 1fr);
+    min-height: 96px;
+    padding: 12px;
+  }
+
+  .ops-portal .chart-ring {
+    width: 70px;
+  }
+
+  .ops-portal .panel {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .ops-portal .panel-heading h2 {
+    font-size: 18px;
   }
 }
