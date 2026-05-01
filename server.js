@@ -2218,6 +2218,24 @@ async function deleteAssignment(ticketId, user) {
   return { status: 200, body: ticket };
 }
 
+async function deleteTicket(ticketId, user) {
+  if (!user || user.role !== "admin") {
+    return { status: 403, body: { error: "Only admin can delete tickets" } };
+  }
+  const db = await loadDb();
+  const ticket = db.tickets.find((item) => item.id === ticketId);
+  if (!ticket) return { status: 404, body: { error: "Ticket not found" } };
+
+  if (useSupabase) {
+    await requireSupabase(await supabase.from("tickets").delete().eq("id", ticketId));
+    return { status: 200, body: { ok: true } };
+  }
+
+  db.tickets = db.tickets.filter((item) => item.id !== ticketId);
+  writeJsonDb(db);
+  return { status: 200, body: { ok: true } };
+}
+
 async function updateTicketStatus(ticketId, status, detail, user, evidence = {}) {
   const db = await loadDb();
   const ticket = db.tickets.find((item) => item.id === ticketId);
@@ -2942,6 +2960,14 @@ app.delete(
   "/api/tickets/:id/assignment",
   asyncRoute(async (req, res) => {
     const result = await deleteAssignment(req.params.id, await userFromRequest(req));
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.delete(
+  "/api/tickets/:id",
+  asyncRoute(async (req, res) => {
+    const result = await deleteTicket(req.params.id, await userFromRequest(req));
     res.status(result.status).json(result.body);
   })
 );
