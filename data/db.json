@@ -177,6 +177,7 @@
   ],
   "tasks": [],
   "maintenanceRules": [],
+  "assignmentTimeWindows": [],
   "technicians": [
     {
       "id": "T1",
@@ -215,25 +216,6 @@
   ],
   "attendancePlans": [],
   "tickets": [
-    {
-      "id": "TK-1001",
-      "outlet": "aiko surat",
-      "category": "Refrigeration",
-      "impact": "Food safety risk",
-      "note": "Freezer temperature rising",
-      "priority": "P1",
-      "status": "New",
-      "assignedTo": "",
-      "latestDetail": "",
-      "createdBy": "U-MGR-PRATIK",
-      "createdAt": "2026-04-25T00:00:00.000Z",
-      "history": [
-        {
-          "at": "2026-04-25T00:00:00.000Z",
-          "action": "Ticket created by Pratik Patel"
-        }
-      ]
-    },
     {
       "id": "TK-1002",
       "outlet": "Capiche",

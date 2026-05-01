@@ -1184,6 +1184,13 @@ async function updateTaskStatus(taskId, status = "Done", evidence = {}) {
   await loadState();
 }
 
+async function deleteTask(taskId) {
+  if (currentUser?.role !== "admin") return;
+  if (!window.confirm("Delete this task?")) return;
+  await api(`/api/tasks/${taskId}`, { method: "DELETE" });
+  await loadState();
+}
+
 async function downloadReport(type) {
   const response = await fetch(`${API_BASE}/api/reports/export/${type}`, {
     headers: currentUser ? { "X-TicketOps-User": currentUser.id, "X-TicketOps-Role": currentUser.role } : {}
@@ -2343,10 +2350,10 @@ function renderTechnician() {
                     ${task.status === "Not Done" && task.evidenceComment ? `<small>${escapeHtml(task.evidenceComment)}</small>` : ""}
                   </div>
                   ${task.status === "Done"
-                    ? `<span class="badge status-closed">${task.evidencePhotoUrl || task.evidenceComment ? "Done + Evidence" : "Done"}</span>`
+                    ? `<div class="task-actions"><span class="badge status-closed">${task.evidencePhotoUrl || task.evidenceComment ? "Done + Evidence" : "Done"}</span>${currentUser?.role === "admin" ? `<button class="small-button danger task-delete-button" data-task-delete="${escapeHtml(task.id)}">Delete</button>` : ""}</div>`
                     : task.status === "Not Done"
-                      ? `<span class="badge status-blocked">Not done</span>`
-                      : `<div class="task-actions"><button class="small-button success task-done-button" data-task-done="${escapeHtml(task.id)}">${taskRequiresEvidence(task) ? "Complete + Photo" : "Complete"}</button><button class="small-button warning task-not-done-button" data-task-not-done="${escapeHtml(task.id)}">Not done</button></div>`}
+                      ? `<div class="task-actions"><span class="badge status-blocked">Not done</span>${currentUser?.role === "admin" ? `<button class="small-button danger task-delete-button" data-task-delete="${escapeHtml(task.id)}">Delete</button>` : ""}</div>`
+                      : `<div class="task-actions"><button class="small-button success task-done-button" data-task-done="${escapeHtml(task.id)}">${taskRequiresEvidence(task) ? "Complete + Photo" : "Complete"}</button><button class="small-button warning task-not-done-button" data-task-not-done="${escapeHtml(task.id)}">Not done</button>${currentUser?.role === "admin" ? `<button class="small-button danger task-delete-button" data-task-delete="${escapeHtml(task.id)}">Delete</button>` : ""}</div>`}
                 </article>
               `).join("")}
             </div>
@@ -3287,6 +3294,12 @@ document.addEventListener("click", async (event) => {
       return;
     }
     await updateTaskStatus(task.id, "Not Done", { comment: reason.trim() });
+    return;
+  }
+
+  const taskDeleteButton = event.target.closest?.("[data-task-delete]");
+  if (taskDeleteButton) {
+    await deleteTask(taskDeleteButton.dataset.taskDelete);
     return;
   }
 
