@@ -2362,6 +2362,7 @@ function renderTechnician() {
   const runningTickets = tickets.filter((ticket) => ticket.status === "In Progress");
   const blockedTickets = tickets.filter((ticket) => ticket.status === "Blocked");
   const doneTickets = tickets.filter((ticket) => ["Resolved", "Verification Pending", "Closed"].includes(ticket.status));
+  const liveTickets = tickets.filter((ticket) => ["New", "Assigned", "Acknowledged", "In Progress", "Blocked", "Reopened"].includes(ticket.status));
 
   dashboard.innerHTML = activeTech ? `
     <div class="technician-simple-dashboard">
@@ -2420,9 +2421,9 @@ function renderTechnician() {
   ` : "";
 
   ticketBoard.innerHTML = activeTech
-    ? tickets.length
-      ? tickets.map((ticket) => ticketCard(ticket, "technician")).join("")
-      : `<div class="empty">No assigned tickets right now.</div>`
+    ? liveTickets.length
+      ? liveTickets.map((ticket) => ticketCard(ticket, "technician")).join("")
+      : `<div class="empty">No active tickets right now.</div>`
     : "";
 }
 
