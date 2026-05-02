@@ -114,8 +114,8 @@ const DEMO_USERS = [
     outlet: "aiko surat",
     accessAllOutlets: true,
     allowedOutlets: [],
-    defaultView: "dashboard",
-    allowedViews: ["dashboard", "manager", "reports"]
+    defaultView: "manager",
+    allowedViews: ["manager"]
   },
   {
     id: "U-MGR-HUSSAIN",
@@ -127,8 +127,8 @@ const DEMO_USERS = [
     outlet: "Capiche",
     accessAllOutlets: true,
     allowedOutlets: [],
-    defaultView: "dashboard",
-    allowedViews: ["dashboard", "manager", "reports"]
+    defaultView: "manager",
+    allowedViews: ["manager"]
   },
   {
     id: "U-TECH-VICKY",
@@ -140,8 +140,8 @@ const DEMO_USERS = [
     technicianId: "T1",
     accessAllOutlets: false,
     allowedOutlets: ["aiko surat", "Capiche"],
-    defaultView: "dashboard",
-    allowedViews: ["dashboard", "technician", "reports"]
+    defaultView: "technician",
+    allowedViews: ["technician"]
   },
   {
     id: "U-TECH-RAHUL",
@@ -153,8 +153,8 @@ const DEMO_USERS = [
     technicianId: "T2",
     accessAllOutlets: false,
     allowedOutlets: ["aiko surat"],
-    defaultView: "dashboard",
-    allowedViews: ["dashboard", "technician", "reports"]
+    defaultView: "technician",
+    allowedViews: ["technician"]
   },
   {
     id: "U-TECH-ABRAR",
@@ -166,8 +166,8 @@ const DEMO_USERS = [
     technicianId: "T3",
     accessAllOutlets: false,
     allowedOutlets: ["Capiche"],
-    defaultView: "dashboard",
-    allowedViews: ["dashboard", "technician", "reports"]
+    defaultView: "technician",
+    allowedViews: ["technician"]
   }
 ];
 
@@ -575,8 +575,15 @@ function normalizeOutletList(value, db) {
 
 function allowedViewsForRole(role) {
   if (role === "admin") return ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"];
-  if (role === "manager") return ["dashboard", "manager", "history", "reports"];
-  return ["dashboard", "technician", "history", "reports"];
+  if (role === "manager") return ["manager"];
+  if (role === "technician") return ["technician"];
+  return ["dashboard", "reports"];
+}
+
+function defaultViewForRole(role) {
+  if (role === "manager") return "manager";
+  if (role === "technician") return "technician";
+  return "dashboard";
 }
 
 function normalizeAllowedViews(user) {
@@ -1709,8 +1716,8 @@ async function createTechnician(payload) {
     address,
     latitude,
     longitude,
-    defaultView: "dashboard",
-    allowedViews: ["dashboard", "technician", "reports"]
+    defaultView: "technician",
+    allowedViews: ["technician"]
   };
 
   if (useSupabase) {
@@ -1888,7 +1895,7 @@ async function createAdminUser(payload) {
     address: access.address,
     latitude: access.latitude,
     longitude: access.longitude,
-    defaultView: "dashboard",
+    defaultView: defaultViewForRole(access.role),
     allowedViews: allowedViewsForRole(access.role)
   };
 
@@ -1997,7 +2004,7 @@ async function updateAdminUser(userId, payload) {
       address: access.address || null,
       latitude: access.latitude,
       longitude: access.longitude,
-      default_view: "dashboard",
+      default_view: defaultViewForRole(access.role),
       allowed_views: allowedViews,
       updated_at: new Date().toISOString()
     }).eq("id", userId));
@@ -2016,7 +2023,7 @@ async function updateAdminUser(userId, payload) {
     address: access.address,
     latitude: access.latitude,
     longitude: access.longitude,
-    defaultView: "dashboard",
+    defaultView: defaultViewForRole(access.role),
     allowedViews
   } : user);
   writeJsonDb(db);
@@ -2677,7 +2684,12 @@ app.get("/api/health", (req, res) => {
 
 function publicUser(user) {
   const { password, passwordHash, ...safeUser } = user;
-  return safeUser;
+  const allowedViews = normalizeAllowedViews(safeUser);
+  return {
+    ...safeUser,
+    defaultView: allowedViews.includes(safeUser.defaultView) ? safeUser.defaultView : defaultViewForRole(safeUser.role),
+    allowedViews
+  };
 }
 
 async function updateStoredPassword(userId, newPassword) {
@@ -2733,6 +2745,9 @@ function mapSupabaseUser(row) {
     allowedViews: row.allowed_views || []
   };
   user.allowedViews = normalizeAllowedViews(user);
+  if (!user.allowedViews.includes(user.defaultView)) {
+    user.defaultView = defaultViewForRole(user.role);
+  }
   return user;
 }
 

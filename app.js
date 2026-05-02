@@ -41,16 +41,16 @@ function ticketRequiresPhoto({ impact = "", category = "", note = "" } = {}) {
 
 const ROLE_DEFAULT_VIEWS = {
   admin: ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"],
-  manager: ["dashboard", "manager", "history", "reports"],
-  technician: ["dashboard", "technician", "history", "reports"],
+  manager: ["manager"],
+  technician: ["technician"],
   auditor: ["dashboard", "reports"]
 };
 
 const UTILITY_VIEWS = [];
 const ROLE_VIEW_ALLOWLIST = {
   admin: ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"],
-  manager: ["dashboard", "manager", "history", "reports"],
-  technician: ["dashboard", "technician", "history", "reports"],
+  manager: ["manager"],
+  technician: ["technician"],
   auditor: ["dashboard", "reports"]
 };
 
@@ -87,6 +87,16 @@ let activeMasterTab = "outlets";
 let editingAssignmentWindowId = "";
 let editingMaintenanceRuleId = "";
 let mobileNavOpen = false;
+
+function isSingleRoleWorkspace(role = currentUser?.role) {
+  return role === "manager" || role === "technician";
+}
+
+function roleHomeView(role = currentUser?.role) {
+  if (role === "manager") return "manager";
+  if (role === "technician") return "technician";
+  return "dashboard";
+}
 
 function normalizeSessionUser(user) {
   if (!user) return null;
@@ -472,7 +482,11 @@ function allowedViews() {
   const roleAllowlist = ROLE_VIEW_ALLOWLIST[currentUser?.role] || baseViews;
   const views = baseViews.filter((view) => roleAllowlist.includes(view));
 
-  if (!views.includes("dashboard")) {
+  if (!views.length) {
+    views.push(roleHomeView());
+  }
+
+  if (!isSingleRoleWorkspace() && !views.includes("dashboard")) {
     views.unshift("dashboard");
   }
 
@@ -567,6 +581,8 @@ async function handleLogin(event) {
 function showLogin() {
   closeMobileNav();
   document.body.classList.remove("has-session");
+  document.body.classList.remove("single-role-workspace", "role-admin", "role-manager", "role-technician", "role-auditor");
+  delete document.body.dataset.view;
   document.querySelector("#loginScreen").classList.remove("is-hidden");
   document.querySelector("#appShell").classList.add("is-hidden");
   document.querySelector("#userPill").classList.add("is-hidden");
@@ -582,16 +598,23 @@ async function enterApp() {
   document.querySelector("#appShell").classList.remove("is-hidden");
   renderAuthChrome();
   await loadState();
-  switchView("dashboard");
+  switchView(roleHomeView());
 }
 
 function renderAuthChrome() {
+  const roleClass = currentUser?.role ? `role-${currentUser.role}` : "";
+  const singleRole = isSingleRoleWorkspace();
+  document.body.classList.remove("single-role-workspace", "role-admin", "role-manager", "role-technician", "role-auditor");
+  if (roleClass) document.body.classList.add(roleClass);
+  document.body.classList.toggle("single-role-workspace", singleRole);
+
   document.querySelector("#userName").textContent = currentUser?.name || "Guest";
   document.querySelector("#userPost").textContent = currentUser?.post || "Guest";
   document.querySelector("#userPill").classList.remove("is-hidden");
   document.querySelector("#logoutButton").classList.remove("is-hidden");
   document.querySelector("#resetData").classList.toggle("is-hidden", currentUser?.role !== "admin");
-  document.querySelector("#sidebarToggle")?.classList.toggle("is-hidden", !currentUser || !isMobileNav());
+  document.querySelector("#sidebarToggle")?.classList.toggle("is-hidden", !currentUser || !isMobileNav() || singleRole);
+  document.querySelector(".tabs")?.classList.toggle("is-hidden", singleRole);
   updateMobileNav();
 
   document.querySelectorAll(".tab[data-view]").forEach((button) => {
@@ -1751,9 +1774,73 @@ function donutChart(label, value, total, detail, tone = "teal") {
 
 function renderManager() {
   const scopedTickets = ticketsForCurrentUser(state.tickets);
-  const list = scopedTickets.filter((ticket) => ticket.status !== "Closed");
+  const list = scopedTickets
+    .filter((ticket) => ticket.status !== "Closed")
+    .sort((a, b) => {
+      const priorityRank = { P1: 1, P2: 2, P3: 3, P4: 4 };
+      return (priorityRank[a.priority] || 9) - (priorityRank[b.priority] || 9)
+        || String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
+    });
+  const seen = new Set();
+  const takeTickets = (predicate) => list.filter((ticket) => {
+    if (seen.has(ticket.id) || !predicate(ticket)) return false;
+    seen.add(ticket.id);
+    return true;
+  });
+  const groups = [
+    {
+      title: "Verify and close",
+      detail: "Resolved work waiting for manager approval",
+      tickets: takeTickets((ticket) => ["Resolved", "Verification Pending"].includes(ticket.status))
+    },
+    {
+      title: "Blocked or reopened",
+      detail: "Needs a manager decision before work can move",
+      tickets: takeTickets((ticket) => ["Blocked", "Reopened"].includes(ticket.status))
+    },
+    {
+      title: "Dispatch queue",
+      detail: "New requests waiting for ownership",
+      tickets: takeTickets((ticket) => !ticket.assignedTo || ticket.status === "New")
+    },
+    {
+      title: "Technician in progress",
+      detail: "Assigned work moving through the field",
+      tickets: takeTickets((ticket) => ["Assigned", "Acknowledged", "In Progress"].includes(ticket.status))
+    },
+    {
+      title: "Other active work",
+      detail: "Everything still open for this outlet",
+      tickets: takeTickets(() => true)
+    }
+  ].filter((group) => group.tickets.length);
+
+  const verify = list.filter((ticket) => ["Resolved", "Verification Pending"].includes(ticket.status)).length;
+  const blocked = list.filter((ticket) => ["Blocked", "Reopened"].includes(ticket.status)).length;
+  const unassigned = list.filter((ticket) => !ticket.assignedTo || ticket.status === "New").length;
+  const critical = list.filter((ticket) => ticket.priority === "P1").length;
+
   document.querySelector("#managerTickets").innerHTML = list.length
-    ? list.map((ticket) => ticketCard(ticket, "manager")).join("")
+    ? `
+      <div class="queue-summary-strip manager-summary">
+        <span>${list.length} open</span>
+        <span>${verify} verify</span>
+        <span>${blocked} blocked</span>
+        <span>${unassigned} dispatch</span>
+        <span>${critical} critical</span>
+      </div>
+      ${groups.map((group) => `
+        <section class="ticket-queue-group manager-queue-group">
+          <div class="queue-group-heading">
+            <strong>${escapeHtml(group.title)}</strong>
+            <span>${escapeHtml(group.detail)} / ${group.tickets.length}</span>
+          </div>
+          <div class="queue-group-list">
+            ${group.tickets.map((ticket) => ticketCard(ticket, "manager")).join("")}
+          </div>
+        </section>
+      `).join("")}
+    `
     : `<div class="empty">No active tickets for this outlet.</div>`;
 }
 
