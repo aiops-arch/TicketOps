@@ -1326,7 +1326,7 @@ async function createTicket(payload, user) {
   if (unknownAsset) {
     ticket.latestDetail = `Manager marked asset as Other / unknown${cleanArea ? ` in ${cleanArea}` : ""}`;
   }
-  if (user?.role === "manager" && requestedTechnician) {
+  if (requestedTechnician && user?.role !== "admin") {
     return { status: 403, body: { error: "Only admin can assign technicians" } };
   }
   const assignmentWindow = assignmentWindowStatus(db);
@@ -2797,7 +2797,9 @@ function scopedDbForUser(db, user) {
       technicians: db.technicians.filter((tech) => tech.id === user.technicianId),
       assets: db.assets || [],
       tasks: (db.tasks || []).filter((task) => task.assignedTo === user.technicianId),
-      tickets: db.tickets.filter((ticket) => ticket.assignedTo === user.technicianId && isTicketScheduleDue(ticket))
+      tickets: db.tickets.filter((ticket) =>
+        (ticket.assignedTo === user.technicianId || ticket.createdBy === user.id) && isTicketScheduleDue(ticket)
+      )
     };
   }
 
@@ -3243,6 +3245,9 @@ app.post(
       return res.status(403).json({ error: "You do not have access to this outlet" });
     }
     if (assignedTo) {
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Only admin can assign technicians" });
+      }
       const technician = db.technicians.find((tech) => tech.id === assignedTo);
       if (!technician) return res.status(404).json({ error: "Assigned technician was not found" });
       const effectiveTechnician = technicianWithAttendance(db, technician);

@@ -724,14 +724,14 @@ async function createTechnicianTicket(event) {
         impact,
         note,
         area: "Technician raised",
-        assignedTo: document.querySelector("#technicianTicketAssign").value,
+        assignedTo: "",
         photoUrl: photoUrls[0] || "",
         photoUrls
       })
     });
     document.querySelector("#technicianTicketNote").value = "";
     document.querySelector("#technicianTicketPhotos").value = "";
-    resultBox.textContent = `${created.id} created${created.assignedTo ? " and assigned" : " for admin assignment"}.`;
+    resultBox.textContent = `${created.id} created for admin assignment.`;
     await loadState();
   } catch (error) {
     resultBox.textContent = error.message;
@@ -1508,10 +1508,9 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
     return `
       <div class="action-group-title">Field Actions</div>
       ${ticket.status === "Assigned" ? `<button class="small-button primary" data-accept-ticket="${escapeHtml(ticket.id)}">Accept Job</button>` : ""}
-      ${["Assigned", "Acknowledged"].includes(ticket.status) ? `<button class="small-button danger" data-reject-ticket="${escapeHtml(ticket.id)}">Reject with reason</button>` : ""}
       ${ticket.status === "Acknowledged" ? `<button class="small-button primary" data-status="${escapeHtml(ticket.id)}:In Progress">Start</button>` : ""}
-      <button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Blocked">Need Part/Vendor</button>
-      <button class="small-button success" data-status="${escapeHtml(ticket.id)}:Resolved">Complete + Photo</button>
+      ${["In Progress", "Blocked"].includes(ticket.status) ? `<button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Blocked">Stop / Not Done</button>` : ""}
+      ${["In Progress", "Blocked"].includes(ticket.status) ? `<button class="small-button success" data-status="${escapeHtml(ticket.id)}:Resolved">Complete</button>` : ""}
     `;
   }
 
@@ -1607,7 +1606,7 @@ function dashboardTitle() {
 
 function dashboardSubtitle() {
   if (currentUser?.role === "manager") return "Outlet work, risk, dispatch, and closure pressure in one place.";
-  if (currentUser?.role === "technician") return "Assigned work, attendance state, and next actions for the field.";
+  if (currentUser?.role === "technician") return "Assigned tickets and next field actions in one place.";
   return "Live health across outlets, technicians, dispatch, and ticket movement.";
 }
 
@@ -2338,277 +2337,52 @@ function renderClosedHistory() {
 function renderTechnician() {
   const activeId = currentUser?.technicianId || document.querySelector("#activeTechnician").value || state.technicians[0]?.id;
   const activeTech = technicianById(activeId);
-  const list = state.tickets.filter((ticket) => ticket.assignedTo === activeId && ticket.status !== "Closed" && isTicketReleased(ticket));
-  const tasks = (state.tasks || []).filter((task) => task.assignedTo === activeId);
-  const today = todayInputValue();
-  const todayTasks = tasks
-    .filter((task) => task.date === today)
-    .sort((a, b) => taskPhaseRank(a.title) - taskPhaseRank(b.title) || String(a.title).localeCompare(String(b.title)));
-  const overdueTasks = tasks.filter((task) => task.date < today && task.status === "Pending");
-  const weekStart = addDaysInputValue(-6);
-  const weeklyCompleted = tasks.filter((task) => task.status === "Done" && task.date >= weekStart).length;
-  const weeklyResolved = list.filter((ticket) => ["Resolved", "Verification Pending", "Closed"].includes(ticket.status) && String(ticket.createdAt || "").slice(0, 10) >= weekStart).length;
-  const doneTasks = todayTasks.filter((task) => task.status === "Done");
-  const pendingTasks = todayTasks.filter((task) => task.status === "Pending");
-  const notDoneTasks = todayTasks.filter((task) => task.status === "Not Done");
-  const sortedList = [...list].sort((a, b) => {
-    const priorityRank = { P1: 1, P2: 2, P3: 3, P4: 4 };
-    return (priorityRank[a.priority] || 9) - (priorityRank[b.priority] || 9)
-      || String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
-  });
-  const attendanceTools = document.querySelector("#technicianAttendanceTools");
   const dashboard = document.querySelector("#technicianDashboard");
-  const activePlan = activeTech?.activeAttendancePlan;
-  const upcomingPlans = (activeTech?.attendancePlans || []).filter((plan) => plan.id !== activePlan?.id);
-  const acknowledged = list.filter((ticket) => ticket.status === "Acknowledged").length;
-  const inProgress = list.filter((ticket) => ticket.status === "In Progress").length;
-  const blocked = list.filter((ticket) => ticket.status === "Blocked").length;
-  const waitingStart = list.filter((ticket) => ticket.status === "Assigned").length;
-  const readyToClose = list.filter((ticket) => ["Resolved", "Verification Pending"].includes(ticket.status)).length;
-  const nextTicket = sortedList.find((ticket) => ["Assigned", "Acknowledged", "In Progress", "Blocked"].includes(ticket.status)) || sortedList[0];
-  const nextTask = todayTasks.find((task) => task.status !== "Done");
-  const nextWorkTitle = nextTask
-    ? `${nextTask.id} ${nextTask.title}`
-    : nextTicket
-      ? `${nextTicket.id} ${nextTicket.note || "Maintenance request"}`
-      : "No active job";
-  const nextWorkDetail = nextTask
-    ? `${nextTask.asset?.name || "Asset"} / checklist pending`
-    : nextTicket
-      ? `${nextTicket.outlet} / ${nextTicket.category} / ${nextTicket.status}`
-      : "Technician is clear for new assignment.";
-  const technicianOutlets = activeTech
-    ? (activeTech.serviceOutlets || state.outlets).map((outlet) => ({
-      name: outlet,
-      location: state.outletLocations?.[outlet] || {}
-    }))
+  const ticketTools = document.querySelector("#technicianAttendanceTools");
+  const ticketBoard = document.querySelector("#technicianTickets");
+  const priorityRank = { P1: 1, P2: 2, P3: 3, P4: 4 };
+  const statusRank = {
+    Assigned: 1,
+    Acknowledged: 2,
+    "In Progress": 3,
+    Blocked: 4,
+    Reopened: 5,
+    Resolved: 6,
+    "Verification Pending": 7,
+    Closed: 8
+  };
+  const tickets = activeTech
+    ? state.tickets
+      .filter((ticket) => (ticket.assignedTo === activeTech.id || ticket.createdBy === currentUser?.id) && ticket.status !== "Cancelled" && isTicketReleased(ticket))
+      .sort((a, b) => (statusRank[a.status] || 9) - (statusRank[b.status] || 9)
+        || (priorityRank[a.priority] || 9) - (priorityRank[b.priority] || 9)
+        || String(a.createdAt || "").localeCompare(String(b.createdAt || "")))
     : [];
-  const tasksByPhase = todayTasks.reduce((groups, task) => {
-    const phase = taskPhase(task.title);
-    groups[phase] = groups[phase] || [];
-    groups[phase].push(task);
-    return groups;
-  }, {});
-  const evidenceRequiredTasks = todayTasks.filter((task) => taskRequiresEvidence(task));
-  const evidenceSubmitted = todayTasks.filter((task) => task.evidencePhotoUrl || task.evidenceComment);
-  const completionRate = todayTasks.length ? Math.round((doneTasks.length / todayTasks.length) * 100) : 100;
-  const blockedTickets = sortedList.filter((ticket) => ticket.status === "Blocked");
-  const activeOutlets = [...new Set([
-    ...todayTasks.map((task) => task.outlet).filter(Boolean),
-    ...sortedList.map((ticket) => ticket.outlet).filter(Boolean)
-  ])];
-  const activeAssets = [
-    ...new Map([
-      ...todayTasks.map((task) => task.asset).filter(Boolean).map((asset) => [asset.id, asset]),
-      ...sortedList.map((ticket) => ticket.asset).filter(Boolean).map((asset) => [asset.id, asset])
-    ]).values()
-  ];
-  const technicianTimeline = [
-    ...doneTasks.map((task) => ({
-      at: task.completedAt || task.date,
-      title: `Checklist done: ${task.title.replace(`${taskPhase(task.title)}: `, "")}`,
-      detail: `${task.asset?.name || "Asset"} / ${task.evidencePhotoUrl || task.evidenceComment ? "evidence saved" : "no evidence"}`
-    })),
-    ...sortedList.flatMap((ticket) => (ticket.history || []).map((item) => ({
-      at: item.at || ticket.createdAt,
-      title: `${ticket.id} ${ticket.status}`,
-      detail: item.action || ticket.note
-    }))),
-    ...(activePlan ? [{
-      at: activePlan.createdAt || activePlan.from,
-      title: `Attendance: ${activePlan.status}`,
-      detail: formatDateRange(activePlan.from, activePlan.to)
-    }] : [])
-  ].sort((a, b) => String(b.at || "").localeCompare(String(a.at || ""))).slice(0, 7);
+  const activeTickets = tickets.filter((ticket) => ["New", "Assigned", "Acknowledged", "Reopened"].includes(ticket.status));
+  const runningTickets = tickets.filter((ticket) => ticket.status === "In Progress");
+  const blockedTickets = tickets.filter((ticket) => ticket.status === "Blocked");
+  const doneTickets = tickets.filter((ticket) => ["Resolved", "Verification Pending", "Closed"].includes(ticket.status));
 
   dashboard.innerHTML = activeTech ? `
-    <div class="technician-dashboard status-${token(activeTech.status)}">
-      <section class="technician-status-card">
-        <div>
-          <span class="section-kicker">Working Status</span>
-          <h3>${escapeHtml(activeTech.name)}</h3>
-          <p>${escapeHtml(technicianSkillLabel(activeTech))} / ${escapeHtml(activeTech.status)} / ${escapeHtml(serviceAreaLabel(activeTech))}</p>
-        </div>
-        <div class="status-orbit" aria-hidden="true"><span></span></div>
-      </section>
-
-      <section class="technician-metrics">
-        <article class="metric-done"><span>Tasks Done</span><strong>${doneTasks.length}</strong></article>
-        <article class="metric-pending"><span>Pending</span><strong>${pendingTasks.length}</strong></article>
-        <article class="metric-blocked"><span>Not Done</span><strong>${notDoneTasks.length}</strong></article>
-        <article class="metric-overdue"><span>Overdue</span><strong>${overdueTasks.length}</strong></article>
-        <article class="metric-ticket"><span>Open Tickets</span><strong>${list.length}</strong></article>
-        <article class="metric-blocked"><span>Blocked</span><strong>${blocked}</strong></article>
-      </section>
-
-      <section class="technician-next">
-        <span class="section-kicker">Next Job</span>
-        <strong>${escapeHtml(nextWorkTitle)}</strong>
-        <p>${escapeHtml(nextWorkDetail)}</p>
-      </section>
-
-      <section class="technician-flow" aria-label="Work progress">
-        ${[
-          ["Today Tasks", todayTasks.length],
-          ["Done", doneTasks.length],
-          ["Tickets", waitingStart + acknowledged + inProgress],
-          ["Blocked", blocked],
-          ["Week Done", weeklyCompleted + weeklyResolved]
-        ].map(([label, count]) => `
-          <div class="flow-step ${count ? "has-work" : ""}">
-            <span>${escapeHtml(label)}</span>
-            <strong>${count}</strong>
-          </div>
-        `).join("")}
-      </section>
+    <div class="technician-simple-dashboard">
+      ${[
+        ["Active", activeTickets.length],
+        ["Running", runningTickets.length],
+        ["Blocked", blockedTickets.length],
+        ["Done", doneTickets.length]
+      ].map(([label, count]) => `
+        <article class="technician-simple-stat status-${token(label)}">
+          <span>${escapeHtml(label)}</span>
+          <strong>${count}</strong>
+        </article>
+      `).join("")}
     </div>
   ` : `<div class="empty">No technician selected.</div>`;
 
-  const checklistHtml = activeTech ? `
-    <div class="technician-command-grid">
-      <section class="technician-command-card">
-        <div class="mini-heading">
-          <span class="section-kicker">Coverage</span>
-          <strong>${completionRate}% today</strong>
-        </div>
-        <div class="profile-lines">
-          <span><strong>${escapeHtml(technicianSkillLabel(activeTech))}</strong><small>Skills</small></span>
-          <span><strong>${list.length}</strong><small>Active ticket load</small></span>
-          <span><strong>${evidenceSubmitted.length}/${evidenceRequiredTasks.length}</strong><small>Evidence</small></span>
-        </div>
-      </section>
-
-      <section class="technician-command-card">
-        <div class="mini-heading">
-          <span class="section-kicker">Attendance</span>
-          <strong>${escapeHtml(activeTech.status)}</strong>
-        </div>
-        <div class="field-summary">
-          <p>${activePlan ? `${escapeHtml(activePlan.status)} from ${escapeHtml(formatDateRange(activePlan.from, activePlan.to))}` : "Available according to current status."}</p>
-          ${upcomingPlans.length ? `<p>Next: ${escapeHtml(upcomingPlans[0].status)} / ${escapeHtml(formatDateRange(upcomingPlans[0].from, upcomingPlans[0].to))}</p>` : `<p>No upcoming leave plan.</p>`}
-        </div>
-      </section>
-
-      <section class="technician-command-card">
-        <div class="mini-heading">
-          <span class="section-kicker">Location Scope</span>
-          <strong>${activeOutlets.length || 0} live</strong>
-        </div>
-        <div class="field-summary">
-          <p>Service coverage: ${escapeHtml(serviceAreaLabel(activeTech))}</p>
-          ${technicianOutlets.length ? `<p>${escapeHtml(technicianOutlets.map((item) => `${item.name}${item.location.address ? ` - ${item.location.address}` : ""}`).join(" / "))}</p>` : ""}
-          <p>Today active: ${escapeHtml(activeOutlets.join(", ") || "No outlet assigned")}</p>
-        </div>
-      </section>
-
-      <section class="technician-command-card ${blockedTickets.length ? "needs-attention" : ""}">
-        <div class="mini-heading">
-          <span class="section-kicker">Support / Blockers</span>
-          <strong>${blockedTickets.length}</strong>
-        </div>
-        <div class="field-list">
-          ${blockedTickets.length ? blockedTickets.map((ticket) => `
-            <article>
-              <strong>${escapeHtml(ticket.id)} ${escapeHtml(ticket.note)}</strong>
-              <span>${escapeHtml(ticket.latestDetail || "Waiting for admin/manager support")}</span>
-            </article>
-          `).join("") : `<div class="empty mini">No blocked work right now.</div>`}
-        </div>
-      </section>
-    </div>
-
-    <div class="technician-work-grid">
-      <section class="technician-work-panel">
-        <div class="mini-heading">
-          <span class="section-kicker">Today Checklist</span>
-          <strong>${doneTasks.length}/${todayTasks.length} done</strong>
-        </div>
-        <div class="task-list">
-          ${todayTasks.length ? Object.entries(tasksByPhase).map(([phase, tasks]) => `
-            <div class="task-phase">
-              <div class="task-phase-heading">
-                <strong>${escapeHtml(phase)}</strong>
-                <span>${tasks.filter((task) => task.status === "Done").length}/${tasks.length}</span>
-              </div>
-              ${tasks.map((task) => `
-                <article class="task-row status-${token(task.status)} ${taskRequiresEvidence(task) ? "requires-evidence" : ""}">
-                  <div>
-                    <strong>${escapeHtml(task.title.replace(`${phase}: `, ""))}</strong>
-                    <span>${escapeHtml(task.asset?.name || "Asset")} / ${escapeHtml(task.outlet || "")}${task.notes ? ` / ${escapeHtml(task.notes)}` : ""}</span>
-                    <div class="task-tags">
-                      ${taskRequiresEvidence(task) ? `<span>Photo required</span>` : `<span>Note optional</span>`}
-                      ${maintenanceRuleForTask(task)?.allowOutsideWindow ? `<span>Outside window allowed</span>` : task.ruleId ? `<span>Window required</span>` : ""}
-                      ${task.evidencePhotoUrl || task.evidenceComment ? `<span>Evidence saved</span>` : ""}
-                      ${task.status === "Not Done" ? `<span>Not done</span>` : ""}
-                    </div>
-                    ${task.status === "Not Done" && task.evidenceComment ? `<small>${escapeHtml(task.evidenceComment)}</small>` : ""}
-                  </div>
-                  ${task.status === "Done"
-                    ? `<div class="task-actions"><span class="badge status-closed">${task.evidencePhotoUrl || task.evidenceComment ? "Done + Evidence" : "Done"}</span>${currentUser?.role === "admin" ? `<button class="small-button danger task-delete-button" data-task-delete="${escapeHtml(task.id)}">Delete</button>` : ""}</div>`
-                    : task.status === "Not Done"
-                      ? `<div class="task-actions"><span class="badge status-blocked">Not done</span>${currentUser?.role === "admin" ? `<button class="small-button danger task-delete-button" data-task-delete="${escapeHtml(task.id)}">Delete</button>` : ""}</div>`
-                      : `<div class="task-actions"><button class="small-button success task-done-button" data-task-done="${escapeHtml(task.id)}">${taskRequiresEvidence(task) ? "Complete + Photo" : "Complete"}</button><button class="small-button warning task-not-done-button" data-task-not-done="${escapeHtml(task.id)}">Not done</button>${currentUser?.role === "admin" ? `<button class="small-button danger task-delete-button" data-task-delete="${escapeHtml(task.id)}">Delete</button>` : ""}</div>`}
-                </article>
-              `).join("")}
-            </div>
-          `).join("") : `<div class="empty mini">No checklist tasks for today.</div>`}
-        </div>
-      </section>
-
-      <section class="technician-work-panel">
-        <div class="mini-heading">
-          <span class="section-kicker">Weekly Stats</span>
-          <strong>Last 7 days</strong>
-        </div>
-        <div class="weekly-stat-grid">
-          <article><span>Tasks Completed</span><strong>${weeklyCompleted}</strong></article>
-          <article><span>Tickets Resolved</span><strong>${weeklyResolved}</strong></article>
-        </div>
-      </section>
-    </div>
-
-    <div class="technician-context-grid">
-      <section class="technician-work-panel">
-        <div class="mini-heading">
-          <span class="section-kicker">Asset Context</span>
-          <strong>${activeAssets.length}</strong>
-        </div>
-        <div class="field-list">
-          ${activeAssets.length ? activeAssets.map((asset) => {
-            const assetTickets = sortedList.filter((ticket) => ticket.assetId === asset.id);
-            const assetTasks = todayTasks.filter((task) => task.assetId === asset.id);
-            return `
-              <article>
-                <strong>${escapeHtml(asset.name)}</strong>
-                <span>${escapeHtml(asset.outlet)} / ${escapeHtml(asset.category)} / ${escapeHtml(asset.code || "No code")}</span>
-                <small>${assetTasks.length} checklist / ${assetTickets.length} ticket</small>
-              </article>
-            `;
-          }).join("") : `<div class="empty mini">No asset context assigned today.</div>`}
-        </div>
-      </section>
-
-      <section class="technician-work-panel">
-        <div class="mini-heading">
-          <span class="section-kicker">Work Timeline</span>
-          <strong>Latest ${technicianTimeline.length}</strong>
-        </div>
-        <div class="field-list timeline-list">
-          ${technicianTimeline.length ? technicianTimeline.map((item) => `
-            <article>
-              <strong>${escapeHtml(item.title)}</strong>
-              <span>${escapeHtml(item.detail)} / ${escapeHtml(formatDateTime(item.at))}</span>
-            </article>
-          `).join("") : `<div class="empty mini">No technician activity recorded yet.</div>`}
-        </div>
-      </section>
-    </div>
-  ` : "";
-
-  attendanceTools.innerHTML = activeTech ? `
-    <details class="technician-raise-ticket">
-      <summary>Raise maintenance ticket</summary>
-      <form id="technicianTicketForm" class="ticket-form compact-ticket-form">
+  ticketTools.innerHTML = activeTech ? `
+    <details class="technician-raise-ticket technician-ticket-tools">
+      <summary>Create field ticket</summary>
+      <form id="technicianTicketForm" class="ticket-form compact-ticket-form technician-ticket-form">
         <label>
           Outlet
           <select id="technicianTicketOutlet" required>
@@ -2632,13 +2406,6 @@ function renderTechnician() {
           </select>
         </label>
         <label>
-          Assign
-          <select id="technicianTicketAssign">
-            <option value="">Admin queue</option>
-            ${state.technicians.map((tech) => `<option value="${escapeHtml(tech.id)}">${escapeHtml(tech.name)}</option>`).join("")}
-          </select>
-        </label>
-        <label>
           Details
           <input id="technicianTicketNote" required placeholder="What needs to be done">
         </label>
@@ -2650,64 +2417,13 @@ function renderTechnician() {
         <p id="technicianTicketResult" class="form-hint" aria-live="polite"></p>
       </form>
     </details>
-    ${checklistHtml}
-    <div class="attendance-layout">
-      <article class="attendance-card tech-card status-${token(activeTech.status)}">
-        <div class="tech-status-row">
-          <div>
-            <strong>${escapeHtml(activeTech.status)}</strong>
-            <span>${escapeHtml(activeTech.name)}</span>
-            <span>Serves: ${escapeHtml(serviceAreaLabel(activeTech))}</span>
-            ${activePlan ? `<span>Active leave: ${escapeHtml(formatDateRange(activePlan.from, activePlan.to))}</span>` : `<span>No active leave window.</span>`}
-          </div>
-          <span class="status-dot" aria-hidden="true"></span>
-        </div>
-        <div class="quick-actions">
-          <button class="small-button warning" data-quick-attendance="today">Absent today</button>
-          <button class="small-button" data-quick-attendance="three-days">Take off 3 days</button>
-          <button class="small-button success" data-quick-attendance="available">Available now</button>
-        </div>
-      </article>
-      <form id="attendanceForm" class="attendance-form">
-        <label>
-          Attendance
-          <select id="attendanceStatus">
-            ${["Absent", "On Leave", "Off Duty", "Present", "Emergency Available"].map((status) => (
-              `<option value="${escapeHtml(status)}">${escapeHtml(status)}</option>`
-            )).join("")}
-          </select>
-        </label>
-        <label>
-          From
-          <input id="attendanceFrom" type="date" value="${todayInputValue()}">
-        </label>
-        <label>
-          To
-          <input id="attendanceTo" type="date" value="${todayInputValue()}">
-        </label>
-        <label>
-          Reason
-          <input id="attendanceReason" placeholder="Personal work, health, planned leave">
-        </label>
-        <button type="submit" class="primary-button">Save Attendance</button>
-      </form>
-      <div class="attendance-plan-list">
-        ${(activePlan ? [activePlan, ...upcomingPlans] : upcomingPlans).length
-          ? (activePlan ? [activePlan, ...upcomingPlans] : upcomingPlans).map((plan) => `
-              <div class="attendance-plan">
-                <strong>${escapeHtml(plan.status)}</strong>
-                <span>${escapeHtml(formatDateRange(plan.from, plan.to))}</span>
-                ${plan.reason ? `<small>${escapeHtml(plan.reason)}</small>` : ""}
-              </div>
-            `).join("")
-          : `<div class="empty mini">No planned leave yet.</div>`}
-      </div>
-    </div>
-  ` : `<div class="empty">No technician selected.</div>`;
+  ` : "";
 
-  document.querySelector("#technicianTickets").innerHTML = list.length
-    ? list.map((ticket) => ticketCard(ticket, "technician")).join("")
-    : `<div class="empty">No active tickets for this technician.</div>`;
+  ticketBoard.innerHTML = activeTech
+    ? tickets.length
+      ? tickets.map((ticket) => ticketCard(ticket, "technician")).join("")
+      : `<div class="empty">No assigned tickets right now.</div>`
+    : "";
 }
 
 function ticketsByStatus(status) {

@@ -6265,3 +6265,72 @@ input::placeholder {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }
+
+.ops-portal .technician-simple-dashboard {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ops-portal .technician-simple-stat {
+  min-height: 86px;
+  padding: 14px;
+  border: 1px solid rgba(203, 216, 211, 0.78);
+  border-left: 5px solid var(--teal);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 10px 24px rgba(18, 38, 34, 0.06);
+}
+
+.ops-portal .technician-simple-stat.status-running {
+  border-left-color: var(--blue);
+}
+
+.ops-portal .technician-simple-stat.status-blocked {
+  border-left-color: var(--coral);
+}
+
+.ops-portal .technician-simple-stat.status-done {
+  border-left-color: var(--green);
+}
+
+.ops-portal .technician-simple-stat span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.ops-portal .technician-simple-stat strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.ops-portal .technician-ticket-tools {
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.ops-portal .technician-ticket-form {
+  grid-template-columns: minmax(130px, 0.8fr) minmax(145px, 0.8fr) minmax(130px, 0.7fr) minmax(220px, 1.2fr) minmax(170px, 0.85fr) auto;
+}
+
+.ops-portal.role-technician .technician-work-grid,
+.ops-portal.role-technician .technician-command-grid,
+.ops-portal.role-technician .technician-context-grid,
+.ops-portal.role-technician .attendance-layout {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .ops-portal .technician-simple-dashboard {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ops-portal .technician-ticket-form {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
