@@ -1,7 +1,7 @@
 :root {
-  --bg: #f2f6f4;
-  --surface: #ffffff;
-  --surface-soft: #f8fbf9;
+  --bg: #e8f2f0;
+  --surface: rgba(245, 252, 251, 0.72);
+  --surface-soft: rgba(240, 250, 248, 0.6);
   --surface-warm: #fbf6ec;
   --ink: #17211f;
   --muted: #697772;
@@ -9,30 +9,50 @@
   --line-strong: #c6d3cd;
   --night: #10211f;
   --night-2: #18302d;
-  --accent: #66bcd1;
-  --accent-2: #d5f5fb;
+  --accent: #4bb8d4;
+  --accent-2: #c2f0fa;
   --accent-green: #76cfc0;
-  --teal: #2f756f;
+  --teal: #2d7a74;
   --teal-deep: #275b57;
   --blue: #517da5;
-  --green: #3f8060;
-  --gold: #ad873f;
-  --coral: #b2645d;
+  --green: #3a8a68;
+  --gold: #c49338;
+  --coral: #c05c54;
   --plum: #7b6b92;
-  --glass: rgba(255, 255, 255, 0.64);
-  --glass-strong: rgba(255, 255, 255, 0.78);
-  --glass-warm: rgba(255, 250, 241, 0.66);
-  --glass-border: rgba(197, 214, 207, 0.58);
+  --glass: rgba(235, 250, 252, 0.38);
+  --glass-strong: rgba(240, 252, 255, 0.56);
+  --glass-warm: rgba(240, 250, 245, 0.5);
+  --glass-border: rgba(180, 220, 230, 0.72);
   --level-1: 2px;
   --level-2: 4px;
   --level-3: 6px;
-  --shadow: 0 var(--level-3) 24px rgba(18, 38, 34, 0.09), 0 var(--level-2) 10px rgba(18, 38, 34, 0.05);
-  --shadow-soft: 0 var(--level-2) 16px rgba(18, 38, 34, 0.065), inset 0 1px 0 rgba(255, 255, 255, 0.48);
+  --blur-glass: 18px;
+  --shadow: 0 6px 28px rgba(12, 38, 50, 0.12), 0 2px 12px rgba(12, 38, 50, 0.06);
+  --shadow-soft: 0 var(--level-2) 18px rgba(12, 38, 50, 0.075), inset 0 1px 0 rgba(255, 255, 255, 0.62);
   --motion-smooth: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 * {
   box-sizing: border-box;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(200, 235, 242, 0.25);
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(232, 248, 246, 0.65);
+  border-radius: 999px;
+  background: rgba(75, 184, 212, 0.35);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(75, 184, 212, 0.5);
 }
 
 html {
@@ -46,15 +66,16 @@ body {
   margin: 0;
   padding-left: 34px;
   background:
-    radial-gradient(circle at var(--water-a-x, 18%) var(--water-a-y, 12%), rgba(102, 188, 209, 0.13), transparent 34%),
-    radial-gradient(circle at var(--water-b-x, 72%) var(--water-b-y, 42%), rgba(213, 245, 251, 0.18), transparent 38%),
-    radial-gradient(circle at var(--water-c-x, 92%) var(--water-c-y, 18%), rgba(118, 207, 192, 0.08), transparent 28%),
-    linear-gradient(135deg, rgba(246, 250, 249, 0.95), rgba(236, 245, 247, 0.78) 52%, rgba(250, 252, 251, 0.9)),
+    radial-gradient(circle at var(--water-a-x, 18%) var(--water-a-y, 12%), rgba(168, 216, 232, 0.24), transparent 34%),
+    radial-gradient(circle at var(--water-b-x, 72%) var(--water-b-y, 42%), rgba(176, 232, 224, 0.26), transparent 38%),
+    radial-gradient(circle at var(--water-c-x, 92%) var(--water-c-y, 18%), rgba(75, 184, 212, 0.14), transparent 28%),
+    radial-gradient(circle at 12% 88%, rgba(16, 33, 31, 0.1), transparent 36%),
+    linear-gradient(135deg, rgba(236, 248, 247, 0.94), rgba(218, 239, 242, 0.78) 52%, rgba(248, 252, 251, 0.9)),
     var(--bg);
   color: var(--ink);
   font-family: Arial, Helvetica, sans-serif;
   letter-spacing: 0;
-  transition: padding-left 420ms var(--motion-smooth);
+  transition: padding-left 160ms var(--motion-smooth);
 }
 
 body:has(.topbar:hover),
@@ -69,8 +90,8 @@ body::before {
   pointer-events: none;
   content: "";
   background-image:
-    linear-gradient(rgba(18, 33, 31, 0.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(18, 33, 31, 0.018) 1px, transparent 1px);
+    linear-gradient(rgba(18, 33, 31, 0.007) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(18, 33, 31, 0.007) 1px, transparent 1px);
   background-size: 42px 42px;
   mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent 78%);
 }
@@ -87,7 +108,7 @@ body::after {
   background-size: min(80vw, 1120px);
   opacity: 0.095;
   filter: saturate(0.8) contrast(1.02) brightness(0.96);
-  animation: watermark-drift 18s var(--motion-smooth) infinite alternate;
+  animation: watermark-drift 12s var(--motion-smooth) infinite alternate;
 }
 
 body.has-session:not([data-view="dashboard"])::after {
@@ -108,17 +129,17 @@ body.has-session:not([data-view="dashboard"])::after {
 
 @keyframes nav-water-flow {
   0% {
-    transform: translate3d(-18px, -10px, 0) rotate(0deg);
+    transform: translate3d(-10px, -5px, 0) rotate(0deg);
     filter: saturate(1);
   }
 
   50% {
-    transform: translate3d(16px, 18px, 0) rotate(2deg);
+    transform: translate3d(8px, 10px, 0) rotate(1deg);
     filter: saturate(1.25);
   }
 
   100% {
-    transform: translate3d(28px, -8px, 0) rotate(-1deg);
+    transform: translate3d(14px, -4px, 0) rotate(-1deg);
     filter: saturate(1.05);
   }
 }
@@ -126,12 +147,12 @@ body.has-session:not([data-view="dashboard"])::after {
 @keyframes panel-arrive {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.985);
+    transform: translateY(6px) scale(0.995);
   }
 
   to {
     opacity: 1;
-    transform: translateY(var(--level-2)) scale(1);
+    transform: translateY(var(--level-1)) scale(1);
   }
 }
 
@@ -155,7 +176,7 @@ body.has-session:not([data-view="dashboard"])::after {
 
 .login-screen,
 .app-shell {
-  transition: padding 420ms var(--motion-smooth);
+  transition: padding 160ms var(--motion-smooth);
 }
 
 button,
@@ -166,17 +187,22 @@ select {
 
 button,
 select {
-  transition: border-color 260ms var(--motion-smooth), background 260ms var(--motion-smooth), color 260ms var(--motion-smooth), transform 260ms var(--motion-smooth), box-shadow 260ms var(--motion-smooth);
+  transition: border-color 160ms var(--motion-smooth), background 160ms var(--motion-smooth), color 160ms var(--motion-smooth), transform 160ms var(--motion-smooth), box-shadow 160ms var(--motion-smooth);
 }
 
 button:hover {
   transform: translateY(-1px);
 }
 
+button:active {
+  transform: scale(0.97);
+  transition-duration: 140ms;
+}
+
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 3px solid rgba(36, 115, 111, 0.24);
+  outline: 3px solid rgba(75, 184, 212, 0.45);
   outline-offset: 2px;
 }
 
@@ -192,15 +218,15 @@ select:focus-visible {
   overflow-x: hidden;
   overflow-y: hidden;
   padding: 18px 8px;
-  background: transparent;
+  background: rgba(232, 248, 246, 0.82);
   color: var(--ink);
   border: 0;
   border-right: 0;
   border-radius: 0;
-  box-shadow: none;
-  backdrop-filter: none;
-  transition: width 420ms var(--motion-smooth), box-shadow 420ms var(--motion-smooth), transform 420ms var(--motion-smooth), border-color 420ms var(--motion-smooth);
-  animation: panel-arrive 520ms var(--motion-smooth) both;
+  box-shadow: inset -1px 0 0 rgba(180, 220, 230, 0.55);
+  backdrop-filter: blur(16px) saturate(150%);
+  transition: width 160ms var(--motion-smooth), box-shadow 160ms var(--motion-smooth), transform 160ms var(--motion-smooth), border-color 160ms var(--motion-smooth);
+  animation: panel-arrive 300ms var(--motion-smooth) both;
 }
 
 .topbar::after {
@@ -214,7 +240,7 @@ select:focus-visible {
   background: linear-gradient(180deg, rgba(74, 199, 232, 0.18), rgba(74, 199, 232, 0.82), rgba(183, 241, 255, 0.24));
   box-shadow: 0 0 22px rgba(74, 199, 232, 0.28);
   transform: translateY(-50%);
-  transition: opacity 260ms var(--motion-smooth), transform 420ms var(--motion-smooth);
+  transition: opacity 160ms var(--motion-smooth), transform 160ms var(--motion-smooth);
 }
 
 .topbar:hover,
@@ -259,7 +285,7 @@ select:focus-visible {
   opacity: 0;
   pointer-events: none;
   transform: translateX(-16px);
-  transition: opacity 320ms var(--motion-smooth), transform 420ms var(--motion-smooth);
+  transition: opacity 200ms var(--motion-smooth), transform 260ms var(--motion-smooth);
 }
 
 .topbar:hover .brand-lockup,
@@ -279,7 +305,7 @@ select:focus-visible {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  transition: transform 420ms var(--motion-smooth), filter 420ms var(--motion-smooth);
+  transition: transform 260ms var(--motion-smooth), filter 260ms var(--motion-smooth);
 }
 
 .topbar:hover .brand-mark {
@@ -291,7 +317,7 @@ select:focus-visible {
   width: 180px;
   opacity: 0;
   transform: translateX(-8px);
-  transition: opacity 360ms var(--motion-smooth), transform 360ms var(--motion-smooth);
+  transition: opacity 220ms var(--motion-smooth), transform 220ms var(--motion-smooth);
 }
 
 .topbar:hover .brand-lockup > div,
@@ -343,7 +369,7 @@ select:focus-visible {
   box-shadow: none;
   opacity: 0;
   transform: translateX(-8px);
-  transition: opacity 340ms var(--motion-smooth), transform 340ms var(--motion-smooth);
+  transition: opacity 220ms var(--motion-smooth), transform 220ms var(--motion-smooth);
 }
 
 .topbar:hover .topbar-actions,
@@ -362,7 +388,7 @@ select:focus-visible {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.3);
   box-shadow: 0 12px 28px rgba(74, 142, 162, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.48);
-  backdrop-filter: blur(14px) saturate(138%);
+  backdrop-filter: blur(20px) saturate(138%);
 }
 
 .live-pill {
@@ -622,7 +648,7 @@ body.has-session:not([data-view="dashboard"]) .intel-strip {
     linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(242, 248, 246, 0.74)),
     var(--surface);
   box-shadow: 0 18px 50px rgba(18, 38, 34, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.78);
-  animation: panel-arrive 520ms var(--motion-smooth) both;
+  animation: panel-arrive 300ms var(--motion-smooth) both;
 }
 
 .page-stage::before {
@@ -738,8 +764,8 @@ body.has-session:not([data-view="dashboard"]) .intel-strip {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.7);
   box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(14px) saturate(120%);
-  animation: panel-arrive 560ms var(--motion-smooth) both;
+  backdrop-filter: blur(20px) saturate(120%);
+  animation: panel-arrive 320ms var(--motion-smooth) both;
 }
 
 .ops-chart:nth-child(2) {
@@ -814,9 +840,9 @@ body.has-session:not([data-view="dashboard"]) .intel-strip {
   border: 1px solid var(--glass-border);
   border-radius: 8px;
   background: var(--glass);
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(12px) saturate(118%);
-  transition: transform 320ms var(--motion-smooth), box-shadow 320ms var(--motion-smooth), border-color 320ms var(--motion-smooth), background 320ms var(--motion-smooth);
+  box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px) saturate(165%);
+  transition: transform 200ms var(--motion-smooth), box-shadow 200ms var(--motion-smooth), border-color 200ms var(--motion-smooth), background 200ms var(--motion-smooth);
 }
 
 .intel-card:hover,
@@ -828,9 +854,12 @@ body.has-session:not([data-view="dashboard"]) .intel-strip {
 .master-row:hover,
 .admin-tech-card:hover,
 .ticket-form:hover {
-  border-color: rgba(120, 174, 181, 0.38);
-  background: rgba(255, 255, 255, 0.74);
-  box-shadow: 0 12px 24px rgba(18, 38, 34, 0.075), inset 0 1px 0 rgba(255, 255, 255, 0.58);
+  border-color: rgba(75, 184, 212, 0.46);
+  background:
+    linear-gradient(rgba(75, 184, 212, 0.04), rgba(75, 184, 212, 0.04)),
+    rgba(240, 252, 255, 0.58);
+  box-shadow: 0 12px 24px rgba(12, 38, 50, 0.085), 0 0 0 1px rgba(75, 184, 212, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  transform: translateY(-2px) scale(1.005);
 }
 
 .intel-card {
@@ -842,7 +871,7 @@ body.has-session:not([data-view="dashboard"]) .intel-strip {
   align-content: center;
   gap: 5px;
   transform: translateY(var(--level-1));
-  animation: panel-arrive 420ms var(--motion-smooth) both;
+  animation: panel-arrive 160ms var(--motion-smooth) both;
 }
 
 .intel-card.critical {
@@ -911,7 +940,7 @@ body.has-session .topbar .tabs {
   transform: none;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 320ms var(--motion-smooth), transform 420ms var(--motion-smooth);
+  transition: opacity 200ms var(--motion-smooth), transform 260ms var(--motion-smooth);
 }
 
 body.has-session .topbar:hover .tabs,
@@ -955,10 +984,10 @@ body.has-session .topbar:focus-within .tabs {
   background: rgba(255, 255, 255, 0.34);
   color: var(--ink);
   box-shadow: 0 8px 22px rgba(74, 142, 162, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(12px) saturate(135%);
+  backdrop-filter: blur(20px) saturate(165%);
   font-size: 0;
   white-space: nowrap;
-  transition: transform 280ms var(--motion-smooth), border-color 280ms var(--motion-smooth), background 280ms var(--motion-smooth), color 280ms var(--motion-smooth), box-shadow 280ms var(--motion-smooth);
+  transition: transform 180ms var(--motion-smooth), border-color 180ms var(--motion-smooth), background 180ms var(--motion-smooth), color 180ms var(--motion-smooth), box-shadow 180ms var(--motion-smooth);
 }
 
 .topbar .tab::before {
@@ -969,7 +998,7 @@ body.has-session .topbar:focus-within .tabs {
   background: linear-gradient(100deg, transparent 0 20%, rgba(183, 241, 255, 0.14) 44%, transparent 68%);
   opacity: 0;
   transform: translateX(-80%);
-  transition: opacity 260ms var(--motion-smooth), transform 520ms var(--motion-smooth);
+  transition: opacity 160ms var(--motion-smooth), transform 300ms var(--motion-smooth);
 }
 
 .topbar .tab::after {
@@ -983,7 +1012,7 @@ body.has-session .topbar:focus-within .tabs {
   background: var(--accent-2);
   opacity: 0;
   transform: translateY(-50%) scale(0.4);
-  transition: opacity 260ms var(--motion-smooth), transform 260ms var(--motion-smooth);
+  transition: opacity 160ms var(--motion-smooth), transform 160ms var(--motion-smooth);
 }
 
 .topbar .tab:hover {
@@ -1046,7 +1075,7 @@ body.has-session .topbar:focus-within .tabs {
   border-color: rgba(74, 199, 232, 0.44);
   color: var(--ink);
   box-shadow: inset 3px 0 0 var(--accent), 0 14px 30px rgba(74, 142, 162, 0.16);
-  animation: active-breathe 3.2s ease-in-out infinite;
+  animation: active-breathe 2.2s ease-in-out infinite;
 }
 
 .topbar .tab.is-active::after {
@@ -1077,7 +1106,7 @@ body.has-session .topbar:focus-within .tabs {
   border-color: rgba(74, 142, 162, 0.16);
   background: rgba(255, 255, 255, 0.34);
   box-shadow: 0 8px 22px rgba(74, 142, 162, 0.08);
-  backdrop-filter: blur(12px) saturate(135%);
+  backdrop-filter: blur(20px) saturate(165%);
 }
 
 .topbar .ghost-button.danger-soft {
@@ -1094,13 +1123,14 @@ body.has-session .topbar:focus-within .tabs {
   border-color: var(--teal);
   color: #fff;
   font-weight: 900;
-  box-shadow: 0 8px 18px rgba(36, 115, 111, 0.14);
+  box-shadow: 0 8px 18px rgba(45, 122, 116, 0.16);
 }
 
 .primary-button:hover,
 .small-button.primary:hover {
-  background: var(--teal-deep);
-  border-color: var(--teal-deep);
+  background: #36918a;
+  border-color: #36918a;
+  box-shadow: 0 10px 22px rgba(75, 184, 212, 0.22), 0 0 0 1px rgba(75, 184, 212, 0.2);
 }
 
 .small-button {
@@ -1158,10 +1188,10 @@ body.has-session .topbar:focus-within .tabs {
   background:
     radial-gradient(circle at 12% 18%, rgba(74, 199, 232, 0.16), transparent 34%),
     radial-gradient(circle at 86% 72%, rgba(74, 217, 198, 0.12), transparent 30%),
-    rgba(255, 255, 255, 0.42);
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(18px) saturate(145%);
-  animation: panel-arrive 460ms var(--motion-smooth) both;
+    rgba(235, 250, 252, 0.42);
+  box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(165%);
+  animation: panel-arrive 300ms var(--motion-smooth) both;
 }
 
 .command-hero h2 {
@@ -1190,9 +1220,9 @@ body.has-session .topbar:focus-within .tabs {
 .dispatch-card {
   border: 2px solid var(--glass-border);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.36);
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(16px) saturate(145%);
+  background: rgba(235, 250, 252, 0.36);
+  box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px) saturate(165%);
 }
 
 .hero-metrics article {
@@ -1328,6 +1358,30 @@ body.has-session .topbar:focus-within .tabs {
 .dispatch-card.status-absent,
 .dispatch-card.status-on-leave {
   border-left-color: var(--coral);
+}
+
+.dispatch-card:hover {
+  background:
+    linear-gradient(rgba(75, 184, 212, 0.04), rgba(75, 184, 212, 0.04)),
+    rgba(240, 252, 255, 0.58);
+  box-shadow: 0 12px 24px rgba(12, 38, 50, 0.085), 0 0 0 1px rgba(75, 184, 212, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  transform: translateY(-2px) scale(1.005);
+}
+
+.dispatch-card.status-present:hover,
+.dispatch-card.status-emergency-available:hover {
+  box-shadow: 0 12px 24px rgba(12, 38, 50, 0.085), 0 0 0 1px rgba(58, 138, 104, 0.28), 0 0 20px rgba(58, 138, 104, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.dispatch-card.status-break:hover,
+.dispatch-card.status-off-duty:hover,
+.dispatch-card.status-busy:hover {
+  box-shadow: 0 12px 24px rgba(12, 38, 50, 0.085), 0 0 0 1px rgba(196, 147, 56, 0.28), 0 0 20px rgba(196, 147, 56, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.dispatch-card.status-absent:hover,
+.dispatch-card.status-on-leave:hover {
+  box-shadow: 0 12px 24px rgba(12, 38, 50, 0.085), 0 0 0 1px rgba(192, 92, 84, 0.28), 0 0 20px rgba(192, 92, 84, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .dispatch-score {
@@ -1823,7 +1877,7 @@ input::placeholder {
   padding: 15px;
   overflow: hidden;
   transform: translateY(var(--level-2));
-  animation: panel-arrive 460ms var(--motion-smooth) both;
+  animation: panel-arrive 300ms var(--motion-smooth) both;
 }
 
 .metric::after {
@@ -1948,7 +2002,7 @@ input::placeholder {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.62);
   box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(12px) saturate(118%);
+  backdrop-filter: blur(20px) saturate(118%);
 }
 
 .technician-status-card {
@@ -2151,7 +2205,7 @@ input::placeholder {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.62);
   box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(12px) saturate(118%);
+  backdrop-filter: blur(20px) saturate(118%);
 }
 
 .technician-work-panel {
@@ -2422,6 +2476,11 @@ input::placeholder {
   border-left: 4px solid var(--teal);
 }
 
+.master-row:hover {
+  border-left-color: var(--accent);
+  box-shadow: 0 12px 24px rgba(12, 38, 50, 0.085), 0 0 0 1px rgba(75, 184, 212, 0.18), inset 4px 0 0 var(--accent), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
 .master-row-main {
   display: grid;
   gap: 5px;
@@ -2612,7 +2671,7 @@ input::placeholder {
   border-left: 3px solid var(--blue);
   padding: 11px 12px;
   transform: translateY(var(--level-3));
-  animation: panel-arrive 500ms var(--motion-smooth) both;
+  animation: panel-arrive 300ms var(--motion-smooth) both;
 }
 
 #adminTickets .ticket-card {
@@ -2731,7 +2790,7 @@ input::placeholder {
 }
 
 .ticket-card:hover {
-  transform: translateY(2px);
+  transform: translateY(-2px) scale(1.005);
 }
 
 .ticket-card.priority-p1 {
@@ -2842,7 +2901,7 @@ input::placeholder {
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--teal), #6aa57f);
-  transition: width 620ms var(--motion-smooth);
+  transition: width 360ms var(--motion-smooth);
 }
 
 .progress-fill::after {
@@ -2851,7 +2910,7 @@ input::placeholder {
   height: 100%;
   content: "";
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.36), transparent);
-  animation: nav-water-flow 2.8s ease-in-out infinite alternate;
+  animation: nav-water-flow 1.6s ease-in-out infinite alternate;
 }
 
 .badge-row,
@@ -3172,7 +3231,7 @@ input::placeholder {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.38);
   box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(12px) saturate(125%);
+  backdrop-filter: blur(20px) saturate(125%);
 }
 
 .report-table.wide {
@@ -3440,8 +3499,8 @@ input::placeholder {
   align-items: stretch;
   justify-items: end;
   padding: 16px;
-  background: rgba(12, 31, 35, 0.18);
-  backdrop-filter: blur(10px);
+  background: rgba(10, 28, 36, 0.52);
+  backdrop-filter: blur(24px) saturate(165%);
 }
 
 .detail-overlay.is-hidden {
@@ -3458,9 +3517,10 @@ input::placeholder {
   border-radius: 12px;
   background:
     radial-gradient(circle at 8% 12%, rgba(74, 199, 232, 0.16), transparent 32%),
-    rgba(238, 250, 249, 0.9);
-  box-shadow: 0 28px 90px rgba(18, 38, 34, 0.28);
-  animation: panel-arrive 260ms var(--motion-smooth) both;
+    var(--glass-strong);
+  box-shadow: 0 28px 90px rgba(10, 28, 36, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px) saturate(170%);
+  animation: panel-arrive 180ms var(--motion-smooth) both;
 }
 
 .detail-close {
@@ -4520,7 +4580,7 @@ input::placeholder {
   border-radius: 0;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.5), rgba(234, 249, 252, 0.2));
   box-shadow: 16px 0 42px rgba(31, 66, 75, 0.09);
-  backdrop-filter: blur(12px) saturate(138%);
+  backdrop-filter: blur(20px) saturate(138%);
   transform: none;
   animation: none;
 }
@@ -4664,7 +4724,7 @@ input::placeholder {
   overflow: hidden;
   opacity: 0;
   white-space: nowrap;
-  transition: max-width 260ms var(--motion-smooth), opacity 220ms var(--motion-smooth);
+  transition: max-width 160ms var(--motion-smooth), opacity 220ms var(--motion-smooth);
 }
 
 .ops-portal .topbar:hover .tab .tab-label,
@@ -4757,7 +4817,7 @@ input::placeholder {
   border-radius: 18px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.5), rgba(234, 249, 252, 0.2));
   box-shadow: 0 22px 60px rgba(31, 66, 75, 0.13), 0 8px 22px rgba(31, 66, 75, 0.08);
-  backdrop-filter: blur(12px) saturate(138%);
+  backdrop-filter: blur(20px) saturate(138%);
 }
 
 .ops-portal .login-panel h2,
@@ -5318,7 +5378,7 @@ input::placeholder {
     border-radius: 10px;
     background: rgba(247, 251, 252, 0.96);
     box-shadow: 0 10px 22px rgba(14, 31, 41, 0.12);
-    backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(20px) saturate(140%);
   }
 
   .ops-portal .hero-metrics article {
@@ -5559,17 +5619,17 @@ input::placeholder {
 
 .ops-portal .panel {
   padding: 16px;
-  border: 1px solid rgba(203, 216, 211, 0.78);
+  border: 1px solid var(--glass-border);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.68);
-  box-shadow: 0 14px 40px rgba(18, 38, 34, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(16px) saturate(124%);
-  animation: panel-arrive 440ms var(--motion-smooth) both;
+  background: var(--glass);
+  box-shadow: 0 14px 40px rgba(12, 38, 50, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(165%);
+  animation: panel-arrive 300ms var(--motion-smooth) both;
 }
 
 .ops-portal .panel-heading {
   padding: 0 0 8px;
-  border-bottom: 1px solid rgba(203, 216, 211, 0.7);
+  border-bottom: 1px solid rgba(180, 220, 230, 0.55);
 }
 
 .ops-portal .panel-heading h2 {
@@ -5579,11 +5639,11 @@ input::placeholder {
 .ops-portal .command-hero {
   min-height: 174px;
   padding: clamp(18px, 3vw, 30px);
-  border: 1px solid rgba(181, 198, 193, 0.78);
+  border: 1px solid var(--glass-border);
   border-radius: 22px;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(235, 246, 244, 0.76)),
-    #fff;
+    linear-gradient(135deg, rgba(240, 252, 255, 0.66), rgba(224, 246, 245, 0.48)),
+    var(--glass-strong);
 }
 
 .ops-portal .command-hero h2 {
@@ -5671,7 +5731,7 @@ input::placeholder {
   inset: 0;
   content: "";
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.38), transparent);
-  animation: shimmer 2.8s linear infinite;
+  animation: shimmer 1.6s linear infinite;
 }
 
 @keyframes shimmer {
