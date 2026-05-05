@@ -2006,9 +2006,9 @@ function renderDashboard() {
     ${donutChart("Ready Techs", readyTechs, Math.max(state.technicians.length, 1), `${readyPercent}% available now`, "green")}
     <article class="ops-chart trend-card">
       <div>
-        <span>7 Day Movement</span>
+        <span>7D Flow</span>
         <strong>Created / Closed</strong>
-        <p>Live work velocity</p>
+        <p>Work velocity</p>
       </div>
       ${renderTicketTrend(allScopedTickets)}
     </article>

@@ -7835,6 +7835,37 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
   backdrop-filter: none;
 }
 
+.ops-portal[data-view="dashboard"] .brand-lockup {
+  padding: 2px 0 12px;
+}
+
+.ops-portal[data-view="dashboard"] .brand-lockup > div {
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.ops-portal[data-view="dashboard"] .topbar:hover .brand-lockup > div,
+.ops-portal[data-view="dashboard"] .topbar:focus-within .brand-lockup > div {
+  width: auto;
+  opacity: 1;
+}
+
+.ops-portal[data-view="dashboard"] .brand-mark {
+  width: 74px;
+  height: 74px;
+  border-radius: 18px;
+  background: #101828;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(15, 118, 110, 0.18);
+}
+
+.ops-portal[data-view="dashboard"] .topbar:hover .brand-mark,
+.ops-portal[data-view="dashboard"] .topbar:focus-within .brand-mark {
+  width: 78px;
+  height: 78px;
+}
+
 .ops-portal[data-view="dashboard"] #dashboard .hero-metrics strong {
   color: #ffffff;
   font-size: 26px;
@@ -7959,7 +7990,7 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
 
 .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
   gap: 8px;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(230px, 1.1fr);
 }
 
 .ops-portal[data-view="dashboard"] #dashboard .ops-chart {
@@ -8000,8 +8031,12 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
   font-size: 15px;
 }
 
+.ops-portal[data-view="dashboard"] .trend-card p {
+  display: none;
+}
+
 .ops-portal[data-view="dashboard"] .trend-card {
-  grid-template-columns: minmax(0, 0.78fr) minmax(112px, 1fr);
+  grid-template-columns: minmax(84px, 0.55fr) minmax(130px, 1fr);
 }
 
 .ops-portal[data-view="dashboard"] .dashboard-trend {
@@ -8026,6 +8061,9 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
 }
 
 .ops-portal[data-view="dashboard"] #dashboard .panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
   min-height: 0;
   padding: 10px;
   border: 1px solid var(--dash-line);
@@ -8036,6 +8074,7 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
 }
 
 .ops-portal[data-view="dashboard"] #dashboard .panel-heading {
+  align-self: start;
   min-height: 36px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--dash-line);
@@ -8044,6 +8083,16 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
 .ops-portal[data-view="dashboard"] #dashboard .panel-heading h2 {
   color: var(--dash-ink);
   font-size: 15px;
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .category-repair-board,
+.ops-portal[data-view="dashboard"] #dashboard .outlet-health-grid,
+.ops-portal[data-view="dashboard"] #dashboard .action-list,
+.ops-portal[data-view="dashboard"] #dashboard .dispatch-grid,
+.ops-portal[data-view="dashboard"] #dashboard .activity-list,
+.ops-portal[data-view="dashboard"] #dashboard .openclaw-advisor-board {
+  align-self: stretch;
+  align-content: start;
 }
 
 .ops-portal[data-view="dashboard"] #dashboard .panel-heading span,
@@ -8137,6 +8186,16 @@ body[data-dashboard-mode="detail"].ops-portal[data-view="dashboard"] #dashboardD
   background: var(--dash-panel-soft);
   color: var(--dash-text);
   box-shadow: none;
+}
+
+.ops-portal[data-view="dashboard"] #dashboardSummaryGrid .action-item,
+.ops-portal[data-view="dashboard"] #dashboardSummaryGrid .outlet-card,
+.ops-portal[data-view="dashboard"] #dashboardSummaryGrid .repair-row,
+.ops-portal[data-view="dashboard"] #dashboardDetailGrid .action-item,
+.ops-portal[data-view="dashboard"] #dashboardDetailGrid .outlet-card,
+.ops-portal[data-view="dashboard"] #dashboardDetailGrid .repair-row,
+.ops-portal[data-view="dashboard"] #dashboardDetailGrid .dispatch-card {
+  background: var(--dash-panel-soft);
 }
 
 .ops-portal[data-view="dashboard"] .summary-mini-block strong,
@@ -8283,7 +8342,7 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
   .ops-portal[data-view="dashboard"] #dashboard.view.is-active {
     display: grid;
     height: calc(100vh - 16px);
-    grid-template-rows: 82px 76px 94px minmax(0, 1fr);
+    grid-template-rows: 104px 76px 104px minmax(0, 1fr);
     gap: 8px;
     overflow: hidden;
   }
