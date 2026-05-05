@@ -6234,7 +6234,7 @@ input::placeholder {
   }
 }
 
-body[data-theme="dark"] .ops-portal[data-view="dashboard"] .portal-ambient {
+body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
   background:
     radial-gradient(circle at 7% 14%, rgba(255, 79, 139, 0.24), transparent 28%),
     radial-gradient(circle at 86% 6%, rgba(55, 182, 255, 0.28), transparent 30%),
@@ -6243,38 +6243,38 @@ body[data-theme="dark"] .ops-portal[data-view="dashboard"] .portal-ambient {
     linear-gradient(135deg, #090d21 0%, #141a3d 48%, #111827 100%);
 }
 
-body[data-theme="dark"] .ops-portal #dashboard .command-hero {
+body[data-theme="dark"].ops-portal #dashboard .command-hero {
   background:
     radial-gradient(circle at 78% 14%, rgba(255, 255, 255, 0.16), transparent 34%),
     linear-gradient(135deg, #10163a 0%, #2732d7 34%, #9d2fff 66%, #ff5a7c 100%);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-body[data-theme="dark"] .ops-portal #dashboard .ops-chart,
-body[data-theme="dark"] .ops-portal #dashboard .panel {
+body[data-theme="dark"].ops-portal #dashboard .ops-chart,
+body[data-theme="dark"].ops-portal #dashboard .panel {
   background: rgba(18, 23, 50, 0.86);
   box-shadow: 0 22px 58px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-body[data-theme="dark"] .ops-portal #dashboard .panel-heading {
+body[data-theme="dark"].ops-portal #dashboard .panel-heading {
   border-bottom-color: rgba(155, 174, 255, 0.16);
 }
 
-body[data-theme="dark"] .ops-portal #dashboard .ops-chart span,
-body[data-theme="dark"] .ops-portal #dashboard .panel-heading span,
+body[data-theme="dark"].ops-portal #dashboard .ops-chart span,
+body[data-theme="dark"].ops-portal #dashboard .panel-heading span,
 body[data-theme="dark"] .dashboard-trend small,
 body[data-theme="dark"] .repair-row span,
 body[data-theme="dark"] .openclaw-moves span {
   color: #aeb8dc;
 }
 
-body[data-theme="dark"] .ops-portal #dashboard .ops-chart strong,
-body[data-theme="dark"] .ops-portal #dashboard .panel-heading h2,
+body[data-theme="dark"].ops-portal #dashboard .ops-chart strong,
+body[data-theme="dark"].ops-portal #dashboard .panel-heading h2,
 body[data-theme="dark"] .repair-row strong {
   color: #fff;
 }
 
-body[data-theme="dark"] .ops-portal #dashboard .chart-ring {
+body[data-theme="dark"].ops-portal #dashboard .chart-ring {
   background:
     radial-gradient(circle, #121732 0 55%, transparent 56%),
     conic-gradient(var(--chart-color) calc(var(--value) * 1%), rgba(61, 68, 115, 0.9) 0);
@@ -6286,7 +6286,7 @@ body[data-theme="dark"] .openclaw-lead {
 
 body[data-theme="dark"] .openclaw-moves article,
 body[data-theme="dark"] .repair-row,
-body[data-theme="dark"] .ops-portal #dashboard .dispatch-card {
+body[data-theme="dark"].ops-portal #dashboard .dispatch-card {
   background: rgba(24, 30, 66, 0.92);
 }
 
@@ -6875,7 +6875,7 @@ body[data-dashboard-mode="detail"] #dashboardDetailGrid {
   }
 }
 
-body[data-theme="dark"] .ops-portal[data-view="dashboard"] .portal-ambient {
+body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
   background:
     radial-gradient(circle at 10% 12%, rgba(37, 99, 235, 0.2), transparent 30%),
     radial-gradient(circle at 92% 10%, rgba(20, 184, 166, 0.18), transparent 30%),
@@ -6883,7 +6883,7 @@ body[data-theme="dark"] .ops-portal[data-view="dashboard"] .portal-ambient {
     linear-gradient(135deg, #0b1020 0%, #111827 48%, #0f172a 100%);
 }
 
-body[data-theme="dark"] .ops-portal #dashboard .command-hero {
+body[data-theme="dark"].ops-portal #dashboard .command-hero {
   border-color: rgba(148, 163, 184, 0.18);
   background:
     linear-gradient(90deg, rgba(37, 99, 235, 0.2), transparent 40%),
@@ -6892,27 +6892,27 @@ body[data-theme="dark"] .ops-portal #dashboard .command-hero {
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.26);
 }
 
-body[data-theme="dark"] .ops-portal #dashboard .command-hero h2,
-body[data-theme="dark"] .ops-portal #dashboard .hero-metrics strong,
+body[data-theme="dark"].ops-portal #dashboard .command-hero h2,
+body[data-theme="dark"].ops-portal #dashboard .hero-metrics strong,
 body[data-theme="dark"] .dashboard-kpi strong,
-body[data-theme="dark"] .ops-portal #dashboard .ops-chart strong,
-body[data-theme="dark"] .ops-portal #dashboard .panel-heading h2,
+body[data-theme="dark"].ops-portal #dashboard .ops-chart strong,
+body[data-theme="dark"].ops-portal #dashboard .panel-heading h2,
 body[data-theme="dark"] .repair-row strong {
   color: #f8fafc;
 }
 
-body[data-theme="dark"] .ops-portal #dashboard .command-hero .section-kicker,
-body[data-theme="dark"] .ops-portal #dashboard .command-hero p,
-body[data-theme="dark"] .ops-portal #dashboard .hero-metrics span,
+body[data-theme="dark"].ops-portal #dashboard .command-hero .section-kicker,
+body[data-theme="dark"].ops-portal #dashboard .command-hero p,
+body[data-theme="dark"].ops-portal #dashboard .hero-metrics span,
 body[data-theme="dark"] .dashboard-kpi span,
 body[data-theme="dark"] .dashboard-kpi small {
   color: #a8b3cf;
 }
 
-body[data-theme="dark"] .ops-portal #dashboard .hero-metrics article,
+body[data-theme="dark"].ops-portal #dashboard .hero-metrics article,
 body[data-theme="dark"] .dashboard-kpi,
-body[data-theme="dark"] .ops-portal #dashboard .ops-chart,
-body[data-theme="dark"] .ops-portal #dashboard .panel {
+body[data-theme="dark"].ops-portal #dashboard .ops-chart,
+body[data-theme="dark"].ops-portal #dashboard .panel {
   border-color: rgba(148, 163, 184, 0.18);
   background: rgba(15, 23, 42, 0.9);
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
@@ -6925,10 +6925,10 @@ body[data-theme="dark"] .dashboard-kpi {
 
 body[data-theme="dark"] .openclaw-moves article,
 body[data-theme="dark"] .repair-row,
-body[data-theme="dark"] .ops-portal #dashboard .dispatch-card,
-body[data-theme="dark"] .ops-portal #dashboard .outlet-card,
-body[data-theme="dark"] .ops-portal #dashboard .action-item,
-body[data-theme="dark"] .ops-portal #dashboard .activity-item {
+body[data-theme="dark"].ops-portal #dashboard .dispatch-card,
+body[data-theme="dark"].ops-portal #dashboard .outlet-card,
+body[data-theme="dark"].ops-portal #dashboard .action-item,
+body[data-theme="dark"].ops-portal #dashboard .activity-item {
   border-color: rgba(148, 163, 184, 0.14);
   background: rgba(30, 41, 59, 0.76);
 }
@@ -7733,5 +7733,622 @@ body[data-theme="dark"] .ops-portal #dashboard .activity-item {
 
   .ops-portal .technician-ticket-form {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* Dashboard visual system v3 */
+.ops-portal[data-view="dashboard"] {
+  --dash-bg: linear-gradient(135deg, #f6f8fb 0%, #eef3f8 44%, #f8fbff 100%);
+  --dash-panel: #ffffff;
+  --dash-panel-soft: #f6f8fc;
+  --dash-text: #111827;
+  --dash-muted: #667085;
+  --dash-line: rgba(17, 24, 39, 0.11);
+  --dash-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  --dash-blue: #2563eb;
+  --dash-purple: #7c3aed;
+  --dash-green: #16a34a;
+  --dash-teal: #0f766e;
+  --dash-amber: #d97706;
+  --dash-red: #dc2626;
+  --dash-ink: #0f172a;
+  color: var(--dash-text);
+}
+
+body[data-theme="dark"].ops-portal[data-view="dashboard"] {
+  --dash-bg: linear-gradient(135deg, #080c17 0%, #101827 46%, #0c1420 100%);
+  --dash-panel: #111827;
+  --dash-panel-soft: #172033;
+  --dash-text: #f8fafc;
+  --dash-muted: #a9b4c8;
+  --dash-line: rgba(226, 232, 240, 0.13);
+  --dash-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+  --dash-ink: #f8fafc;
+}
+
+.ops-portal[data-view="dashboard"] .portal-ambient {
+  background:
+    radial-gradient(circle at 11% 14%, rgba(37, 99, 235, 0.08), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(15, 118, 110, 0.09), transparent 27%),
+    radial-gradient(circle at 78% 86%, rgba(217, 119, 6, 0.08), transparent 26%),
+    var(--dash-bg);
+}
+
+body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
+  background:
+    radial-gradient(circle at 12% 12%, rgba(37, 99, 235, 0.18), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(20, 184, 166, 0.14), transparent 27%),
+    radial-gradient(circle at 78% 86%, rgba(245, 158, 11, 0.12), transparent 26%),
+    var(--dash-bg);
+}
+
+.ops-portal[data-view="dashboard"] #dashboard {
+  color: var(--dash-text);
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .command-hero {
+  min-height: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--dash-line);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(37, 99, 235, 0.2), transparent 28%),
+    linear-gradient(135deg, #111827 0%, #18243a 44%, #0f766e 100%);
+  color: #ffffff;
+  box-shadow: var(--dash-shadow);
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .command-hero::before {
+  opacity: 0.45;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12), transparent 46%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 48px);
+  mask-image: linear-gradient(to bottom, #000 0 3px, transparent 3px);
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .command-hero h2 {
+  max-width: 760px;
+  color: #ffffff;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 30px;
+  line-height: 1.04;
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .command-hero p,
+.ops-portal[data-view="dashboard"] #dashboard .command-hero .section-kicker,
+.ops-portal[data-view="dashboard"] #dashboard .hero-metrics span {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .hero-metrics {
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .hero-metrics article {
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .hero-metrics strong {
+  color: #ffffff;
+  font-size: 26px;
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-mode-switcher {
+  gap: 4px;
+  margin-top: 8px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ops-portal[data-view="dashboard"] .mode-pill {
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+}
+
+.ops-portal[data-view="dashboard"] .mode-pill.is-active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: none;
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-kpi-grid {
+  gap: 8px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-kpi {
+  --tile-accent: var(--dash-blue);
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 5px;
+  min-height: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--dash-line);
+  border-top: 4px solid var(--tile-accent);
+  border-left: 1px solid var(--dash-line);
+  border-radius: 8px;
+  background: var(--dash-panel);
+  color: var(--dash-text);
+  box-shadow: var(--dash-shadow);
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-kpi::after {
+  display: none;
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-kpi.blue {
+  --tile-accent: var(--dash-blue);
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-kpi.purple {
+  --tile-accent: var(--dash-purple);
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-kpi.green {
+  --tile-accent: var(--dash-green);
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-kpi.teal {
+  --tile-accent: var(--dash-teal);
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-kpi.gold {
+  --tile-accent: var(--dash-amber);
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-kpi.coral {
+  --tile-accent: var(--dash-red);
+}
+
+.dashboard-kpi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dashboard-kpi-head b {
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--tile-accent);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-kpi span,
+.ops-portal[data-view="dashboard"] .dashboard-kpi small {
+  color: var(--dash-muted);
+  font-size: 10px;
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-kpi strong {
+  color: var(--dash-ink);
+  font-size: 28px;
+  line-height: 0.95;
+}
+
+.dashboard-kpi-meter {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+}
+
+.dashboard-kpi-meter em {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--tile-accent);
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .ops-chart {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 0;
+  padding: 10px;
+  border: 1px solid var(--dash-line);
+  border-top: 4px solid var(--chart-color, var(--dash-teal));
+  border-radius: 8px;
+  background: var(--dash-panel);
+  box-shadow: var(--dash-shadow);
+  backdrop-filter: none;
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .chart-ring {
+  width: 54px;
+  background:
+    radial-gradient(circle, var(--dash-panel) 0 55%, transparent 56%),
+    conic-gradient(var(--chart-color) calc(var(--value) * 1%), rgba(148, 163, 184, 0.22) 0);
+  box-shadow: inset 0 0 0 1px rgba(100, 116, 139, 0.12);
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .chart-ring strong {
+  color: var(--dash-ink);
+  font-size: 14px;
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .ops-chart span,
+.ops-portal[data-view="dashboard"] #dashboard .ops-chart p {
+  color: var(--dash-muted);
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .ops-chart strong {
+  color: var(--dash-ink);
+  font-size: 15px;
+}
+
+.ops-portal[data-view="dashboard"] .trend-card {
+  grid-template-columns: minmax(0, 0.78fr) minmax(112px, 1fr);
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-trend {
+  height: 54px;
+  gap: 5px;
+}
+
+.ops-portal[data-view="dashboard"] .trend-bars {
+  height: 32px;
+}
+
+.ops-portal[data-view="dashboard"] .trend-bars i {
+  width: 7px;
+}
+
+.ops-portal[data-view="dashboard"] .trend-bars .created {
+  background: var(--dash-blue);
+}
+
+.ops-portal[data-view="dashboard"] .trend-bars .closed {
+  background: var(--dash-green);
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .panel {
+  min-height: 0;
+  padding: 10px;
+  border: 1px solid var(--dash-line);
+  border-radius: 8px;
+  background: var(--dash-panel);
+  box-shadow: var(--dash-shadow);
+  backdrop-filter: none;
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .panel-heading {
+  min-height: 36px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--dash-line);
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .panel-heading h2 {
+  color: var(--dash-ink);
+  font-size: 15px;
+}
+
+.ops-portal[data-view="dashboard"] #dashboard .panel-heading span,
+.ops-portal[data-view="dashboard"] .dashboard-trend small {
+  color: var(--dash-muted);
+}
+
+.ops-portal[data-view="dashboard"] .heading-chip {
+  border: 1px solid var(--dash-line);
+  border-radius: 6px;
+  background: var(--dash-panel-soft);
+  color: var(--dash-muted);
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-summary-grid,
+.ops-portal[data-view="dashboard"] .dashboard-wall {
+  gap: 8px;
+}
+
+body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .dashboard-summary-grid {
+  grid-template-columns: 1.08fr 1.12fr 1fr;
+}
+
+body[data-dashboard-mode="detail"].ops-portal[data-view="dashboard"] #dashboardDetailGrid {
+  grid-template-columns: 1.05fr 1.15fr 0.95fr;
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-summary-grid .dashboard-panel,
+.ops-portal[data-view="dashboard"] #dashboardDetailGrid .dashboard-panel {
+  border-top: 4px solid var(--panel-accent, var(--dash-blue));
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-summary-grid .dashboard-panel:nth-child(1),
+.ops-portal[data-view="dashboard"] #dashboardDetailGrid .dashboard-openclaw-panel {
+  --panel-accent: var(--dash-blue);
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-summary-grid .dashboard-panel:nth-child(2),
+.ops-portal[data-view="dashboard"] #dashboardDetailGrid .dashboard-category-panel {
+  --panel-accent: var(--dash-red);
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-summary-grid .dashboard-panel:nth-child(3),
+.ops-portal[data-view="dashboard"] #dashboardDetailGrid .dashboard-panel:nth-child(3) {
+  --panel-accent: var(--dash-teal);
+}
+
+.ops-portal[data-view="dashboard"] #dashboardDetailGrid .dashboard-panel:nth-child(4) {
+  --panel-accent: var(--dash-amber);
+}
+
+.ops-portal[data-view="dashboard"] #dashboardDetailGrid .dashboard-panel:nth-child(5) {
+  --panel-accent: var(--dash-purple);
+}
+
+.ops-portal[data-view="dashboard"] #dashboardDetailGrid .dashboard-panel:nth-child(6) {
+  --panel-accent: var(--dash-green);
+}
+
+.ops-portal[data-view="dashboard"] .summary-focus-card,
+.ops-portal[data-view="dashboard"] .openclaw-lead {
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12), transparent 58%),
+    linear-gradient(135deg, #111827 0%, #1d4ed8 56%, #0f766e 100%);
+  color: #ffffff;
+}
+
+.ops-portal[data-view="dashboard"] .summary-focus-head strong,
+.ops-portal[data-view="dashboard"] .summary-signal-grid strong,
+.ops-portal[data-view="dashboard"] .openclaw-lead strong {
+  color: #ffffff;
+}
+
+.ops-portal[data-view="dashboard"] .summary-signal-grid div,
+.ops-portal[data-view="dashboard"] .summary-checklist span {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ops-portal[data-view="dashboard"] .summary-mini-block,
+.ops-portal[data-view="dashboard"] .openclaw-moves article,
+.ops-portal[data-view="dashboard"] .repair-row,
+.ops-portal[data-view="dashboard"] .dispatch-card,
+.ops-portal[data-view="dashboard"] .outlet-card,
+.ops-portal[data-view="dashboard"] .action-item,
+.ops-portal[data-view="dashboard"] .activity-item {
+  border: 1px solid var(--dash-line);
+  border-radius: 8px;
+  background: var(--dash-panel-soft);
+  color: var(--dash-text);
+  box-shadow: none;
+}
+
+.ops-portal[data-view="dashboard"] .summary-mini-block strong,
+.ops-portal[data-view="dashboard"] .repair-row strong,
+.ops-portal[data-view="dashboard"] .outlet-card strong,
+.ops-portal[data-view="dashboard"] .action-item strong,
+.ops-portal[data-view="dashboard"] .dispatch-card strong,
+.ops-portal[data-view="dashboard"] .activity-item strong {
+  color: var(--dash-ink);
+}
+
+.ops-portal[data-view="dashboard"] .summary-mini-block span,
+.ops-portal[data-view="dashboard"] .summary-mini-block p,
+.ops-portal[data-view="dashboard"] .repair-row span,
+.ops-portal[data-view="dashboard"] .outlet-card span,
+.ops-portal[data-view="dashboard"] .action-item span,
+.ops-portal[data-view="dashboard"] .dispatch-card span,
+.ops-portal[data-view="dashboard"] .activity-item span,
+.ops-portal[data-view="dashboard"] .activity-item time {
+  color: var(--dash-muted);
+}
+
+.ops-portal[data-view="dashboard"] .repair-row {
+  position: relative;
+  grid-template-columns: minmax(126px, 0.9fr) minmax(130px, 1fr) 34px;
+  min-height: 44px;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.ops-portal[data-view="dashboard"] .repair-row::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--panel-accent, var(--dash-red));
+  content: "";
+}
+
+.ops-portal[data-view="dashboard"] .repair-bar {
+  height: 8px;
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.ops-portal[data-view="dashboard"] .repair-bar span {
+  background: linear-gradient(90deg, var(--dash-red), var(--dash-amber));
+}
+
+.ops-portal[data-view="dashboard"] .repair-row b {
+  color: var(--dash-blue);
+  font-size: 17px;
+}
+
+.ops-portal[data-view="dashboard"] .outlet-card {
+  position: relative;
+  overflow: hidden;
+  padding: 9px;
+}
+
+.ops-portal[data-view="dashboard"] .outlet-card::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 4px;
+  width: var(--outlet-load, 0%);
+  background: var(--dash-teal);
+  content: "";
+}
+
+.ops-portal[data-view="dashboard"] .outlet-card.status-critical::after {
+  background: var(--dash-red);
+}
+
+.ops-portal[data-view="dashboard"] .outlet-card.status-blocked::after {
+  background: var(--dash-amber);
+}
+
+.ops-portal[data-view="dashboard"] .outlet-stats {
+  gap: 6px;
+}
+
+.ops-portal[data-view="dashboard"] .outlet-stats span {
+  border-radius: 6px;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.ops-portal[data-view="dashboard"] .dispatch-card {
+  border-left-width: 4px;
+  padding: 8px;
+}
+
+.ops-portal[data-view="dashboard"] .dispatch-card.status-present,
+.ops-portal[data-view="dashboard"] .dispatch-card.status-emergency-available {
+  border-left-color: var(--dash-green);
+}
+
+.ops-portal[data-view="dashboard"] .dispatch-card.status-break,
+.ops-portal[data-view="dashboard"] .dispatch-card.status-off-duty {
+  border-left-color: var(--dash-amber);
+}
+
+.ops-portal[data-view="dashboard"] .dispatch-card.status-absent,
+.ops-portal[data-view="dashboard"] .dispatch-card.status-on-leave {
+  border-left-color: var(--dash-red);
+}
+
+.ops-portal[data-view="dashboard"] .tech-load-bar {
+  height: 6px;
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.ops-portal[data-view="dashboard"] .tech-load-bar span {
+  background: linear-gradient(90deg, var(--dash-blue), var(--dash-purple));
+}
+
+.ops-portal[data-view="dashboard"] #dashboardSummaryGrid .action-item.urgent,
+.ops-portal[data-view="dashboard"] #dashboardDetailGrid .action-item.urgent {
+  border-color: rgba(220, 38, 38, 0.28);
+  background: rgba(254, 242, 242, 0.9);
+}
+
+body[data-theme="dark"].ops-portal[data-view="dashboard"] #dashboardSummaryGrid .action-item.urgent,
+body[data-theme="dark"].ops-portal[data-view="dashboard"] #dashboardDetailGrid .action-item.urgent {
+  background: rgba(127, 29, 29, 0.24);
+}
+
+body[data-theme="dark"].ops-portal[data-view="dashboard"] .dashboard-kpi-head b {
+  background: rgba(226, 232, 240, 0.08);
+}
+
+body[data-theme="dark"].ops-portal[data-view="dashboard"] .dashboard-kpi-meter,
+body[data-theme="dark"].ops-portal[data-view="dashboard"] .repair-bar,
+body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+@media (min-width: 1181px) {
+  .ops-portal[data-view="dashboard"] .app-shell,
+  .ops-portal[data-view="dashboard"]:has(.topbar:hover) .app-shell,
+  .ops-portal[data-view="dashboard"]:has(.topbar:focus-within) .app-shell {
+    height: 100vh;
+    padding: 8px 10px;
+    overflow: hidden;
+  }
+
+  .ops-portal[data-view="dashboard"] #dashboard.view.is-active {
+    display: grid;
+    height: calc(100vh - 16px);
+    grid-template-rows: 82px 76px 94px minmax(0, 1fr);
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .ops-portal[data-view="dashboard"] #dashboard .command-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 0.54fr);
+  }
+
+  .ops-portal[data-view="dashboard"] .dashboard-kpi,
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart,
+  .ops-portal[data-view="dashboard"] #dashboard .panel {
+    min-height: 0;
+  }
+
+  .ops-portal[data-view="dashboard"] .dashboard-summary-grid,
+  .ops-portal[data-view="dashboard"] .dashboard-wall {
+    min-height: 0;
+  }
+
+  .ops-portal[data-view="dashboard"] .dashboard-wall {
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+
+  .ops-portal[data-view="dashboard"] .openclaw-advisor-board,
+  .ops-portal[data-view="dashboard"] .category-repair-board,
+  .ops-portal[data-view="dashboard"] .outlet-health-grid,
+  .ops-portal[data-view="dashboard"] .dispatch-grid,
+  .ops-portal[data-view="dashboard"] .action-list,
+  .ops-portal[data-view="dashboard"] .activity-list {
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 1180px) {
+  .ops-portal[data-view="dashboard"] #dashboard .command-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ops-portal[data-view="dashboard"] .dashboard-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .dashboard-summary-grid,
+  body[data-dashboard-mode="detail"].ops-portal[data-view="dashboard"] #dashboardDetailGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .ops-portal[data-view="dashboard"] .dashboard-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid,
+  .ops-portal[data-view="dashboard"] .trend-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ops-portal[data-view="dashboard"] #dashboard .command-hero h2 {
+    font-size: 26px;
   }
 }

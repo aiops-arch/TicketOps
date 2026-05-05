@@ -1717,15 +1717,21 @@ function latestActivities(limit = 5) {
 function outletHealthCards(limit = 6) {
   const tickets = ticketsForCurrentUser(state.tickets);
   const outlets = currentUser?.role === "manager" && currentUser.outlet ? [currentUser.outlet] : state.outlets;
-  return outlets.slice(0, limit).map((outlet) => {
+  const outletRows = outlets.map((outlet) => {
     const outletTickets = tickets.filter((ticket) => ticket.outlet === outlet && ticket.status !== "Closed");
     const critical = outletTickets.filter((ticket) => ticket.priority === "P1").length;
     const blocked = outletTickets.filter((ticket) => ticket.status === "Blocked").length;
     const unassigned = outletTickets.filter((ticket) => !ticket.assignedTo).length;
     const health = critical ? "Critical" : blocked ? "Blocked" : unassigned ? "Dispatch" : outletTickets.length ? "Active" : "Healthy";
+    const score = (critical * 7) + (blocked * 5) + (unassigned * 3) + outletTickets.length;
+    return { outlet, outletTickets, critical, blocked, unassigned, health, score };
+  }).sort((a, b) => b.score - a.score || b.outletTickets.length - a.outletTickets.length || a.outlet.localeCompare(b.outlet));
+
+  const maxOpen = Math.max(...outletRows.map((row) => row.outletTickets.length), 1);
+  return outletRows.slice(0, limit).map(({ outlet, outletTickets, critical, blocked, unassigned, health }) => {
     const expanded = health !== "Healthy";
     return `
-      <article class="outlet-card status-${token(health)} ${expanded ? "is-expanded" : "is-healthy"}">
+      <article class="outlet-card status-${token(health)} ${expanded ? "is-expanded" : "is-healthy"}" style="--outlet-load: ${Math.round((outletTickets.length / maxOpen) * 100)}%">
         <div class="outlet-card-main">
           <span class="health-dot" aria-hidden="true"></span>
           <strong>${escapeHtml(outlet)}</strong>
@@ -1786,7 +1792,7 @@ function renderCategoryRepairBoard(tickets) {
     ? rows.slice(0, 5).map((row, index) => {
       const percent = Math.round((row.open / max) * 100);
       return `
-        <article class="repair-row heat-${Math.min(index + 1, 5)}">
+        <article class="repair-row heat-${Math.min(index + 1, 5)}" style="--repair-load: ${percent}%">
           <div>
             <strong>${escapeHtml(row.category)}</strong>
             <span>${row.total} total / ${row.closed} closed / ${row.critical} critical</span>
@@ -1899,7 +1905,6 @@ function dashboardSummarySnapshot(tickets, reports, actions, completedToday, com
         { title: todayTasks.length ? `Checklist ${doneTasks}/${todayTasks.length}` : "Checklist clear", detail: `${completedToday} today / ${completedWeek} this week / ${completedMonth} this month`, tone: "normal" }
       ];
 
-  const topOutlet = outletHealthCards(1);
   const topCategory = categoryRepairRows(tickets)[0];
 
   return `
@@ -1969,24 +1974,29 @@ function renderDashboard() {
   const totalForCharts = Math.max(scopedTickets.length, 1);
   const readyPercent = state.technicians.length ? Math.round((readyTechs / state.technicians.length) * 100) : 0;
 
-  document.querySelector("#dashboardTitle").textContent = "Operations Dashboard";
-  document.querySelector("#dashboardSubtitle").textContent = "One-screen live view with a compact summary and a deeper operational board.";
+  const taskPercent = todayTasks.length ? Math.round((doneTasks / todayTasks.length) * 100) : 100;
+  document.querySelector("#dashboardTitle").textContent = "TicketOps Command Board";
+  document.querySelector("#dashboardSubtitle").textContent = "Live, read-only command view for risk, dispatch, repair pressure, outlet health, and closure movement.";
   applyDashboardMode(currentDashboardMode);
   document.querySelector("#dashOpen").textContent = reports.open ?? scopedTickets.length;
   document.querySelector("#dashCritical").textContent = reports.critical || 0;
   document.querySelector("#dashReady").textContent = `${readyTechs}/${state.technicians.length || 0}`;
   document.querySelector("#dashboardKpiGrid").innerHTML = [
-    ["Active", scopedTickets.length, "All open tickets", "blue"],
-    ["Going On", goingOn, "Assigned / running / blocked", "purple"],
-    ["Completed Today", completedToday, "Approved closures", "green"],
-    ["This Week", completedWeek, "Closed in 7 days", "teal"],
-    ["This Month", completedMonth, "Closed in 30 days", "gold"],
-    ["Checklist", todayTasks.length ? `${doneTasks}/${todayTasks.length}` : "0/0", "Daily PM completion", "coral"]
-  ].map(([label, value, detail, tone]) => `
+    ["Active", scopedTickets.length, "All open tickets", "blue", Math.min(100, scopedTickets.length * 12), "Now"],
+    ["Going On", goingOn, "Assigned / running / blocked", "purple", Math.min(100, goingOn * 15), "Field"],
+    ["Completed Today", completedToday, "Approved closures", "green", Math.min(100, completedToday * 20), "Today"],
+    ["This Week", completedWeek, "Closed in 7 days", "teal", Math.min(100, completedWeek * 10), "7D"],
+    ["This Month", completedMonth, "Closed in 30 days", "gold", Math.min(100, completedMonth * 4), "30D"],
+    ["Checklist", todayTasks.length ? `${doneTasks}/${todayTasks.length}` : "0/0", "Daily PM completion", "coral", taskPercent, "PM"]
+  ].map(([label, value, detail, tone, meter, badge]) => `
     <article class="dashboard-kpi ${tone}">
-      <span>${escapeHtml(label)}</span>
+      <div class="dashboard-kpi-head">
+        <span>${escapeHtml(label)}</span>
+        <b>${escapeHtml(badge)}</b>
+      </div>
       <strong>${escapeHtml(value)}</strong>
       <small>${escapeHtml(detail)}</small>
+      <i class="dashboard-kpi-meter" aria-hidden="true"><em style="width: ${Math.max(4, Math.min(100, Number(meter) || 0))}%"></em></i>
     </article>
   `).join("");
   document.querySelector("#dashboardCharts").innerHTML = `
@@ -2071,8 +2081,16 @@ function donutChart(label, value, total, detail, tone = "teal") {
   const cleanTotal = Math.max(Number(total) || 0, 1);
   const cleanValue = Math.max(0, Math.min(Number(value) || 0, cleanTotal));
   const percent = Math.round((cleanValue / cleanTotal) * 100);
+  const chartColors = {
+    blue: "#2563eb",
+    teal: "#0f766e",
+    green: "#16a34a",
+    coral: "#dc2626",
+    gold: "#d97706",
+    purple: "#7c3aed"
+  };
   return `
-    <article class="ops-chart chart-${escapeHtml(tone)}">
+    <article class="ops-chart chart-${escapeHtml(tone)}" style="--chart-color: ${chartColors[tone] || chartColors.teal}">
       <div class="chart-ring" style="--value: ${percent}">
         <strong>${escapeHtml(percent)}%</strong>
       </div>
