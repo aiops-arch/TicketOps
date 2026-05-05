@@ -13,6 +13,8 @@ const dataDir = path.join(__dirname, "data");
 const dbPath = path.join(dataDir, "db.json");
 const useSupabase = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 const requireSupabaseForProduction = process.env.REQUIRE_SUPABASE === "true";
+const STITCH_API_URL = process.env.STITCH_API_URL || "https://stitch.googleapis.com/mcp";
+const STITCH_API_KEY = process.env.STITCH_API_KEY || "";
 const supabase = useSupabase
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false }
@@ -2806,6 +2808,105 @@ function scopedDbForUser(db, user) {
   return db;
 }
 
+function parseMcpResponse(text) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return { raw: trimmed };
+    }
+  }
+
+  const dataLine = trimmed
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.startsWith("data:"));
+
+  if (dataLine) {
+    const payload = dataLine.slice(5).trim();
+    if (payload) {
+      try {
+        return JSON.parse(payload);
+      } catch {
+        return { raw: payload };
+      }
+    }
+  }
+
+  return { raw: trimmed };
+}
+
+async function stitchRpc(method, params = {}) {
+  if (!STITCH_API_KEY) {
+    return { ok: false, status: 503, body: { error: "STITCH_API_KEY is not configured" } };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(STITCH_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+        "X-Goog-Api-Key": STITCH_API_KEY
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: Date.now(),
+        method,
+        params
+      }),
+      signal: controller.signal
+    });
+
+    const text = await response.text();
+    const body = parseMcpResponse(text);
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: response.status,
+        body: body || { error: response.statusText || "Stitch request failed" }
+      };
+    }
+
+    return { ok: true, status: 200, body };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 502,
+      body: { error: error?.message || "Stitch request failed" }
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function stitchStatus() {
+  if (!STITCH_API_KEY) {
+    return {
+      configured: false,
+      connected: false,
+      endpoint: STITCH_API_URL,
+      tools: [],
+      error: "STITCH_API_KEY is not configured"
+    };
+  }
+
+  const result = await stitchRpc("tools/list", {});
+  const tools = Array.isArray(result.body?.result?.tools) ? result.body.result.tools : [];
+  return {
+    configured: true,
+    connected: result.ok,
+    endpoint: STITCH_API_URL,
+    tools: tools.map((tool) => tool.name).filter(Boolean).slice(0, 6),
+    error: result.ok ? "" : result.body?.error || "Unable to reach Stitch"
+  };
+}
+
 app.get(
   "/api/auth/demo-users",
   asyncRoute(async (req, res) => {
@@ -2893,7 +2994,47 @@ app.get(
   asyncRoute(async (req, res) => {
     const user = await userFromRequest(req);
     if (!user) return res.status(401).json({ error: "Login required" });
-    res.json(withSuggestions(scopedDbForUser(await loadDb(), user), user));
+    const db = scopedDbForUser(await loadDb(), user);
+    res.json({
+      ...withSuggestions(db, user),
+      stitch: {
+        configured: Boolean(STITCH_API_KEY),
+        endpoint: STITCH_API_URL
+      }
+    });
+  })
+);
+
+app.get(
+  "/api/stitch/status",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can view Stitch status" });
+    }
+    res.json(await stitchStatus());
+  })
+);
+
+app.post(
+  "/api/stitch/call",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can call Stitch tools" });
+    }
+
+    const name = String(req.body.name || "").trim();
+    const args = req.body.arguments || {};
+    if (!name) {
+      return res.status(400).json({ error: "Tool name is required" });
+    }
+
+    const result = await stitchRpc("tools/call", {
+      name,
+      arguments: args
+    });
+    res.status(result.ok ? 200 : result.status).json(result.body);
   })
 );
 

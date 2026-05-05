@@ -655,6 +655,13 @@ function renderAuthChrome() {
 async function loadState() {
   if (!currentUser) return;
   state = await api("/api/bootstrap");
+  if (currentUser?.role === "admin" && state.stitch?.configured) {
+    try {
+      state.stitch = { ...state.stitch, ...(await api("/api/stitch/status")) };
+    } catch {
+      state.stitch = { ...state.stitch, connected: false, error: "Unable to verify Stitch right now" };
+    }
+  }
   await loadDirectoryUsers();
   renderSelects();
   render();
@@ -2972,6 +2979,7 @@ function renderActivity() {
 function renderSystem() {
   const apiLabel = API_BASE || "Same origin API";
   const currentUrl = window.location.origin;
+  const stitch = state.stitch || {};
   document.querySelector("#systemBoard").innerHTML = `
     <article class="system-card">
       <span>API Target</span>
@@ -2992,6 +3000,11 @@ function renderSystem() {
       <span>App URL</span>
       <strong>${escapeHtml(currentUrl)}</strong>
       <p>Use deployed Render URL for mobile API configuration.</p>
+    </article>
+    <article class="system-card">
+      <span>Stitch API</span>
+      <strong>${escapeHtml(stitch.configured ? (stitch.connected ? "Connected" : "Configured") : "Not set")}</strong>
+      <p>${escapeHtml(stitch.configured ? (stitch.connected ? `Remote MCP ready at ${stitch.endpoint}` : stitch.error || "Stitch key detected, but remote check failed.") : "Set STITCH_API_KEY to enable Google Stitch calls.")}</p>
     </article>
   `;
 }
