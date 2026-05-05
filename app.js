@@ -1874,6 +1874,79 @@ function openClawAdvisor(tickets, reports, actions) {
   `;
 }
 
+function dashboardSummarySnapshot(tickets, reports, actions, completedToday, completedWeek, completedMonth, todayTasks, doneTasks) {
+  const open = tickets.filter((ticket) => ticket.status !== "Closed");
+  const blocked = open.filter((ticket) => ticket.status === "Blocked").length;
+  const unassigned = open.filter((ticket) => !ticket.assignedTo).length;
+  const critical = open.filter((ticket) => ticket.priority === "P1").length;
+  const verification = open.filter((ticket) => ["Resolved", "Verification Pending"].includes(ticket.status)).length;
+  const outletRows = (currentUser?.role === "manager" && currentUser.outlet ? [currentUser.outlet] : state.outlets).map((outlet) => {
+    const outletTickets = tickets.filter((ticket) => ticket.outlet === outlet);
+    return {
+      outlet,
+      open: outletTickets.length,
+      critical: outletTickets.filter((ticket) => ticket.priority === "P1").length,
+      blocked: outletTickets.filter((ticket) => ticket.status === "Blocked").length,
+      unassigned: outletTickets.filter((ticket) => !ticket.assignedTo).length
+    };
+  }).sort((a, b) => b.open - a.open || b.critical - a.critical || b.blocked - a.blocked || a.outlet.localeCompare(b.outlet));
+  const focus = critical ? "Critical risk" : blocked ? "Blocked work" : unassigned ? "Dispatch gap" : verification ? "Closure loop" : "Stable operations";
+  const nextChecks = actions.length
+    ? actions.slice(0, 3)
+    : [
+        { title: `Open ${open.length} active ticket${open.length === 1 ? "" : "s"}`, detail: `${blocked} blocked / ${unassigned} unassigned / ${critical} critical`, tone: "normal" },
+        { title: `Close loop on ${verification} verified item${verification === 1 ? "" : "s"}`, detail: "Manager approval before closure", tone: verification ? "urgent" : "normal" },
+        { title: todayTasks.length ? `Checklist ${doneTasks}/${todayTasks.length}` : "Checklist clear", detail: `${completedToday} today / ${completedWeek} this week / ${completedMonth} this month`, tone: "normal" }
+      ];
+
+  const topOutlet = outletHealthCards(1);
+  const topCategory = categoryRepairRows(tickets)[0];
+
+  return `
+    <article class="summary-focus-card">
+      <div class="summary-focus-head">
+        <div>
+          <span>Current focus</span>
+          <strong>${escapeHtml(focus)}</strong>
+        </div>
+        <span class="heading-chip">${escapeHtml(open.length)} open</span>
+      </div>
+      <p>OpenClaw keeps the board tight: priority, dispatch gap, verification, and checklist completion.</p>
+      <div class="summary-signal-grid">
+        <div><span>Critical</span><strong>${critical}</strong></div>
+        <div><span>Blocked</span><strong>${blocked}</strong></div>
+        <div><span>Unassigned</span><strong>${unassigned}</strong></div>
+        <div><span>Verify</span><strong>${verification}</strong></div>
+      </div>
+      <div class="summary-checklist">
+        <span>Today ${todayTasks.length ? `${doneTasks}/${todayTasks.length}` : "0/0"}</span>
+        <span>This week ${completedWeek}</span>
+        <span>This month ${completedMonth}</span>
+      </div>
+    </article>
+    <div class="action-list compact">
+      ${nextChecks.map((item, index) => `
+        <article class="action-item ${item.tone === "urgent" ? "urgent" : ""}">
+          <strong>${index + 1}. ${escapeHtml(item.title)}</strong>
+          <span>${escapeHtml(item.detail)}</span>
+        </article>
+      `).join("")}
+    </div>
+    <div class="summary-mini-stack">
+      <div class="summary-mini-block">
+        <span>Top category</span>
+        <strong>${escapeHtml(topCategory?.category || "No data")}</strong>
+        <p>${topCategory ? `${topCategory.open} open / ${topCategory.critical} critical / ${topCategory.blocked} blocked` : "Waiting for live ticket volume."}</p>
+      </div>
+      <div class="summary-mini-block">
+        <span>Top outlet</span>
+        <strong>${escapeHtml(outletRows[0]?.outlet || "No data")}</strong>
+        <p>${outletRows[0] ? `${outletRows[0].open} open / ${outletRows[0].critical} critical / ${outletRows[0].blocked} blocked` : "Outlet pressure is rolled up in the deep dive view."}</p>
+      </div>
+    </div>
+  `;
+}
+
 function renderDashboard() {
   const reports = state.reports || {};
   const allScopedTickets = ticketsForCurrentUser(state.tickets);
@@ -1931,14 +2004,16 @@ function renderDashboard() {
     </article>
   `;
 
-  document.querySelector("#dashboardSummaryActions").innerHTML = actions.length
-    ? actions.slice(0, 3).map((item) => `
-        <article class="action-item ${item.tone === "urgent" ? "urgent" : ""}">
-          <strong>${escapeHtml(item.title)}</strong>
-          <span>${escapeHtml(item.detail)}</span>
-        </article>
-      `).join("")
-    : `<div class="empty mini">No urgent action right now.</div>`;
+  document.querySelector("#dashboardSummaryActions").innerHTML = dashboardSummarySnapshot(
+    scopedTickets,
+    reports,
+    actions,
+    completedToday,
+    completedWeek,
+    completedMonth,
+    todayTasks,
+    doneTasks
+  );
   document.querySelector("#dashboardSummaryCategories").innerHTML = renderCategoryRepairBoard(allScopedTickets);
   document.querySelector("#dashboardSummaryOutlets").innerHTML = outletHealthCards(4) || `<div class="empty mini">No outlet data yet.</div>`;
 
