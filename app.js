@@ -1753,7 +1753,7 @@ function renderCategoryRepairBoard(tickets) {
   const rows = categoryRepairRows(tickets);
   const max = Math.max(...rows.map((row) => row.open), 1);
   return rows.length
-    ? rows.slice(0, 8).map((row, index) => {
+    ? rows.slice(0, 5).map((row, index) => {
       const percent = Math.round((row.open / max) * 100);
       return `
         <article class="repair-row heat-${Math.min(index + 1, 5)}">
@@ -1834,7 +1834,7 @@ function openClawAdvisor(tickets, reports, actions) {
       <p>OpenClaw is watching missing manual actions and turning them into clear admin moves.</p>
     </article>
     <div class="openclaw-moves">
-      ${moves.slice(0, 5).map((move, index) => `
+      ${moves.slice(0, 3).map((move, index) => `
         <article>
           <b>${index + 1}</b>
           <span>${escapeHtml(move)}</span>
@@ -1866,8 +1866,8 @@ function renderDashboard() {
   const totalForCharts = Math.max(scopedTickets.length, 1);
   const readyPercent = state.technicians.length ? Math.round((readyTechs / state.technicians.length) * 100) : 0;
 
-  document.querySelector("#dashboardTitle").textContent = "Live Data Command Wall";
-  document.querySelector("#dashboardSubtitle").textContent = "Color dashboard only: active work, going on, completed today, weekly/monthly closure, outlet pressure, technician load, and repair category heat.";
+  document.querySelector("#dashboardTitle").textContent = "Operations Dashboard";
+  document.querySelector("#dashboardSubtitle").textContent = "One-screen live view for work volume, risk, repair heat, technician capacity, and outlet pressure.";
   document.querySelector("#dashOpen").textContent = reports.open ?? scopedTickets.length;
   document.querySelector("#dashCritical").textContent = reports.critical || 0;
   document.querySelector("#dashReady").textContent = `${readyTechs}/${state.technicians.length || 0}`;
@@ -1913,7 +1913,7 @@ function renderDashboard() {
       `).join("")
     : `<div class="empty mini">No urgent action right now.</div>`;
 
-  document.querySelector("#dispatchBrainBoard").innerHTML = state.technicians.map((tech) => {
+  document.querySelector("#dispatchBrainBoard").innerHTML = state.technicians.slice(0, 6).map((tech) => {
     const activeJobs = scopedTickets.filter((ticket) => ticket.assignedTo === tech.id).length;
     const todayPending = (state.tasks || []).filter((task) => task.assignedTo === tech.id && task.date === todayInputValue() && task.status === "Pending").length;
     const loadTotal = Math.max(activeJobs + todayPending, 1);
@@ -1938,7 +1938,7 @@ function renderDashboard() {
   }
 
   document.querySelector("#dashboardActivityBoard").innerHTML = activities.length
-    ? activities.map((item) => `
+    ? activities.slice(0, 3).map((item) => `
         <article class="activity-item">
           <div>
             <strong>${escapeHtml(item.ticketId)} / ${escapeHtml(item.outlet)}</strong>
