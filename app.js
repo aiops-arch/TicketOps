@@ -2,6 +2,7 @@ const NATIVE_DEFAULT_API = location.protocol === "capacitor:" ? "http://10.0.2.2
 const CONFIG_API_BASE = window.TICKETOPS_CONFIG?.apiBase || window.TICKETOPS_API_BASE || "";
 const API_BASE = localStorage.getItem("ticketops-api-base") || CONFIG_API_BASE || NATIVE_DEFAULT_API;
 const AUTH_STORAGE_KEY = "ticketops-auth-user-v2";
+const THEME_STORAGE_KEY = "ticketops-theme";
 const MAX_TICKET_PHOTOS = 5;
 const MAX_IMAGE_EDGE = 1600;
 const IMAGE_QUALITY = 0.72;
@@ -87,6 +88,9 @@ let activeMasterTab = "outlets";
 let editingAssignmentWindowId = "";
 let editingMaintenanceRuleId = "";
 let mobileNavOpen = false;
+let currentTheme = readStoredTheme();
+
+applyTheme(currentTheme);
 
 function isSingleRoleWorkspace(role = currentUser?.role) {
   return role === "manager" || role === "technician";
@@ -129,6 +133,29 @@ function saveUser(user) {
 function clearUser() {
   currentUser = null;
   localStorage.removeItem(AUTH_STORAGE_KEY);
+}
+
+function readStoredTheme() {
+  const stored = localStorage.getItem(THEME_STORAGE_KEY);
+  return stored === "dark" ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+  currentTheme = theme === "dark" ? "dark" : "light";
+  document.body.dataset.theme = currentTheme;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", currentTheme === "dark" ? "#0d1024" : "#f4f7ff");
+  const button = document.querySelector("#themeToggle");
+  if (button) {
+    button.textContent = currentTheme === "dark" ? "Light" : "Dark";
+    button.setAttribute("aria-pressed", currentTheme === "dark" ? "true" : "false");
+    button.title = currentTheme === "dark" ? "Switch to light theme" : "Switch to dark theme";
+  }
+}
+
+function toggleTheme() {
+  const nextTheme = currentTheme === "dark" ? "light" : "dark";
+  localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+  applyTheme(nextTheme);
 }
 
 function isPortraitMobileNav() {
@@ -1687,32 +1714,194 @@ function outletHealthCards() {
   }).join("");
 }
 
+function closedAt(ticket) {
+  const history = Array.isArray(ticket.history) ? ticket.history : [];
+  const closed = [...history].reverse().find((item) => /closed|approved/i.test(item.action || ""));
+  return closed?.at || ticket.updatedAt || ticket.completedAt || ticket.createdAt;
+}
+
+function dateBucketCount(items, dateGetter, days) {
+  const now = Date.now();
+  const windowMs = days * 24 * 60 * 60 * 1000;
+  return items.filter((item) => {
+    const value = dateGetter(item);
+    const time = new Date(value || 0).getTime();
+    return Number.isFinite(time) && now - time <= windowMs;
+  }).length;
+}
+
+function calendarDayCount(items, dateGetter, dateKey = todayInputValue()) {
+  return items.filter((item) => String(dateGetter(item) || "").slice(0, 10) === dateKey).length;
+}
+
+function categoryRepairRows(tickets) {
+  const map = new Map();
+  tickets.forEach((ticket) => {
+    const key = ticket.category || "Uncategorized";
+    const row = map.get(key) || { category: key, total: 0, open: 0, critical: 0, blocked: 0, closed: 0 };
+    row.total += 1;
+    if (ticket.status === "Closed") row.closed += 1;
+    else row.open += 1;
+    if (ticket.priority === "P1") row.critical += 1;
+    if (ticket.status === "Blocked") row.blocked += 1;
+    map.set(key, row);
+  });
+  return [...map.values()].sort((a, b) => b.open - a.open || b.total - a.total || a.category.localeCompare(b.category));
+}
+
+function renderCategoryRepairBoard(tickets) {
+  const rows = categoryRepairRows(tickets);
+  const max = Math.max(...rows.map((row) => row.open), 1);
+  return rows.length
+    ? rows.slice(0, 8).map((row, index) => {
+      const percent = Math.round((row.open / max) * 100);
+      return `
+        <article class="repair-row heat-${Math.min(index + 1, 5)}">
+          <div>
+            <strong>${escapeHtml(row.category)}</strong>
+            <span>${row.total} total / ${row.closed} closed / ${row.critical} critical</span>
+          </div>
+          <div class="repair-bar" aria-label="${escapeHtml(row.category)} open repairs">
+            <span style="width: ${percent}%"></span>
+          </div>
+          <b>${row.open}</b>
+        </article>
+      `;
+    }).join("")
+    : `<div class="empty mini">No category repair data yet.</div>`;
+}
+
+function ticketTrendSeries(tickets) {
+  const now = new Date();
+  return Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(now);
+    day.setDate(now.getDate() - (6 - index));
+    const key = day.toISOString().slice(0, 10);
+    return {
+      key,
+      label: day.toLocaleDateString([], { weekday: "short" }),
+      created: tickets.filter((ticket) => String(ticket.createdAt || "").slice(0, 10) === key).length,
+      closed: tickets.filter((ticket) => ticket.status === "Closed" && String(closedAt(ticket) || "").slice(0, 10) === key).length
+    };
+  });
+}
+
+function renderTicketTrend(tickets) {
+  const series = ticketTrendSeries(tickets);
+  const max = Math.max(...series.flatMap((item) => [item.created, item.closed]), 1);
+  return `
+    <div class="dashboard-trend" aria-label="Seven day ticket movement">
+      ${series.map((item) => `
+        <div>
+          <span class="trend-bars">
+            <i class="created" style="height: ${Math.max(8, Math.round((item.created / max) * 100))}%"></i>
+            <i class="closed" style="height: ${Math.max(8, Math.round((item.closed / max) * 100))}%"></i>
+          </span>
+          <small>${escapeHtml(item.label)}</small>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function openClawAdvisor(tickets, reports, actions) {
+  const open = tickets.filter((ticket) => ticket.status !== "Closed");
+  const blocked = open.filter((ticket) => ticket.status === "Blocked");
+  const unassigned = open.filter((ticket) => !ticket.assignedTo);
+  const verification = open.filter((ticket) => ["Resolved", "Verification Pending"].includes(ticket.status));
+  const critical = open.filter((ticket) => ticket.priority === "P1");
+  const overloaded = (reports.technicianWorkload || [])
+    .filter((tech) => Number(tech.openTickets || 0) >= 3)
+    .sort((a, b) => Number(b.openTickets || 0) - Number(a.openTickets || 0));
+  const topCategory = categoryRepairRows(tickets)[0];
+
+  const moves = [];
+  if (critical.length) moves.push(`Escalate ${critical.length} critical ticket${critical.length === 1 ? "" : "s"} first; require ETA and photo proof.`);
+  if (unassigned.length) moves.push(`Assign ${unassigned.length} unassigned ticket${unassigned.length === 1 ? "" : "s"} before new work enters the queue.`);
+  if (blocked.length) moves.push(`Ask blockers for reason, owner, and next decision; ${blocked.length} blocked item${blocked.length === 1 ? "" : "s"} cannot move.`);
+  if (verification.length) moves.push(`Push manager verification on ${verification.length} resolved item${verification.length === 1 ? "" : "s"} to close the loop.`);
+  if (overloaded.length) moves.push(`${overloaded[0].name} is carrying ${overloaded[0].openTickets} open jobs; rebalance before assigning more.`);
+  if (topCategory?.open) moves.push(`${topCategory.category} is the hottest repair category with ${topCategory.open} open item${topCategory.open === 1 ? "" : "s"}.`);
+  if (!moves.length && actions.length) moves.push(...actions.slice(0, 2).map((item) => `${item.title}: ${item.detail}`));
+  if (!moves.length) moves.push("Operation is stable. Keep watching closures, proof, and technician availability.");
+
+  const focus = critical.length ? "Critical risk" : blocked.length ? "Blocked work" : unassigned.length ? "Dispatch queue" : verification.length ? "Closure loop" : "Stable operations";
+
+  return `
+    <article class="openclaw-lead">
+      <span>Current focus</span>
+      <strong>${escapeHtml(focus)}</strong>
+      <p>OpenClaw is watching missing manual actions and turning them into clear admin moves.</p>
+    </article>
+    <div class="openclaw-moves">
+      ${moves.slice(0, 5).map((move, index) => `
+        <article>
+          <b>${index + 1}</b>
+          <span>${escapeHtml(move)}</span>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
 function renderDashboard() {
   const reports = state.reports || {};
-  const scopedTickets = ticketsForCurrentUser(state.tickets).filter((ticket) => ticket.status !== "Closed");
+  const allScopedTickets = ticketsForCurrentUser(state.tickets);
+  const scopedTickets = allScopedTickets.filter((ticket) => ticket.status !== "Closed");
   const readyTechs = state.technicians.filter((tech) => ["Present", "Emergency Available"].includes(tech.status)).length;
   const actions = actionItems();
   const activities = latestActivities();
-  const closedTickets = ticketsForCurrentUser(state.tickets).filter((ticket) => ticket.status === "Closed").length;
+  const closedTicketList = allScopedTickets.filter((ticket) => ticket.status === "Closed");
+  const closedTickets = closedTicketList.length;
   const blocked = scopedTickets.filter((ticket) => ticket.status === "Blocked").length;
   const unassigned = scopedTickets.filter((ticket) => !ticket.assignedTo).length;
   const assigned = scopedTickets.filter((ticket) => ticket.assignedTo).length;
   const critical = scopedTickets.filter((ticket) => ticket.priority === "P1").length;
+  const goingOn = scopedTickets.filter((ticket) => ["Assigned", "Acknowledged", "In Progress", "Blocked", "Reopened"].includes(ticket.status)).length;
+  const completedToday = calendarDayCount(closedTicketList, closedAt);
+  const completedWeek = dateBucketCount(closedTicketList, closedAt, 7);
+  const completedMonth = dateBucketCount(closedTicketList, closedAt, 30);
+  const todayTasks = (state.tasks || []).filter((task) => task.date === todayInputValue());
+  const doneTasks = todayTasks.filter((task) => task.status === "Done").length;
   const totalForCharts = Math.max(scopedTickets.length, 1);
   const readyPercent = state.technicians.length ? Math.round((readyTechs / state.technicians.length) * 100) : 0;
 
-  document.querySelector("#dashboardTitle").textContent = dashboardTitle();
-  document.querySelector("#dashboardSubtitle").textContent = dashboardSubtitle();
+  document.querySelector("#dashboardTitle").textContent = "Live Data Command Wall";
+  document.querySelector("#dashboardSubtitle").textContent = "Color dashboard only: active work, going on, completed today, weekly/monthly closure, outlet pressure, technician load, and repair category heat.";
   document.querySelector("#dashOpen").textContent = reports.open ?? scopedTickets.length;
   document.querySelector("#dashCritical").textContent = reports.critical || 0;
   document.querySelector("#dashReady").textContent = `${readyTechs}/${state.technicians.length || 0}`;
+  document.querySelector("#dashboardKpiGrid").innerHTML = [
+    ["Active", scopedTickets.length, "All open tickets", "blue"],
+    ["Going On", goingOn, "Assigned / running / blocked", "purple"],
+    ["Completed Today", completedToday, "Approved closures", "green"],
+    ["This Week", completedWeek, "Closed in 7 days", "teal"],
+    ["This Month", completedMonth, "Closed in 30 days", "gold"],
+    ["Checklist", todayTasks.length ? `${doneTasks}/${todayTasks.length}` : "0/0", "Daily PM completion", "coral"]
+  ].map(([label, value, detail, tone]) => `
+    <article class="dashboard-kpi ${tone}">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+      <small>${escapeHtml(detail)}</small>
+    </article>
+  `).join("");
   document.querySelector("#dashboardCharts").innerHTML = `
-    ${donutChart("Ticket Mix", scopedTickets.length, totalForCharts + closedTickets, "Open vs closed work", "teal")}
+    ${donutChart("Active Load", scopedTickets.length, totalForCharts + closedTickets, "Open vs closed work", "teal")}
     ${donutChart("Dispatch", assigned, totalForCharts, `${unassigned} waiting for admin`, "blue")}
-    ${donutChart("SLA Risk", critical + blocked, totalForCharts, `${critical} critical / ${blocked} blocked`, "coral")}
+    ${donutChart("Risk", critical + blocked, totalForCharts, `${critical} critical / ${blocked} blocked`, "coral")}
     ${donutChart("Ready Techs", readyTechs, Math.max(state.technicians.length, 1), `${readyPercent}% available now`, "green")}
+    <article class="ops-chart trend-card">
+      <div>
+        <span>7 Day Movement</span>
+        <strong>Created / Closed</strong>
+        <p>Live work velocity</p>
+      </div>
+      ${renderTicketTrend(allScopedTickets)}
+    </article>
   `;
 
+  document.querySelector("#openClawAdvisorBoard").innerHTML = openClawAdvisor(allScopedTickets, reports, actions);
+  document.querySelector("#categoryRepairBoard").innerHTML = renderCategoryRepairBoard(allScopedTickets);
   document.querySelector("#outletHealthBoard").innerHTML = outletHealthCards() || `<div class="empty mini">No outlet data yet.</div>`;
 
   document.querySelector("#needsActionBoard").innerHTML = actions.length
@@ -1726,6 +1915,8 @@ function renderDashboard() {
 
   document.querySelector("#dispatchBrainBoard").innerHTML = state.technicians.map((tech) => {
     const activeJobs = scopedTickets.filter((ticket) => ticket.assignedTo === tech.id).length;
+    const todayPending = (state.tasks || []).filter((task) => task.assignedTo === tech.id && task.date === todayInputValue() && task.status === "Pending").length;
+    const loadTotal = Math.max(activeJobs + todayPending, 1);
     return `
       <article class="dispatch-card status-${token(tech.status)}">
         <div>
@@ -1735,10 +1926,16 @@ function renderDashboard() {
         <span>${escapeHtml(serviceAreaLabel(tech))}</span>
         <div class="dispatch-score">
           <span>${activeJobs} active</span>
+          <span>${todayPending} PM</span>
         </div>
+        <div class="tech-load-bar"><span style="width: ${Math.min(100, loadTotal * 18)}%"></span></div>
       </article>
     `;
   }).join("");
+
+  if (!state.technicians.length) {
+    document.querySelector("#dispatchBrainBoard").innerHTML = `<div class="empty mini">No technician workload data.</div>`;
+  }
 
   document.querySelector("#dashboardActivityBoard").innerHTML = activities.length
     ? activities.map((item) => `
@@ -3082,6 +3279,7 @@ document.querySelector("#logoutButton").addEventListener("click", () => {
   clearUser();
   showLogin();
 });
+document.querySelector("#themeToggle").addEventListener("click", toggleTheme);
 document.querySelector("#sidebarToggle").addEventListener("click", () => {
   if (!currentUser) return;
   toggleMobileNav();

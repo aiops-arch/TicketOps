@@ -44,6 +44,7 @@
             <strong id="userPost">Guest</strong>
           </div>
           <div class="account-actions">
+            <button id="themeToggle" class="ghost-button theme-toggle" type="button" title="Switch theme" aria-pressed="false">Dark</button>
             <button id="resetData" class="ghost-button danger-soft" title="Reset demo data">Reset</button>
             <button id="logoutButton" class="ghost-button is-hidden" title="Sign out">Logout</button>
           </div>
@@ -120,40 +121,64 @@
           </div>
         </div>
 
+        <div id="dashboardKpiGrid" class="dashboard-kpi-grid"></div>
+
         <div id="dashboardCharts" class="ops-chart-grid"></div>
 
-        <div class="command-grid">
+        <div class="command-grid dashboard-wall">
+          <div class="panel dashboard-panel dashboard-openclaw-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="section-kicker">OpenClaw Supporter</span>
+                <h2>Admin Best Friend</h2>
+              </div>
+              <span class="heading-chip">Auto guidance</span>
+            </div>
+            <div id="openClawAdvisorBoard" class="openclaw-advisor-board"></div>
+          </div>
+
+          <div class="panel dashboard-panel wide dashboard-category-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="section-kicker">Repair Heat</span>
+                <h2>Categories Needing More Repairs</h2>
+              </div>
+              <span class="heading-chip">Live ticket mix</span>
+            </div>
+            <div id="categoryRepairBoard" class="category-repair-board"></div>
+          </div>
+
           <div class="panel dashboard-panel wide">
             <div class="panel-heading">
               <div>
                 <span class="section-kicker">Outlet Health</span>
-                <h2>aiko surat / Capiche</h2>
+                <h2>Outlet Wise Pressure</h2>
               </div>
               <span class="heading-chip">Live pressure</span>
             </div>
             <div id="outletHealthBoard" class="outlet-health-grid"></div>
           </div>
 
-          <div class="panel dashboard-panel">
+          <div class="panel dashboard-panel dashboard-tech-panel">
             <div class="panel-heading">
               <div>
-                <span class="section-kicker">Needs Action</span>
-                <h2>Next Moves</h2>
+                <span class="section-kicker">Technician Wise</span>
+                <h2>Workload + Capacity</h2>
               </div>
-              <span class="heading-chip">Role-aware</span>
+              <span class="heading-chip">No manual edit</span>
             </div>
-            <div id="needsActionBoard" class="action-list"></div>
+            <div id="dispatchBrainBoard" class="dispatch-grid"></div>
           </div>
 
           <div class="panel dashboard-panel">
             <div class="panel-heading">
               <div>
-                <span class="section-kicker">Dispatch Brain</span>
-                <h2>Coverage</h2>
+                <span class="section-kicker">Needs Action</span>
+                <h2>OpenClaw Next Moves</h2>
               </div>
-              <span class="heading-chip">Coverage + time</span>
+              <span class="heading-chip">System suggested</span>
             </div>
-            <div id="dispatchBrainBoard" class="dispatch-grid"></div>
+            <div id="needsActionBoard" class="action-list"></div>
           </div>
 
           <div class="panel dashboard-panel wide">
