@@ -3,6 +3,7 @@ const CONFIG_API_BASE = window.TICKETOPS_CONFIG?.apiBase || window.TICKETOPS_API
 const API_BASE = localStorage.getItem("ticketops-api-base") || CONFIG_API_BASE || NATIVE_DEFAULT_API;
 const AUTH_STORAGE_KEY = "ticketops-auth-user-v2";
 const THEME_STORAGE_KEY = "ticketops-theme";
+const DASHBOARD_MODE_STORAGE_KEY = "ticketops-dashboard-mode";
 const MAX_TICKET_PHOTOS = 5;
 const MAX_IMAGE_EDGE = 1600;
 const IMAGE_QUALITY = 0.72;
@@ -89,8 +90,10 @@ let editingAssignmentWindowId = "";
 let editingMaintenanceRuleId = "";
 let mobileNavOpen = false;
 let currentTheme = readStoredTheme();
+let currentDashboardMode = readStoredDashboardMode();
 
 applyTheme(currentTheme);
+applyDashboardMode(currentDashboardMode);
 
 function isSingleRoleWorkspace(role = currentUser?.role) {
   return role === "manager" || role === "technician";
@@ -156,6 +159,26 @@ function toggleTheme() {
   const nextTheme = currentTheme === "dark" ? "light" : "dark";
   localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
   applyTheme(nextTheme);
+}
+
+function readStoredDashboardMode() {
+  const stored = localStorage.getItem(DASHBOARD_MODE_STORAGE_KEY);
+  return stored === "detail" ? "detail" : "summary";
+}
+
+function applyDashboardMode(mode) {
+  currentDashboardMode = mode === "detail" ? "detail" : "summary";
+  document.body.dataset.dashboardMode = currentDashboardMode;
+  localStorage.setItem(DASHBOARD_MODE_STORAGE_KEY, currentDashboardMode);
+  document.querySelectorAll("[data-dashboard-mode]").forEach((button) => {
+    const active = button.dataset.dashboardMode === currentDashboardMode;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+}
+
+function toggleDashboardMode(mode) {
+  applyDashboardMode(mode || (currentDashboardMode === "summary" ? "detail" : "summary"));
 }
 
 function isPortraitMobileNav() {
@@ -1691,10 +1714,10 @@ function latestActivities(limit = 5) {
     .slice(0, limit);
 }
 
-function outletHealthCards() {
+function outletHealthCards(limit = 6) {
   const tickets = ticketsForCurrentUser(state.tickets);
   const outlets = currentUser?.role === "manager" && currentUser.outlet ? [currentUser.outlet] : state.outlets;
-  return outlets.map((outlet) => {
+  return outlets.slice(0, limit).map((outlet) => {
     const outletTickets = tickets.filter((ticket) => ticket.outlet === outlet && ticket.status !== "Closed");
     const critical = outletTickets.filter((ticket) => ticket.priority === "P1").length;
     const blocked = outletTickets.filter((ticket) => ticket.status === "Blocked").length;
@@ -1874,7 +1897,8 @@ function renderDashboard() {
   const readyPercent = state.technicians.length ? Math.round((readyTechs / state.technicians.length) * 100) : 0;
 
   document.querySelector("#dashboardTitle").textContent = "Operations Dashboard";
-  document.querySelector("#dashboardSubtitle").textContent = "One-screen live view for work volume, risk, repair heat, technician capacity, and outlet pressure.";
+  document.querySelector("#dashboardSubtitle").textContent = "One-screen live view with a compact summary and a deeper operational board.";
+  applyDashboardMode(currentDashboardMode);
   document.querySelector("#dashOpen").textContent = reports.open ?? scopedTickets.length;
   document.querySelector("#dashCritical").textContent = reports.critical || 0;
   document.querySelector("#dashReady").textContent = `${readyTechs}/${state.technicians.length || 0}`;
@@ -1907,9 +1931,20 @@ function renderDashboard() {
     </article>
   `;
 
+  document.querySelector("#dashboardSummaryActions").innerHTML = actions.length
+    ? actions.slice(0, 3).map((item) => `
+        <article class="action-item ${item.tone === "urgent" ? "urgent" : ""}">
+          <strong>${escapeHtml(item.title)}</strong>
+          <span>${escapeHtml(item.detail)}</span>
+        </article>
+      `).join("")
+    : `<div class="empty mini">No urgent action right now.</div>`;
+  document.querySelector("#dashboardSummaryCategories").innerHTML = renderCategoryRepairBoard(allScopedTickets);
+  document.querySelector("#dashboardSummaryOutlets").innerHTML = outletHealthCards(4) || `<div class="empty mini">No outlet data yet.</div>`;
+
   document.querySelector("#openClawAdvisorBoard").innerHTML = openClawAdvisor(allScopedTickets, reports, actions);
   document.querySelector("#categoryRepairBoard").innerHTML = renderCategoryRepairBoard(allScopedTickets);
-  document.querySelector("#outletHealthBoard").innerHTML = outletHealthCards() || `<div class="empty mini">No outlet data yet.</div>`;
+  document.querySelector("#outletHealthBoard").innerHTML = outletHealthCards(6) || `<div class="empty mini">No outlet data yet.</div>`;
 
   document.querySelector("#needsActionBoard").innerHTML = actions.length
     ? actions.map((item) => `
@@ -3293,6 +3328,8 @@ document.querySelector("#logoutButton").addEventListener("click", () => {
   showLogin();
 });
 document.querySelector("#themeToggle").addEventListener("click", toggleTheme);
+document.querySelector("#dashboardSummaryMode")?.addEventListener("click", () => toggleDashboardMode("summary"));
+document.querySelector("#dashboardDetailMode")?.addEventListener("click", () => toggleDashboardMode("detail"));
 document.querySelector("#sidebarToggle").addEventListener("click", () => {
   if (!currentUser) return;
   toggleMobileNav();

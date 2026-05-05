@@ -104,6 +104,10 @@
             <span class="section-kicker">Live Command Dashboard</span>
             <h2 id="dashboardTitle">Operations Pulse</h2>
             <p id="dashboardSubtitle">Reading outlets, tickets, attendance, and dispatch movement.</p>
+            <div class="dashboard-mode-switcher" role="tablist" aria-label="Dashboard mode">
+              <button id="dashboardSummaryMode" class="mode-pill is-active" type="button" data-dashboard-mode="summary" aria-pressed="true">Summary</button>
+              <button id="dashboardDetailMode" class="mode-pill" type="button" data-dashboard-mode="detail" aria-pressed="false">Deep Dive</button>
+            </div>
           </div>
           <div class="hero-metrics">
             <article>
@@ -125,7 +129,42 @@
 
         <div id="dashboardCharts" class="ops-chart-grid"></div>
 
-        <div class="command-grid dashboard-wall">
+        <div id="dashboardSummaryGrid" class="command-grid dashboard-summary-grid">
+          <div class="panel dashboard-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="section-kicker">OpenClaw Summary</span>
+                <h2>Best Next Moves</h2>
+              </div>
+              <span class="heading-chip">Top 3</span>
+            </div>
+            <div id="dashboardSummaryActions" class="action-list"></div>
+          </div>
+
+          <div class="panel dashboard-panel wide">
+            <div class="panel-heading">
+              <div>
+                <span class="section-kicker">Hot Repairs</span>
+                <h2>Top Categories</h2>
+              </div>
+              <span class="heading-chip">Fast scan</span>
+            </div>
+            <div id="dashboardSummaryCategories" class="category-repair-board"></div>
+          </div>
+
+          <div class="panel dashboard-panel wide">
+            <div class="panel-heading">
+              <div>
+                <span class="section-kicker">Outlet Pressure</span>
+                <h2>Live Trouble Spots</h2>
+              </div>
+              <span class="heading-chip">Top outlets</span>
+            </div>
+            <div id="dashboardSummaryOutlets" class="outlet-health-grid"></div>
+          </div>
+        </div>
+
+        <div id="dashboardDetailGrid" class="command-grid dashboard-wall">
           <div class="panel dashboard-panel dashboard-openclaw-panel">
             <div class="panel-heading">
               <div>
