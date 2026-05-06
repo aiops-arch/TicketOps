@@ -9771,6 +9771,83 @@ body.ops-portal[data-view="dashboard"] {
 }
 
 /* ─── RESPONSIVE ─── */
+/* LARGER SCREENS - INCREASE HEIGHTS AND SPACING */
+@media (min-width: 1181px) {
+  /* Increase Intel cards */
+  .ops-portal[data-view="dashboard"] .intel-card {
+    min-height: 130px !important;
+    padding: 24px 28px !important;
+  }
+
+  /* Increase Command Hero */
+  .ops-portal[data-view="dashboard"] .command-hero {
+    padding: 36px 48px !important;
+    gap: 36px !important;
+    min-height: 120px !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .command-hero h2 {
+    font-size: 42px !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .hero-metrics article {
+    padding: 18px 24px !important;
+    min-width: 100px !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .hero-metrics strong {
+    font-size: 32px !important;
+  }
+
+  /* Increase KPI cards */
+  .ops-portal[data-view="dashboard"] .dashboard-kpi {
+    min-height: 140px !important;
+    padding: 20px 24px !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .dashboard-kpi strong {
+    font-size: 36px !important;
+  }
+
+  /* Increase Charts */
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart {
+    min-height: 140px !important;
+    padding: 24px !important;
+  }
+
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart strong {
+    font-size: 26px !important;
+  }
+
+  /* Increase Summary panels */
+  .ops-portal[data-view="dashboard"] #dashboard .panel {
+    padding: 32px 40px !important;
+    min-height: 300px !important;
+  }
+
+  .ops-portal[data-view="dashboard"] #dashboard .panel-heading h2 {
+    font-size: 20px !important;
+  }
+
+  /* Increase gaps between sections */
+  .ops-portal[data-view="dashboard"] .app-shell {
+    gap: 32px !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .dashboard-kpi-grid {
+    margin-top: 32px !important;
+  }
+
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
+    margin-top: 32px !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .dashboard-summary-grid {
+    margin-top: 32px !important;
+    gap: 24px !important;
+  }
+}
+
 @media (max-width: 1400px) {
   .ops-portal[data-view="dashboard"] .dashboard-kpi-grid {
     grid-template-columns: repeat(3, 1fr) !important;
