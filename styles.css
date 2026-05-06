@@ -701,9 +701,9 @@ body:has(.topbar:focus-within) .app-shell {
 
 .intel-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 14px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
 }
 
 body.has-session:not([data-view="dashboard"]) .intel-strip {
@@ -943,9 +943,9 @@ body.has-session:not([data-view="dashboard"]) .intel-strip {
 }
 
 .intel-card {
-  min-height: 88px;
-  padding: 14px 16px;
-  border-top: 3px solid var(--teal);
+  min-height: 100px;
+  padding: 16px;
+  border-top: 4px solid var(--teal);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-content: center;
@@ -1323,9 +1323,9 @@ body.has-session .topbar:focus-within .tabs {
 .hero-metrics article {
   display: grid;
   align-content: center;
-  gap: 6px;
-  min-height: 84px;
-  padding: 14px 12px;
+  gap: 8px;
+  min-height: 96px;
+  padding: 16px 14px;
 }
 
 .hero-metrics span,
@@ -1361,7 +1361,7 @@ body.has-session .topbar:focus-within .tabs {
 .dispatch-grid,
 .action-list {
   display: grid;
-  gap: 8px;
+  gap: 12px;
 }
 
 .outlet-health-grid {
@@ -1419,9 +1419,11 @@ body.has-session .topbar:focus-within .tabs {
 }
 
 .action-item {
-  min-height: 54px;
-  padding: 9px 12px;
+  min-height: 60px;
+  padding: 12px 14px;
   border-left: 4px solid var(--teal);
+  display: flex;
+  align-items: center;
 }
 
 .action-item.urgent {
@@ -1498,7 +1500,7 @@ body.has-session .topbar:focus-within .tabs {
 
 .panel {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   contain: layout style;
 }
 
@@ -5587,7 +5589,7 @@ input::placeholder {
 
   .ops-portal .panel,
   .ops-portal .command-hero {
-    padding: 12px;
+    padding: 16px;
   }
 
   .ops-portal .panel-heading,
@@ -6187,6 +6189,7 @@ input::placeholder {
   grid-template-columns: minmax(150px, 0.9fr) minmax(170px, 1fr) 42px auto;
   gap: 12px;
   align-items: center;
+  align-items: center;
   min-height: 58px;
   padding: 10px 12px;
   border-radius: 14px;
@@ -6219,10 +6222,11 @@ input::placeholder {
 }
 
 .repair-bar {
-  height: 12px;
+  height: 14px;
   overflow: hidden;
   border-radius: 999px;
   background: #e6e9f6;
+  flex-grow: 1;
 }
 
 .repair-bar span {
