@@ -1373,8 +1373,22 @@ body.has-session .topbar:focus-within .tabs {
   grid-template-columns: minmax(150px, 0.5fr) minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  padding: 10px;
+  padding: 12px;
   border-top: 3px solid var(--green);
+  min-width: 0;
+}
+
+.outlet-card strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outlet-card-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .outlet-card.status-critical {
@@ -1424,6 +1438,17 @@ body.has-session .topbar:focus-within .tabs {
   border-left: 4px solid var(--teal);
   display: flex;
   align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.action-item strong,
+.action-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .action-item.urgent {
@@ -1431,14 +1456,34 @@ body.has-session .topbar:focus-within .tabs {
   background: rgba(255, 248, 237, 0.48);
 }
 
+/* Text overflow handling for all content */
+.repair-row b,
+.outlet-card strong,
+.action-item strong,
+.dispatch-card strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+}
+
 .dispatch-card {
   display: grid;
-  grid-template-columns: minmax(150px, 0.8fr) minmax(120px, 0.7fr) auto;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(100px, 0.6fr) auto;
   align-items: center;
   gap: 8px;
-  min-height: 56px;
-  padding: 9px 12px;
+  min-height: 60px;
+  padding: 10px 12px;
   border-left: 4px solid var(--line-strong);
+  min-width: 0;
+}
+
+.dispatch-card strong,
+.dispatch-card span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dispatch-card.status-present,
@@ -6186,9 +6231,32 @@ input::placeholder {
 
 .repair-row {
   display: grid;
-  grid-template-columns: minmax(150px, 0.9fr) minmax(170px, 1fr) 42px auto;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(100px, 1fr) 48px auto;
   gap: 12px;
   align-items: center;
+  min-width: 0;
+}
+
+.repair-row > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.repair-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repair-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
   align-items: center;
   min-height: 58px;
   padding: 10px 12px;
