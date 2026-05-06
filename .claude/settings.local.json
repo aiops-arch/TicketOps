@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Get-ChildItem -File)",
+      "Bash(Select-Object Name, Length)",
+      "Bash(where chrome *)",
+      "Bash(node -e \"require\\('puppeteer'\\)\")",
+      "Bash(npm list *)",
+      "Bash(npm install *)",
+      "Bash(node *)",
+      "Bash(npm run *)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :3000)",
+      "Bash(taskkill *)",
+      "PowerShell(Stop-Process *)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(git add *)",
+      "Bash(git reset *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git commit -m 'Add deployment summary and quick reference guide *)",
+      "Bash(curl -s http://localhost:3000/api)",
+      "Bash(curl -s http://localhost:3000/styles.css)",
+      "Bash(curl -s http://localhost:3000/app.js)",
+      "Bash(cat)",
+      "Read(//tmp/**)",
+      "Bash(git commit *)",
+      "Bash(npm start *)",
+      "Bash(dir \"C:/Users/SPC1/Desktop/TicketOps\")",
+      "Bash(grep -n \"^\\\\.ops-portal\\\\[data-view=\\\\\"dashboard\\\\\"\\\\]\\\\|^@media.*{$\" styles.css)"
+    ]
+  }
+}

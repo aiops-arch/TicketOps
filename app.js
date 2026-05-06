@@ -1353,7 +1353,8 @@ function renderSelects() {
   const ruleTechnician = document.querySelector("#ruleTechnician");
   const activeTechnician = document.querySelector("#activeTechnician");
   const activeTechnicianControl = document.querySelector("#activeTechnicianControl");
-  const selectedTechnician = activeTechnician.value;
+
+  const selectedTechnician = activeTechnician?.value;
   const selectedTicketOutlet = outletSelect?.value;
   const selectedTicketAsset = ticketAsset?.value;
   const selectedAssetOutlet = assetOutlet?.value;
@@ -1365,6 +1366,7 @@ function renderSelects() {
   const selectedAccessOutlets = selectedOptionValues(accessOutlets);
   const selectedTicketCategory = ticketCategory?.value;
   const selectedRuleTechnician = ruleTechnician?.value;
+
   const categories = state.categories?.length
     ? state.categories
     : ["AC", "Refrigeration", "Electrical", "Plumbing", "Kitchen Equipment", "Gas", "POS / IT", "Civil"].map((name) => ({ name }));
@@ -1372,13 +1374,15 @@ function renderSelects() {
   const managerOutlets = currentUser?.role === "manager" ? outletAccessForUser(currentUser) : state.outlets;
   const ticketOutlets = managerOutlets.length ? managerOutlets : state.outlets;
 
-  outletSelect.innerHTML = ticketOutlets
-    .map((outlet) => `<option value="${escapeHtml(outlet)}">${escapeHtml(outlet)}</option>`)
-    .join("");
+  if (outletSelect) {
+    outletSelect.innerHTML = ticketOutlets
+      .map((outlet) => `<option value="${escapeHtml(outlet)}">${escapeHtml(outlet)}</option>`)
+      .join("");
+  }
 
   function renderTicketAssets() {
     if (!ticketAsset) return;
-    const outlet = outletSelect.value || currentUser?.outlet || state.outlets[0];
+    const outlet = (outletSelect ? outletSelect.value : null) || currentUser?.outlet || state.outlets[0];
     const assets = (state.assets || []).filter((asset) => asset.outlet === outlet);
     ticketAsset.innerHTML = [
       `<option value="">General outlet issue</option>`,
@@ -1487,24 +1491,41 @@ function renderSelects() {
     }
   }
 
-  if (currentUser?.role === "manager") {
+  if (activeTechnician) {
+    const technicianOptions = (state.technicians || []).map((tech) => `<option value="${escapeHtml(tech.id)}">${escapeHtml(tech.name)}</option>`);
+    activeTechnician.innerHTML = technicianOptions.join("");
+    if (selectedTechnician && (state.technicians || []).some((t) => t.id === selectedTechnician)) {
+      activeTechnician.value = selectedTechnician;
+    }
+    if (activeTechnicianControl) {
+      activeTechnicianControl.style.display = currentUser?.role === "technician" ? "none" : "flex";
+    }
+  }
+
+  if (currentUser?.role === "manager" && outletSelect) {
     if (ticketOutlets.includes(selectedTicketOutlet)) outletSelect.value = selectedTicketOutlet;
     if (currentUser.outlet && ticketOutlets.includes(currentUser.outlet)) outletSelect.value = currentUser.outlet;
     outletSelect.disabled = ticketOutlets.length <= 1;
-    document.querySelector("#managerScope").textContent = `${userOutletLabel(currentUser)} auto dispatch`;
-  } else {
+    const scope = document.querySelector("#managerScope");
+    if (scope) scope.textContent = `${userOutletLabel(currentUser)} auto dispatch`;
+  } else if (outletSelect) {
     outletSelect.disabled = false;
-    document.querySelector("#managerScope").textContent = "Coverage + time auto dispatch";
+    const scope = document.querySelector("#managerScope");
+    if (scope) scope.textContent = "Coverage + time auto dispatch";
   }
 
   renderTicketAssets();
   syncTicketCategoryToAsset();
   updateTicketPriorityPreview();
-  outletSelect.onchange = () => {
-    renderTicketAssets();
-    syncTicketCategoryToAsset();
-    updateTicketPriorityPreview();
-  };
+
+  if (outletSelect) {
+    outletSelect.onchange = () => {
+      renderTicketAssets();
+      syncTicketCategoryToAsset();
+      updateTicketPriorityPreview();
+    };
+  }
+
   if (ticketAsset) {
     ticketAsset.onchange = () => {
       syncTicketCategoryToAsset();
@@ -1512,19 +1533,21 @@ function renderSelects() {
     };
   }
 
-  activeTechnician.innerHTML = state.technicians
-    .map((tech) => `<option value="${escapeHtml(tech.id)}">${escapeHtml(tech.name)}</option>`)
-    .join("");
+  if (activeTechnician) {
+    activeTechnician.innerHTML = state.technicians
+      .map((tech) => `<option value="${escapeHtml(tech.id)}">${escapeHtml(tech.name)}</option>`)
+      .join("");
 
-  if (currentUser?.technicianId) {
-    activeTechnician.value = currentUser.technicianId;
-    activeTechnician.disabled = true;
-    activeTechnicianControl.hidden = true;
-  } else {
-    activeTechnician.disabled = false;
-    activeTechnicianControl.hidden = false;
-    if (selectedTechnician && state.technicians.some((tech) => tech.id === selectedTechnician)) {
-      activeTechnician.value = selectedTechnician;
+    if (currentUser?.technicianId) {
+      activeTechnician.value = currentUser.technicianId;
+      activeTechnician.disabled = true;
+      if (activeTechnicianControl) activeTechnicianControl.hidden = true;
+    } else {
+      activeTechnician.disabled = false;
+      if (activeTechnicianControl) activeTechnicianControl.hidden = false;
+      if (selectedTechnician && state.technicians.some((tech) => tech.id === selectedTechnician)) {
+        activeTechnician.value = selectedTechnician;
+      }
     }
   }
 }
@@ -1999,11 +2022,16 @@ function renderDashboard() {
       <i class="dashboard-kpi-meter" aria-hidden="true"><em style="width: ${Math.max(4, Math.min(100, Number(meter) || 0))}%"></em></i>
     </article>
   `).join("");
+  // Calculate status breakdown for utilization metric
+  const utilization = state.technicians.length > 0
+    ? Math.round((assigned / state.technicians.length) * 100)
+    : 0;
+
   document.querySelector("#dashboardCharts").innerHTML = `
-    ${donutChart("Active Load", scopedTickets.length, totalForCharts + closedTickets, "Open vs closed work", "teal")}
     ${donutChart("Dispatch", assigned, totalForCharts, `${unassigned} waiting for admin`, "blue")}
     ${donutChart("Risk", critical + blocked, totalForCharts, `${critical} critical / ${blocked} blocked`, "coral")}
-    ${donutChart("Ready Techs", readyTechs, Math.max(state.technicians.length, 1), `${readyPercent}% available now`, "green")}
+    ${donutChart("Queue Velocity", goingOn, totalForCharts, `${goingOn} in active progress`, "purple")}
+    ${donutChart("Utilization", assigned, Math.max(state.technicians.length || 1, 1), `${utilization}% tech allocation`, "gold")}
     <article class="ops-chart trend-card">
       <div>
         <span>7D Flow</span>
@@ -2713,9 +2741,15 @@ function renderTechnician() {
   ` : `<div class="empty">No technician selected.</div>`;
 
   ticketTools.innerHTML = activeTech ? `
-    <details class="technician-raise-ticket technician-ticket-tools">
-      <summary>Create field ticket</summary>
-      <form id="technicianTicketForm" class="ticket-form compact-ticket-form technician-ticket-form">
+    <div class="technician-ticket-panel">
+      <div class="panel-heading">
+        <div>
+          <span class="section-kicker">Field Support</span>
+          <h2>Raise Field Ticket</h2>
+        </div>
+        <span class="heading-chip">Admin assignment</span>
+      </div>
+      <form id="technicianTicketForm" class="ticket-form technician-ticket-form">
         <label>
           Outlet
           <select id="technicianTicketOutlet" required>
@@ -2739,17 +2773,17 @@ function renderTechnician() {
           </select>
         </label>
         <label>
-          Details
-          <input id="technicianTicketNote" required placeholder="What needs to be done">
+          Issue details
+          <input id="technicianTicketNote" required placeholder="Example: Valve leaking after service">
         </label>
         <label class="photo-upload">
-          Photos
+          Issue photos
           <input id="technicianTicketPhotos" type="file" accept="image/*" capture="environment" multiple>
         </label>
         <button type="submit" class="primary-button">Create Ticket</button>
         <p id="technicianTicketResult" class="form-hint" aria-live="polite"></p>
       </form>
-    </details>
+    </div>
   ` : "";
 
   ticketBoard.innerHTML = activeTech
@@ -3333,6 +3367,17 @@ function switchView(viewName) {
   document.querySelectorAll(".tab[data-view]").forEach((tab) => tab.classList.toggle("is-active", tab.dataset.view === nextView));
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("is-active", view.id === nextView));
   closeMobileNav();
+
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+}
+
+function releasePointerFocus(event) {
+  if (!event?.detail) return;
+  const control = event.target?.closest?.("button, a[href], input, select, textarea, [tabindex]");
+  if (!(control instanceof HTMLElement)) return;
+  window.requestAnimationFrame(() => control.blur());
 }
 
 function showConnectionError(error) {
@@ -3393,6 +3438,7 @@ document.querySelector("#loginForm").addEventListener("submit", handleLogin);
 document.querySelectorAll(".tab[data-view]").forEach((button) => {
   button.addEventListener("click", () => switchView(button.dataset.view));
 });
+document.querySelector(".topbar")?.addEventListener("click", releasePointerFocus);
 
 document.querySelector("#ticketForm").addEventListener("submit", createTicket);
 document.querySelector("#ticketImpact").addEventListener("change", updateTicketPriorityPreview);
