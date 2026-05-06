@@ -9590,6 +9590,7 @@ body.ops-portal[data-view="dashboard"] {
   display: grid !important;
   grid-template-columns: repeat(6, 1fr) !important;
   gap: 16px !important;
+  margin-top: 28px !important;
   margin: 20px 0 0 0 !important;
   padding: 0 !important;
 }
@@ -9801,7 +9802,7 @@ body.ops-portal[data-view="dashboard"] {
 
   /* Increase KPI cards */
   .ops-portal[data-view="dashboard"] .dashboard-kpi {
-    min-height: 140px !important;
+    min-height: 142px !important;
     padding: 20px 24px !important;
   }
 
@@ -9839,7 +9840,7 @@ body.ops-portal[data-view="dashboard"] {
   }
 
   .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
-    margin-top: 32px !important;
+    margin-top: 30px !important;
   }
 
   .ops-portal[data-view="dashboard"] .dashboard-summary-grid {
