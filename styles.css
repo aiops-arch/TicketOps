@@ -9590,7 +9590,7 @@ body.ops-portal[data-view="dashboard"] {
   display: grid !important;
   grid-template-columns: repeat(6, 1fr) !important;
   gap: 16px !important;
-  margin: 0 !important;
+  margin: 20px 0 0 0 !important;
   padding: 0 !important;
 }
 
@@ -9670,7 +9670,7 @@ body.ops-portal[data-view="dashboard"] {
   display: grid !important;
   grid-template-columns: repeat(5, 1fr) !important;
   gap: 16px !important;
-  margin: 0 !important;
+  margin: 20px 0 0 0 !important;
   padding: 0 !important;
 }
 
@@ -9714,7 +9714,7 @@ body.ops-portal[data-view="dashboard"] {
   grid-template-columns: repeat(3, 1fr) !important;
   gap: 20px !important;
   flex: 1 !important;
-  margin: 0 !important;
+  margin: 20px 0 0 0 !important;
   padding: 0 !important;
 }
 
