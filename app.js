@@ -2033,10 +2033,9 @@ function renderDashboard() {
     ${donutChart("Queue Velocity", goingOn, totalForCharts, `${goingOn} in active progress`, "purple")}
     ${donutChart("Utilization", assigned, Math.max(state.technicians.length || 1, 1), `${utilization}% tech allocation`, "gold")}
     <article class="ops-chart trend-card">
-      <div>
+      <div class="trend-head">
         <span>7D Flow</span>
-        <strong>Created / Closed</strong>
-        <p>Work velocity</p>
+        <div class="trend-legend"><i class="created"></i>New <i class="closed"></i>Done</div>
       </div>
       ${renderTicketTrend(allScopedTickets)}
     </article>
@@ -2119,13 +2118,11 @@ function donutChart(label, value, total, detail, tone = "teal") {
   };
   return `
     <article class="ops-chart chart-${escapeHtml(tone)}" style="--chart-color: ${chartColors[tone] || chartColors.teal}">
-      <div class="chart-ring" style="--value: ${percent}">
-        <strong>${escapeHtml(percent)}%</strong>
-      </div>
+      <div class="chart-ring" style="--value: ${percent}"></div>
       <div>
         <span>${escapeHtml(label)}</span>
-        <strong>${escapeHtml(cleanValue)} / ${escapeHtml(cleanTotal)}</strong>
-        <p>${escapeHtml(detail)}</p>
+        <strong>${escapeHtml(percent)}%</strong>
+        <p>${escapeHtml(cleanValue)} / ${escapeHtml(cleanTotal)} &middot; ${escapeHtml(detail)}</p>
       </div>
     </article>
   `;

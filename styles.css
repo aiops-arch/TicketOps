@@ -8486,8 +8486,7 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
 }
 
 .ops-portal[data-view="dashboard"] #dashboard .chart-ring strong {
-  color: var(--dash-ink);
-  font-size: 14px;
+  display: none;
 }
 
 .ops-portal[data-view="dashboard"] #dashboard .ops-chart span,
@@ -8500,33 +8499,66 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
   font-size: 15px;
 }
 
-.ops-portal[data-view="dashboard"] .trend-card p {
-  display: none;
+.ops-portal[data-view="dashboard"] .trend-card {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  padding: 14px 16px !important;
 }
 
-.ops-portal[data-view="dashboard"] .trend-card {
-  grid-template-columns: minmax(84px, 0.55fr) minmax(130px, 1fr);
+.ops-portal[data-view="dashboard"] .trend-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.ops-portal[data-view="dashboard"] .trend-legend {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
+  letter-spacing: 0.03em !important;
+}
+
+.ops-portal[data-view="dashboard"] .trend-legend i {
+  display: inline-block !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  margin-right: 3px !important;
+  flex-shrink: 0 !important;
+}
+
+.ops-portal[data-view="dashboard"] .trend-legend i.created {
+  background: #3b82f6 !important;
+}
+
+.ops-portal[data-view="dashboard"] .trend-legend i.closed {
+  background: #10b981 !important;
 }
 
 .ops-portal[data-view="dashboard"] .dashboard-trend {
-  height: 54px;
-  gap: 5px;
+  height: 52px !important;
+  gap: 4px !important;
+  flex: 1 !important;
 }
 
 .ops-portal[data-view="dashboard"] .trend-bars {
-  height: 32px;
+  height: 38px !important;
 }
 
 .ops-portal[data-view="dashboard"] .trend-bars i {
-  width: 7px;
+  width: 7px !important;
 }
 
 .ops-portal[data-view="dashboard"] .trend-bars .created {
-  background: var(--dash-blue);
+  background: linear-gradient(180deg, #2563eb, #60a5fa) !important;
 }
 
 .ops-portal[data-view="dashboard"] .trend-bars .closed {
-  background: var(--dash-green);
+  background: linear-gradient(180deg, #059669, #34d399) !important;
 }
 
 .ops-portal[data-view="dashboard"] #dashboard .panel {
@@ -9439,7 +9471,7 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
    ═══════════════════════════════════════════════════════════════════ */
 
 .ops-portal[data-view="dashboard"] .app-shell {
-  background: #f0f4f8 !important;
+  background: linear-gradient(160deg, #f0f7ff 0%, #edf2fb 55%, #f5f0ff 100%) !important;
   padding: 20px 28px !important;
   gap: 20px !important;
   display: flex !important;
@@ -9460,20 +9492,32 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
 
 .ops-portal[data-view="dashboard"] .intel-card {
   background: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
+  border: 1px solid rgba(203,213,225,0.7) !important;
   border-radius: 14px !important;
   padding: 16px 20px !important;
   color: #1a202c !important;
   display: flex !important;
   flex-direction: column !important;
   gap: 4px !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+  box-shadow: 0 2px 8px rgba(15,23,42,0.07), 0 1px 2px rgba(15,23,42,0.04) !important;
 }
 
-.ops-portal[data-view="dashboard"] .intel-card.critical { border-left: 4px solid #f43f5e !important; }
-.ops-portal[data-view="dashboard"] .intel-card.dispatch { border-left: 4px solid #3b82f6 !important; }
-.ops-portal[data-view="dashboard"] .intel-card.verification { border-left: 4px solid #10b981 !important; }
-.ops-portal[data-view="dashboard"] .intel-card.clock-card { border-left: 4px solid #f59e0b !important; }
+.ops-portal[data-view="dashboard"] .intel-card.critical {
+  border-left: 4px solid #f43f5e !important;
+  background: linear-gradient(135deg, #fff5f7 0%, #ffffff 60%) !important;
+}
+.ops-portal[data-view="dashboard"] .intel-card.dispatch {
+  border-left: 4px solid #3b82f6 !important;
+  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 60%) !important;
+}
+.ops-portal[data-view="dashboard"] .intel-card.verification {
+  border-left: 4px solid #10b981 !important;
+  background: linear-gradient(135deg, #f0fdf9 0%, #ffffff 60%) !important;
+}
+.ops-portal[data-view="dashboard"] .intel-card.clock-card {
+  border-left: 4px solid #f59e0b !important;
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 60%) !important;
+}
 
 .ops-portal[data-view="dashboard"] .intel-card strong {
   font-size: 26px !important;
@@ -9499,26 +9543,27 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
 
 /* ─── COMMAND HERO ─── */
 .ops-portal[data-view="dashboard"] .command-hero {
-  background: linear-gradient(135deg, #1e3a5f, #0f2840) !important;
-  border: none !important;
+  background: linear-gradient(135deg, #0f2d4a 0%, #1a3f6f 40%, #0d2640 100%) !important;
+  border: 1px solid rgba(59,130,246,0.25) !important;
   border-radius: 16px !important;
-  padding: 20px 28px !important;
+  padding: 18px 28px !important;
   display: grid !important;
   grid-template-columns: 1fr auto !important;
   align-items: center !important;
   gap: 24px !important;
   margin: 0 !important;
-  box-shadow: 0 4px 16px rgba(15,40,64,0.18) !important;
+  box-shadow: 0 8px 24px rgba(10,30,60,0.22), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+  overflow: hidden !important;
 }
 
 .ops-portal[data-view="dashboard"] .command-hero > div:first-child {
   display: flex !important;
   flex-direction: column !important;
-  gap: 4px !important;
+  gap: 3px !important;
 }
 
 .ops-portal[data-view="dashboard"] .command-hero h2 {
-  font-size: 26px !important;
+  font-size: 22px !important;
   font-weight: 800 !important;
   color: #ffffff !important;
   margin: 0 !important;
@@ -9534,7 +9579,8 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
 .ops-portal[data-view="dashboard"] .dashboard-mode-switcher {
   display: flex !important;
   gap: 6px !important;
-  margin-top: 6px !important;
+  margin-top: 4px !important;
+  flex-wrap: wrap !important;
 }
 
 .ops-portal[data-view="dashboard"] .mode-pill {
@@ -9599,7 +9645,7 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
 .ops-portal[data-view="dashboard"] .dashboard-kpi {
   border-radius: 14px !important;
   padding: 16px 18px !important;
-  color: #fff !important;
+  color: #0f172a !important;
   display: flex !important;
   flex-direction: column !important;
   gap: 6px !important;
@@ -9610,12 +9656,12 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
   box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
 }
 
-.ops-portal[data-view="dashboard"] .dashboard-kpi.blue { background: linear-gradient(135deg, #1e40af, #3b82f6) !important; }
+.ops-portal[data-view="dashboard"] .dashboard-kpi.blue   { background: linear-gradient(135deg, #1e40af, #3b82f6) !important; }
 .ops-portal[data-view="dashboard"] .dashboard-kpi.purple { background: linear-gradient(135deg, #5b21b6, #a78bfa) !important; }
-.ops-portal[data-view="dashboard"] .dashboard-kpi.green { background: linear-gradient(135deg, #065f46, #34d399) !important; }
-.ops-portal[data-view="dashboard"] .dashboard-kpi.teal { background: linear-gradient(135deg, #0f766e, #2dd4bf) !important; }
-.ops-portal[data-view="dashboard"] .dashboard-kpi.gold { background: linear-gradient(135deg, #92400e, #fbbf24) !important; }
-.ops-portal[data-view="dashboard"] .dashboard-kpi.coral { background: linear-gradient(135deg, #9f1239, #fb7185) !important; }
+.ops-portal[data-view="dashboard"] .dashboard-kpi.green  { background: linear-gradient(135deg, #065f46, #34d399) !important; }
+.ops-portal[data-view="dashboard"] .dashboard-kpi.teal   { background: linear-gradient(135deg, #0f766e, #2dd4bf) !important; }
+.ops-portal[data-view="dashboard"] .dashboard-kpi.gold   { background: linear-gradient(135deg, #92400e, #fbbf24) !important; }
+.ops-portal[data-view="dashboard"] .dashboard-kpi.coral  { background: linear-gradient(135deg, #9f1239, #fb7185) !important; }
 
 .ops-portal[data-view="dashboard"] .dashboard-kpi-head {
   display: flex !important;
@@ -9628,14 +9674,14 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.06em !important;
-  opacity: 0.85 !important;
+  color: rgba(0,0,0,0.65) !important;
 }
 
 .ops-portal[data-view="dashboard"] .dashboard-kpi-head b {
   font-size: 11px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
-  opacity: 0.7 !important;
+  color: rgba(0,0,0,0.5) !important;
   letter-spacing: 0.04em !important;
 }
 
@@ -9643,16 +9689,17 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
   font-size: 30px !important;
   font-weight: 800 !important;
   line-height: 1 !important;
+  color: #0f172a !important;
 }
 
 .ops-portal[data-view="dashboard"] .dashboard-kpi small {
   font-size: 11px !important;
-  opacity: 0.75 !important;
+  color: rgba(0,0,0,0.55) !important;
   line-height: 1.3 !important;
 }
 
 .ops-portal[data-view="dashboard"] .dashboard-kpi-meter {
-  background: rgba(0,0,0,0.2) !important;
+  background: rgba(0,0,0,0.15) !important;
   border-radius: 4px !important;
   height: 4px !important;
   overflow: hidden !important;
@@ -9663,7 +9710,7 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
 .ops-portal[data-view="dashboard"] .dashboard-kpi-meter em {
   display: block !important;
   height: 100% !important;
-  background: rgba(255,255,255,0.7) !important;
+  background: rgba(0,0,0,0.35) !important;
   border-radius: 4px !important;
 }
 
@@ -9678,16 +9725,15 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
 
 .ops-portal[data-view="dashboard"] #dashboard .ops-chart {
   background: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
+  border: 1px solid rgba(203,213,225,0.7) !important;
   border-radius: 14px !important;
-  padding: 16px 18px !important;
+  padding: 14px 16px !important;
   display: grid !important;
-  grid-template-columns: 64px 1fr !important;
+  grid-template-columns: 60px 1fr !important;
   align-items: center !important;
-  gap: 14px !important;
-  min-height: 108px !important;
+  gap: 12px !important;
   color: #1a202c !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+  box-shadow: 0 2px 8px rgba(15,23,42,0.07) !important;
 }
 
 .ops-portal[data-view="dashboard"] #dashboard .ops-chart span {
@@ -9699,17 +9745,18 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
 }
 
 .ops-portal[data-view="dashboard"] #dashboard .ops-chart strong {
-  font-size: 20px !important;
+  font-size: 22px !important;
   font-weight: 800 !important;
   display: block !important;
-  line-height: 1.2 !important;
+  line-height: 1.1 !important;
   color: #0f172a !important;
 }
 
 .ops-portal[data-view="dashboard"] #dashboard .ops-chart p {
-  font-size: 11px !important;
+  font-size: 10px !important;
   color: #64748b !important;
   margin: 3px 0 0 !important;
+  line-height: 1.4 !important;
 }
 
 /* ─── SUMMARY GRID ─── */
@@ -9725,14 +9772,14 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
 
 .ops-portal[data-view="dashboard"] #dashboard .panel {
   background: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
+  border: 1px solid rgba(203,213,225,0.7) !important;
   border-radius: 16px !important;
   padding: 18px 22px !important;
   overflow: hidden !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+  box-shadow: 0 2px 8px rgba(15,23,42,0.07), 0 1px 2px rgba(15,23,42,0.04) !important;
   display: flex !important;
   flex-direction: column !important;
-  gap: 12px !important;
+  gap: 10px !important;
 }
 
 .ops-portal[data-view="dashboard"] #dashboard .panel-heading {
@@ -9777,10 +9824,12 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
 
 /* ─── #DASHBOARD SECTION LAYOUT ─── */
 /* Work WITH existing grid (grid-template-rows at line ~8811), just adjust heights */
+/* Row 1 (hero): 150px — fits kicker+h2+p+mode-switcher+padding with buffer */
+/* Row 2 (kpi): 126px | Row 3 (charts): 116px | Row 4 (summary): fill remainder */
 .ops-portal[data-view="dashboard"] #dashboard.view.is-active {
   display: grid !important;
-  grid-template-rows: 100px 130px 120px minmax(0, 1fr) !important;
-  gap: 14px !important;
+  grid-template-rows: 150px 126px 116px minmax(0, 1fr) !important;
+  gap: 12px !important;
   height: auto !important;
   flex: 1 !important;
   min-height: 0 !important;
@@ -9836,4 +9885,88 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
   .ops-portal[data-view="dashboard"] .hero-metrics {
     flex-direction: column !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DASHBOARD DARK MODE OVERRIDES
+   Triggered by body[data-theme="dark"]
+   ═══════════════════════════════════════════════════════════════════ */
+
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] .app-shell {
+  background: linear-gradient(160deg, #080e1a 0%, #0c1525 55%, #10102a 100%) !important;
+}
+
+/* Dark intel cards */
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] .intel-card {
+  background: #111c2e !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3) !important;
+  color: #f1f5f9 !important;
+}
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] .intel-card.critical {
+  background: linear-gradient(135deg, #1e0e14 0%, #111c2e 60%) !important;
+  border-left: 4px solid #f43f5e !important;
+}
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] .intel-card.dispatch {
+  background: linear-gradient(135deg, #0e1829 0%, #111c2e 60%) !important;
+  border-left: 4px solid #3b82f6 !important;
+}
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] .intel-card.verification {
+  background: linear-gradient(135deg, #0b1a14 0%, #111c2e 60%) !important;
+  border-left: 4px solid #10b981 !important;
+}
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] .intel-card.clock-card {
+  background: linear-gradient(135deg, #1a1408 0%, #111c2e 60%) !important;
+  border-left: 4px solid #f59e0b !important;
+}
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] .intel-card strong {
+  color: #f1f5f9 !important;
+}
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] .intel-card .intel-label {
+  color: #475569 !important;
+}
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] .intel-card p {
+  color: #94a3b8 !important;
+}
+
+/* Dark command hero */
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] .command-hero {
+  background: linear-gradient(135deg, #071828 0%, #0e2540 40%, #071220 100%) !important;
+  border-color: rgba(59,130,246,0.2) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important;
+}
+
+/* Dark chart cards */
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] #dashboard .ops-chart {
+  background: #111c2e !important;
+  border-color: rgba(255,255,255,0.08) !important;
+  color: #f1f5f9 !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3) !important;
+}
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] #dashboard .ops-chart span {
+  color: #475569 !important;
+}
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] #dashboard .ops-chart strong {
+  color: #f1f5f9 !important;
+}
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] #dashboard .ops-chart p {
+  color: #94a3b8 !important;
+}
+
+/* Dark summary panels */
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] #dashboard .panel {
+  background: #111c2e !important;
+  border-color: rgba(255,255,255,0.08) !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3) !important;
+}
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] #dashboard .panel-heading h2 {
+  color: #f1f5f9 !important;
+}
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] #dashboard .section-kicker {
+  color: #60a5fa !important;
+}
+body[data-theme="dark"] .ops-portal[data-view="dashboard"] #dashboard .heading-chip {
+  background: rgba(59,130,246,0.15) !important;
+  border-color: rgba(59,130,246,0.3) !important;
+  color: #93c5fd !important;
 }
