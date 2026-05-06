@@ -8365,7 +8365,7 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
 
 .ops-portal[data-view="dashboard"] .dashboard-kpi-grid {
   gap: 8px;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .ops-portal[data-view="dashboard"] .dashboard-kpi {
@@ -8459,7 +8459,7 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
 
 .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
   gap: 8px;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(230px, 1.1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .ops-portal[data-view="dashboard"] #dashboard .ops-chart {
