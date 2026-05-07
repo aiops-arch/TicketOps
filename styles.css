@@ -4837,16 +4837,20 @@ input::placeholder {
 }
 
 .ops-portal .brand-mark {
-  width: 76px;
-  height: 58px;
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  object-position: left center;
   filter: drop-shadow(0 12px 24px rgba(61, 184, 216, 0.28));
   transform: none;
 }
 
 .ops-portal .topbar:hover .brand-mark,
 .ops-portal .topbar:focus-within .brand-mark {
-  width: 96px;
-  height: 66px;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  object-position: left center;
 }
 
 .ops-portal .brand-lockup > div {
@@ -5175,8 +5179,10 @@ input::placeholder {
   }
 
   .ops-portal .brand-mark {
-    width: 62px;
-    height: 46px;
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    object-position: left center;
   }
 
   .ops-portal .topbar-actions {
@@ -5412,8 +5418,10 @@ input::placeholder {
   .ops-portal .brand-mark,
   .ops-portal .topbar:hover .brand-mark,
   .ops-portal .topbar:focus-within .brand-mark {
-    width: 62px;
-    height: 46px;
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    object-position: left center;
     transform: none;
   }
 
@@ -7805,8 +7813,10 @@ body[data-theme="dark"].ops-portal #dashboard .activity-item {
 .ops-portal.single-role-workspace .brand-mark,
 .ops-portal.single-role-workspace .topbar:hover .brand-mark,
 .ops-portal.single-role-workspace .topbar:focus-within .brand-mark {
-  width: 78px;
-  height: 54px;
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  object-position: left center;
   filter: drop-shadow(0 12px 24px rgba(61, 184, 216, 0.24));
 }
 
@@ -8051,8 +8061,10 @@ body[data-theme="dark"].ops-portal #dashboard .activity-item {
   .ops-portal.single-role-workspace .brand-mark,
   .ops-portal.single-role-workspace .topbar:hover .brand-mark,
   .ops-portal.single-role-workspace .topbar:focus-within .brand-mark {
-    width: 64px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    object-position: left center;
   }
 
   .ops-portal.single-role-workspace .topbar h1 {
@@ -8323,17 +8335,21 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
 }
 
 .ops-portal[data-view="dashboard"] .brand-mark {
-  width: 74px;
-  height: 74px;
-  border-radius: 18px;
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  object-position: left center;
+  border-radius: 14px;
   background: #101828;
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(15, 118, 110, 0.18);
 }
 
 .ops-portal[data-view="dashboard"] .topbar:hover .brand-mark,
 .ops-portal[data-view="dashboard"] .topbar:focus-within .brand-mark {
-  width: 78px;
-  height: 78px;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  object-position: left center;
 }
 
 .ops-portal[data-view="dashboard"] #dashboard .hero-metrics strong {
@@ -9004,6 +9020,8 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
     display: block !important;
     width: 46px !important;
     height: 46px !important;
+    object-fit: cover !important;
+    object-position: left center !important;
     border-radius: 12px !important;
     background: #0f172a !important;
     box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18) !important;
