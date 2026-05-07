@@ -10225,15 +10225,16 @@ body[data-theme="dark"] .modal-message { color: #f1f5f9; }
   border: 1px solid rgba(43,122,115,0.2);
 }
 
-/* Single-row: all 8 controls in one horizontal line */
+/* Single-row: category | title | from | to | frequency | technician | all-day | submit | cancel */
 .scheduler-form {
   display: grid !important;
   grid-template-columns:
     minmax(90px, 0.8fr)
     minmax(130px, 1.6fr)
-    minmax(110px, 0.9fr)
+    88px
+    88px
     minmax(88px, 0.7fr)
-    minmax(130px, 1.1fr)
+    minmax(120px, 1.0fr)
     auto
     auto
     auto !important;
@@ -10252,8 +10253,9 @@ body[data-theme="dark"] .modal-message { color: #f1f5f9; }
 .scheduler-form label:nth-child(3) { grid-column: 3 !important; grid-row: 1 !important; }
 .scheduler-form label:nth-child(4) { grid-column: 4 !important; grid-row: 1 !important; }
 .scheduler-form label:nth-child(5) { grid-column: 5 !important; grid-row: 1 !important; }
+.scheduler-form label:nth-child(6) { grid-column: 6 !important; grid-row: 1 !important; }
 .scheduler-form label.checkline {
-  grid-column: 6 !important;
+  grid-column: 7 !important;
   grid-row: 1 !important;
   flex-direction: row !important;
   align-items: center !important;
@@ -10263,8 +10265,9 @@ body[data-theme="dark"] .modal-message { color: #f1f5f9; }
   padding-bottom: 9px !important;
   min-height: 0 !important;
 }
-.scheduler-form button[type="submit"] { grid-column: 7 !important; grid-row: 1 !important; min-height: 40px !important; white-space: nowrap !important; }
-.scheduler-form button[type="button"] { grid-column: 8 !important; grid-row: 1 !important; min-height: 40px !important; white-space: nowrap !important; }
+.scheduler-form button[type="submit"] { grid-column: 8 !important; grid-row: 1 !important; min-height: 40px !important; white-space: nowrap !important; }
+.scheduler-form button[type="button"] { grid-column: 9 !important; grid-row: 1 !important; min-height: 40px !important; white-space: nowrap !important; }
+.scheduler-form input[type="time"]:disabled { opacity: 0.35 !important; }
 
 /* Better form labels */
 .scheduler-form label {

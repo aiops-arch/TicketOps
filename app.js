@@ -1272,7 +1272,8 @@ async function createMaintenanceRule(event) {
       body: JSON.stringify({
         category: document.querySelector("#ruleCategory").value,
         title: document.querySelector("#ruleTitle").value,
-        phase: document.querySelector("#rulePhase").value,
+        startTime: document.querySelector("#ruleStartTime").value,
+        endTime: document.querySelector("#ruleEndTime").value,
         frequency: document.querySelector("#ruleFrequency").value,
         assignedTechnicianId: document.querySelector("#ruleTechnician").value,
         allowOutsideWindow: document.querySelector("#ruleAllowOutsideWindow").checked
@@ -1292,7 +1293,18 @@ async function createMaintenanceRule(event) {
 function resetMaintenanceRuleForm() {
   editingMaintenanceRuleId = "";
   document.querySelector("#maintenanceRuleForm")?.reset();
+  document.querySelector("#ruleStartTime").value = "09:00";
+  document.querySelector("#ruleEndTime").value = "18:00";
   document.querySelector("#ruleSubmit").textContent = "Add Rule";
+  updateRuleTimeDisabled();
+}
+
+function updateRuleTimeDisabled() {
+  const allDay = document.querySelector("#ruleAllowOutsideWindow")?.checked;
+  const from = document.querySelector("#ruleStartTime");
+  const to = document.querySelector("#ruleEndTime");
+  if (from) from.disabled = allDay;
+  if (to) to.disabled = allDay;
 }
 
 function fillMaintenanceRuleForm(ruleId) {
@@ -1301,11 +1313,13 @@ function fillMaintenanceRuleForm(ruleId) {
   editingMaintenanceRuleId = rule.id;
   document.querySelector("#ruleCategory").value = rule.category || "";
   document.querySelector("#ruleTitle").value = rule.title || "";
-  document.querySelector("#rulePhase").value = rule.phase || "Checklist";
+  document.querySelector("#ruleStartTime").value = rule.startTime || "09:00";
+  document.querySelector("#ruleEndTime").value = rule.endTime || "18:00";
   document.querySelector("#ruleFrequency").value = rule.frequency || "daily";
   document.querySelector("#ruleTechnician").value = rule.assignedTechnicianId || "";
   document.querySelector("#ruleAllowOutsideWindow").checked = Boolean(rule.allowOutsideWindow);
   document.querySelector("#ruleSubmit").textContent = "Update Rule";
+  updateRuleTimeDisabled();
 }
 
 async function toggleMaintenanceRule(ruleId, active) {
@@ -2574,7 +2588,7 @@ function renderMaintenanceScheduler() {
       <article class="rule-row ${rule.active === false ? "is-paused" : ""}">
         <div>
           <strong>${escapeHtml(rule.title)}</strong>
-          <span>${escapeHtml(rule.category)} / ${escapeHtml(rule.phase || "Checklist")} / ${escapeHtml(rule.frequency)} / ${escapeHtml(maintenanceRuleTechnicianLabel(rule))}${rule.allowOutsideWindow ? " / outside window allowed" : ""}</span>
+          <span>${escapeHtml(rule.category)} / ${rule.allowOutsideWindow ? "All day" : `${escapeHtml(rule.startTime || "?")} – ${escapeHtml(rule.endTime || "?")}`} / ${escapeHtml(rule.frequency)} / ${escapeHtml(maintenanceRuleTechnicianLabel(rule))}</span>
         </div>
         <div class="rule-actions">
           <button class="small-button" data-edit-rule="${escapeHtml(rule.id)}">Edit</button>
@@ -2616,8 +2630,8 @@ function renderMaintenanceScheduler() {
     ? preview.slice(0, 12).map((item) => `
       <article class="rule-row">
         <div>
-          <strong>${escapeHtml(item.rule.phase || "Checklist")}: ${escapeHtml(item.rule.title)}</strong>
-          <span>${escapeHtml(item.outlet)} / ${escapeHtml(item.asset.name)} / ${escapeHtml(item.technician.name)}${item.rule.allowOutsideWindow ? " / outside window allowed" : ""}</span>
+          <strong>${escapeHtml(item.rule.title)}</strong>
+          <span>${escapeHtml(item.outlet)} / ${escapeHtml(item.asset.name)} / ${escapeHtml(item.technician.name)} / ${item.rule.allowOutsideWindow ? "All day" : `${item.rule.startTime || "?"} – ${item.rule.endTime || "?"}`}</span>
         </div>
       </article>
     `).join("") + (preview.length > 12 ? `<div class="empty mini">${preview.length - 12} more tasks will generate.</div>` : "")
@@ -3537,6 +3551,7 @@ document.querySelector("#assignmentWindowForm").addEventListener("submit", saveA
 document.querySelector("#assignmentWindowCancel").addEventListener("click", resetAssignmentWindowForm);
 document.querySelector("#maintenanceRuleForm").addEventListener("submit", createMaintenanceRule);
 document.querySelector("#ruleCancel").addEventListener("click", resetMaintenanceRuleForm);
+document.querySelector("#ruleAllowOutsideWindow").addEventListener("change", updateRuleTimeDisabled);
 document.querySelector("#activeTechnician").addEventListener("change", renderTechnician);
 document.querySelectorAll("[data-master-tab]").forEach((button) => {
   button.addEventListener("click", () => switchMasterTab(button.dataset.masterTab));

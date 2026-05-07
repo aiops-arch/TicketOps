@@ -429,13 +429,12 @@
               <input id="ruleTitle" required placeholder="Example: Inspect gas valves">
             </label>
             <label>
-              Phase
-              <select id="rulePhase">
-                <option>Morning Opening</option>
-                <option>Mid-Day</option>
-                <option>Closing</option>
-                <option>Weekly</option>
-              </select>
+              From
+              <input id="ruleStartTime" type="time" value="09:00">
+            </label>
+            <label>
+              To
+              <input id="ruleEndTime" type="time" value="18:00">
             </label>
             <label>
               Frequency
@@ -452,7 +451,7 @@
             </label>
             <label class="checkline">
               <input id="ruleAllowOutsideWindow" type="checkbox">
-              <span>Allow outside dispatch window</span>
+              <span>All day</span>
             </label>
             <button id="ruleSubmit" type="submit" class="primary-button">Add Rule</button>
             <button id="ruleCancel" type="button" class="small-button">Clear</button>

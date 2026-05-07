@@ -1186,7 +1186,8 @@ function mapMaintenanceRule(row) {
     id: row.id,
     category: row.category,
     title: row.title,
-    phase: row.phase || "Checklist",
+    startTime: row.start_time || "",
+    endTime: row.end_time || "",
     group: row.rule_group || "Maintenance",
     frequency: row.frequency,
     assignedTechnicianId: row.assigned_technician_id || "",
@@ -1223,7 +1224,7 @@ async function loadSupabaseDb() {
     supabase.from("tickets").select("*").order("created_at", { ascending: false }),
     supabase.from("ticket_history").select("ticket_id,action,created_at").order("created_at", { ascending: true }),
     supabase.from("attendance_plans").select("id,technician_id,status,from_date,to_date,reason,created_by,active,created_at").order("from_date"),
-    supabase.from("maintenance_rules").select("id,category,title,phase,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }),
+    supabase.from("maintenance_rules").select("id,category,title,start_time,end_time,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }),
     supabase.from("assignment_time_windows").select("id,name,days,start_time,end_time,active,created_at").order("created_at", { ascending: false })
   ]);
 
@@ -2115,7 +2116,8 @@ async function createMaintenanceRule(payload) {
   const db = await loadDb();
   const category = String(payload.category || "").trim();
   const title = String(payload.title || "").trim();
-  const phase = String(payload.phase || "Checklist").trim();
+  const startTime = normalizeTimeValue(payload.startTime);
+  const endTime = normalizeTimeValue(payload.endTime);
   const frequency = String(payload.frequency || "daily").trim().toLowerCase();
   const assignedTechnicianId = String(payload.assignedTechnicianId || "").trim();
   const allowOutsideWindow = normalizeMaybeBoolean(payload.allowOutsideWindow, false);
@@ -2130,7 +2132,8 @@ async function createMaintenanceRule(payload) {
     id: nextMaintenanceRuleId(db.maintenanceRules || []),
     category,
     title,
-    phase: frequency === "weekly" ? "Weekly" : phase,
+    startTime,
+    endTime,
     group: String(payload.group || "Maintenance").trim() || "Maintenance",
     frequency,
     assignedTechnicianId,
@@ -2145,7 +2148,8 @@ async function createMaintenanceRule(payload) {
         id: rule.id,
         category: rule.category,
         title: rule.title,
-        phase: rule.phase,
+        start_time: rule.startTime || null,
+        end_time: rule.endTime || null,
         rule_group: rule.group,
         frequency: rule.frequency,
         assigned_technician_id: rule.assignedTechnicianId || null,
@@ -2170,7 +2174,8 @@ async function updateMaintenanceRule(ruleId, payload) {
   const allowOutsideWindow = payload.allowOutsideWindow === undefined ? Boolean(rule.allowOutsideWindow) : normalizeMaybeBoolean(payload.allowOutsideWindow, false);
   const category = String(payload.category || rule.category || "").trim();
   const title = String(payload.title || rule.title || "").trim();
-  const phase = String(payload.phase || rule.phase || "Checklist").trim();
+  const startTime = payload.startTime !== undefined ? normalizeTimeValue(payload.startTime) : (rule.startTime || "");
+  const endTime = payload.endTime !== undefined ? normalizeTimeValue(payload.endTime) : (rule.endTime || "");
   const frequency = String(payload.frequency || rule.frequency || "daily").trim().toLowerCase();
   const group = String(payload.group || rule.group || "Maintenance").trim() || "Maintenance";
   if (!category || !title) return { status: 400, body: { error: "Category and task title are required" } };
@@ -2183,7 +2188,8 @@ async function updateMaintenanceRule(ruleId, payload) {
     ...rule,
     category,
     title,
-    phase: frequency === "weekly" ? "Weekly" : phase,
+    startTime,
+    endTime,
     group,
     frequency,
     assignedTechnicianId,
@@ -2196,7 +2202,8 @@ async function updateMaintenanceRule(ruleId, payload) {
       await supabase.from("maintenance_rules").update({
         category: updated.category,
         title: updated.title,
-        phase: updated.phase,
+        start_time: updated.startTime || null,
+        end_time: updated.endTime || null,
         rule_group: updated.group,
         frequency: updated.frequency,
         assigned_technician_id: updated.assignedTechnicianId || null,
@@ -3414,6 +3421,24 @@ app.delete(
     }
     const result = await deleteMaintenanceRule(req.params.id);
     res.status(result.status).json(result.body);
+  })
+);
+
+app.delete(
+  "/api/maintenance-rules",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can delete maintenance rules" });
+    }
+    if (useSupabase) {
+      await requireSupabase(await supabase.from("maintenance_rules").delete().neq("id", ""));
+    } else {
+      const db = await loadDb();
+      db.maintenanceRules = [];
+      writeJsonDb(db);
+    }
+    res.json({ ok: true });
   })
 );
 
