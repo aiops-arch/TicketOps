@@ -8855,15 +8855,15 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
 }
 
 @media (min-width: 1181px) {
-  .ops-portal[data-view="dashboard"] .app-shell,
-  .ops-portal[data-view="dashboard"]:has(.topbar:hover) .app-shell,
-  .ops-portal[data-view="dashboard"]:has(.topbar:focus-within) .app-shell {
+  body[data-dashboard-mode="summary"] .ops-portal[data-view="dashboard"] .app-shell,
+  body[data-dashboard-mode="summary"] .ops-portal[data-view="dashboard"]:has(.topbar:hover) .app-shell,
+  body[data-dashboard-mode="summary"] .ops-portal[data-view="dashboard"]:has(.topbar:focus-within) .app-shell {
     height: 100vh;
     padding: 8px 10px;
     overflow: hidden;
   }
 
-  .ops-portal[data-view="dashboard"] #dashboard.view.is-active {
+  body[data-dashboard-mode="summary"] .ops-portal[data-view="dashboard"] #dashboard.view.is-active {
     display: grid;
     height: calc(100vh - 16px);
     grid-template-rows: 104px 76px 104px minmax(0, 1fr);
@@ -9495,7 +9495,7 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
    and must NOT be overridden here.
    ═══════════════════════════════════════════════════════════════════ */
 
-.ops-portal[data-view="dashboard"] .app-shell {
+body[data-dashboard-mode="summary"] .ops-portal[data-view="dashboard"] .app-shell {
   background: linear-gradient(160deg, #f0f7ff 0%, #edf2fb 55%, #f5f0ff 100%) !important;
   padding: 20px 28px !important;
   gap: 20px !important;
@@ -9504,6 +9504,23 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .tech-load-bar {
   overflow: hidden !important;
   height: 100vh !important;
   box-sizing: border-box !important;
+}
+
+body[data-dashboard-mode="detail"] .ops-portal[data-view="dashboard"] .app-shell {
+  background: linear-gradient(160deg, #f0f7ff 0%, #edf2fb 55%, #f5f0ff 100%) !important;
+  padding: 20px 28px !important;
+  gap: 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: visible !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  box-sizing: border-box !important;
+}
+
+body[data-dashboard-mode="detail"] .ops-portal[data-view="dashboard"] #dashboard.view.is-active {
+  height: auto !important;
+  overflow: visible !important;
 }
 
 /* ─── INTEL STRIP ─── */
