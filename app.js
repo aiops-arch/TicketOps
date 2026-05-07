@@ -223,6 +223,7 @@ function saveUser(user) {
 function clearUser() {
   currentUser = null;
   localStorage.removeItem(AUTH_STORAGE_KEY);
+  sessionStorage.removeItem("ticketops-last-view");
 }
 
 function readStoredTheme() {
@@ -735,7 +736,8 @@ async function enterApp() {
   document.querySelector("#appShell").classList.remove("is-hidden");
   renderAuthChrome();
   await loadState();
-  switchView(roleHomeView());
+  const savedView = sessionStorage.getItem("ticketops-last-view");
+  switchView(savedView && canOpenView(savedView) ? savedView : roleHomeView());
 }
 
 function renderAuthChrome() {
@@ -3430,6 +3432,7 @@ function switchView(viewName) {
   const nextView = canOpenView(viewName) ? viewName : allowedViews()[0];
   if (!nextView) return;
 
+  sessionStorage.setItem("ticketops-last-view", nextView);
   document.body.dataset.view = nextView;
   document.querySelectorAll(".tab[data-view]").forEach((tab) => tab.classList.toggle("is-active", tab.dataset.view === nextView));
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("is-active", view.id === nextView));
