@@ -78,6 +78,93 @@ let state = {
   reports: {}
 };
 
+/* ─── Toast / Modal notification system ─── */
+
+function showToast(message, type = "info", duration = 3800) {
+  const container = document.getElementById("toastContainer");
+  if (!container) return;
+  const icons = { success: "✓", error: "✕", warning: "⚠", info: "ℹ" };
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<span class="toast-icon">${icons[type] || "•"}</span><span class="toast-body">${escapeHtml(String(message))}</span><button class="toast-dismiss" aria-label="Dismiss">×</button>`;
+  container.appendChild(toast);
+  requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add("is-visible")));
+  const dismiss = () => {
+    toast.classList.remove("is-visible");
+    setTimeout(() => toast.remove(), 350);
+  };
+  const timer = setTimeout(dismiss, duration);
+  toast.querySelector(".toast-dismiss").addEventListener("click", () => { clearTimeout(timer); dismiss(); });
+}
+
+function showConfirm(message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("modalOverlay");
+    const msgEl = document.getElementById("modalMessage");
+    const inputWrap = overlay.querySelector(".modal-input-wrap");
+    const confirmBtn = document.getElementById("modalConfirm");
+    const cancelBtn = document.getElementById("modalCancel");
+    msgEl.textContent = message;
+    inputWrap.classList.add("is-hidden");
+    confirmBtn.textContent = "Delete";
+    confirmBtn.className = "primary-button modal-danger";
+    overlay.classList.remove("is-hidden");
+    const close = (result) => {
+      overlay.classList.add("is-hidden");
+      resolve(result);
+    };
+    const onConfirm = () => { cleanup(); close(true); };
+    const onCancel = () => { cleanup(); close(false); };
+    const onKey = (e) => { if (e.key === "Escape") { cleanup(); close(false); } };
+    const cleanup = () => {
+      confirmBtn.removeEventListener("click", onConfirm);
+      cancelBtn.removeEventListener("click", onCancel);
+      document.removeEventListener("keydown", onKey);
+    };
+    confirmBtn.addEventListener("click", onConfirm);
+    cancelBtn.addEventListener("click", onCancel);
+    document.addEventListener("keydown", onKey);
+  });
+}
+
+function showPromptModal(label, defaultValue = "") {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("modalOverlay");
+    const msgEl = document.getElementById("modalMessage");
+    const inputWrap = overlay.querySelector(".modal-input-wrap");
+    const input = document.getElementById("modalInput");
+    const confirmBtn = document.getElementById("modalConfirm");
+    const cancelBtn = document.getElementById("modalCancel");
+    msgEl.textContent = label;
+    input.value = defaultValue;
+    inputWrap.classList.remove("is-hidden");
+    confirmBtn.textContent = "OK";
+    confirmBtn.className = "primary-button";
+    overlay.classList.remove("is-hidden");
+    setTimeout(() => { input.focus(); input.select(); }, 50);
+    const close = (result) => {
+      overlay.classList.add("is-hidden");
+      inputWrap.classList.add("is-hidden");
+      resolve(result);
+    };
+    const onConfirm = () => { cleanup(); close(input.value); };
+    const onCancel = () => { cleanup(); close(null); };
+    const onKey = (e) => {
+      if (e.key === "Enter") { cleanup(); close(input.value); }
+      if (e.key === "Escape") { cleanup(); close(null); }
+    };
+    const cleanup = () => {
+      confirmBtn.removeEventListener("click", onConfirm);
+      cancelBtn.removeEventListener("click", onCancel);
+      input.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKey);
+    };
+    confirmBtn.addEventListener("click", onConfirm);
+    cancelBtn.addEventListener("click", onCancel);
+    input.addEventListener("keydown", onKey);
+  });
+}
+
 let currentUser = readStoredUser();
 let directoryUsers = [];
 let editingUserAccessId = "";
@@ -704,10 +791,8 @@ async function createTicket(event) {
   if (!canUseView("manager")) return;
 
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
-  const resultBox = document.querySelector("#ticketCreateResult");
   submitButton.disabled = true;
   submitButton.textContent = "Creating...";
-  resultBox.textContent = "";
 
   try {
     const photoUrls = await readTicketPhotos();
@@ -739,15 +824,14 @@ async function createTicket(event) {
     document.querySelector("#ticketArea").value = "";
     document.querySelector("#ticketPhoto").value = "";
     updateTicketPriorityPreview();
-    resultBox.innerHTML = `
-      <strong>${escapeHtml(created.id)} / ${escapeHtml(PRIORITY_LABELS[created.priority] || created.priority)}</strong>
-      <span>Created in admin queue for assignment.</span>
-      ${created.suggestedTechnician?.name ? `<span>Suggestion: ${escapeHtml(created.suggestedTechnician.name)}${created.suggestedTechnician.dispatchReason ? ` / ${escapeHtml(created.suggestedTechnician.dispatchReason)}` : ""}</span>` : ""}
-      ${(created.photoUrls?.length || created.photoUrl) ? `<span>${created.photoUrls?.length || 1} issue photo${(created.photoUrls?.length || 1) === 1 ? "" : "s"} attached.</span>` : ""}
-    `;
+    const suggestion = created.suggestedTechnician?.name
+      ? ` Suggestion: ${created.suggestedTechnician.name}.`
+      : "";
+    const photos = (created.photoUrls?.length || created.photoUrl) ? ` ${created.photoUrls?.length || 1} photo(s) attached.` : "";
+    showToast(`${created.id} / ${PRIORITY_LABELS[created.priority] || created.priority} created.${suggestion}${photos}`, "success", 5000);
     await loadState();
   } catch (error) {
-    resultBox.textContent = error.message;
+    showToast(error.message, "error");
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = "Create Ticket";
@@ -759,10 +843,8 @@ async function createTechnicianTicket(event) {
   if (currentUser?.role !== "technician") return;
 
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
-  const resultBox = document.querySelector("#technicianTicketResult");
   submitButton.disabled = true;
   submitButton.textContent = "Creating...";
-  resultBox.textContent = "";
 
   try {
     const photoUrls = await readPhotosFromInput(document.querySelector("#technicianTicketPhotos"));
@@ -788,10 +870,10 @@ async function createTechnicianTicket(event) {
     });
     document.querySelector("#technicianTicketNote").value = "";
     document.querySelector("#technicianTicketPhotos").value = "";
-    resultBox.textContent = `${created.id} created for admin assignment.`;
+    showToast(`${created.id} created for admin assignment.`, "success");
     await loadState();
   } catch (error) {
-    resultBox.textContent = error.message;
+    showToast(error.message, "error");
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = "Create Ticket";
@@ -803,7 +885,7 @@ async function setTicketStatus(ticketId, status, detail = "") {
   if (status === "Resolved" && currentUser?.role === "technician") {
     const photoUrl = await chooseEvidencePhoto();
     if (!photoUrl) {
-      window.alert("Completion photo is required before marking the ticket resolved.");
+      showToast("Completion photo is required before marking the ticket resolved.", "warning");
       return;
     }
     payload.evidencePhotoUrls = [photoUrl];
@@ -816,15 +898,15 @@ async function setTicketStatus(ticketId, status, detail = "") {
   await loadState();
 }
 
-function detailForStatus(status) {
+async function detailForStatus(status) {
   if (status === "Blocked") {
-    return window.prompt("Blocked reason", "Spare part required") || "";
+    return await showPromptModal("Blocked reason", "Spare part required") || "";
   }
   if (status === "Resolved") {
-    return window.prompt("Resolution note", "Fixed permanently") || "";
+    return await showPromptModal("Resolution note", "Fixed permanently") || "";
   }
   if (status === "Reopened") {
-    return window.prompt("Reopen / rejection reason", "Issue not fixed") || "";
+    return await showPromptModal("Reopen / rejection reason", "Issue not fixed") || "";
   }
   if (status === "Closed") {
     return "Manager approved resolution";
@@ -835,7 +917,7 @@ function detailForStatus(status) {
 async function assignTicket(ticketId, technicianId) {
   if (!["admin", "manager"].includes(currentUser?.role)) return;
   if (!technicianId) {
-    window.alert("No technician is selected. Add outlet coverage to a technician first, then assign again.");
+    showToast("No technician is selected. Add outlet coverage to a technician first, then assign again.", "warning");
     return;
   }
 
@@ -847,17 +929,17 @@ async function assignTicket(ticketId, technicianId) {
   if (currentUser?.role === "admin") payload.scheduledAt = scheduledInput?.value || "";
   const hardRisk = summary?.risk || [];
   if (hardRisk.includes("not registered for outlet")) {
-    window.alert("This technician is not registered for this outlet. Add the outlet to the technician service area first.");
+    showToast("This technician is not registered for this outlet. Add the outlet to the technician service area first.", "warning");
     return;
   }
 
   if (currentUser?.role === "manager" && hardRisk.length) {
-    window.alert("Manager can only assign technicians who are available and serve this outlet.");
+    showToast("Manager can only assign technicians who are available and serve this outlet.", "warning");
     return;
   }
 
   if (currentUser?.role === "admin" && hardRisk.length) {
-    const overrideReason = window.prompt(
+    const overrideReason = await showPromptModal(
       `Override needed for ${technician.name}`,
       `${hardRisk.join(", ")}. Admin approved because `
     );
@@ -888,7 +970,7 @@ async function acceptTicket(ticketId) {
 }
 
 async function rejectTicket(ticketId) {
-  const reason = window.prompt("Reject job reason", "I cannot take this job because ");
+  const reason = await showPromptModal("Reject job reason", "I cannot take this job because ");
   if (!reason?.trim()) return;
   await api(`/api/tickets/${ticketId}/reject`, {
     method: "POST",
@@ -909,10 +991,8 @@ async function saveAssetMaster(event) {
   if (!canUseView("masters")) return;
 
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
-  const resultBox = document.querySelector("#masterCreateResult");
   submitButton.disabled = true;
   submitButton.textContent = editingAssetId ? "Updating..." : "Adding...";
-  resultBox.textContent = "";
 
   try {
     const asset = await api(editingAssetId ? `/api/assets/${editingAssetId}` : "/api/assets", {
@@ -927,10 +1007,10 @@ async function saveAssetMaster(event) {
     });
     const wasEditing = Boolean(editingAssetId);
     resetAssetForm();
-    resultBox.textContent = `${asset.id} ${wasEditing ? "updated" : "added"} for ${asset.outlet}.`;
+    showToast(`${asset.id} ${wasEditing ? "updated" : "added"} for ${asset.outlet}.`, "success");
     await loadState();
   } catch (error) {
-    resultBox.textContent = error.message;
+    showToast(error.message, "error");
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = editingAssetId ? "Update Asset" : "Add Asset";
@@ -958,10 +1038,8 @@ async function createOutlet(event) {
   event.preventDefault();
   if (!canUseView("masters")) return;
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
-  const resultBox = document.querySelector("#masterCreateResult");
   submitButton.disabled = true;
   submitButton.textContent = editingOutletName ? "Updating..." : "Adding...";
-  resultBox.textContent = "";
   try {
     const payload = {
       name: document.querySelector("#outletName").value,
@@ -975,10 +1053,10 @@ async function createOutlet(event) {
     });
     const wasEditing = Boolean(editingOutletName);
     resetOutletForm();
-    resultBox.textContent = `${outlet.name} outlet ${wasEditing ? "updated" : "added"}${outlet.address ? ` at ${outlet.address}` : ""}.`;
+    showToast(`${outlet.name} outlet ${wasEditing ? "updated" : "added"}${outlet.address ? ` at ${outlet.address}` : ""}.`, "success");
     await loadState();
   } catch (error) {
-    resultBox.textContent = error.message;
+    showToast(error.message, "error");
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = editingOutletName ? "Update Outlet" : "Add Outlet";
@@ -1006,10 +1084,8 @@ async function createCategory(event) {
   event.preventDefault();
   if (!canUseView("masters")) return;
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
-  const resultBox = document.querySelector("#masterCreateResult");
   submitButton.disabled = true;
   submitButton.textContent = editingCategoryId ? "Updating..." : "Adding...";
-  resultBox.textContent = "";
   try {
     const category = await api(editingCategoryId ? `/api/categories/${editingCategoryId}` : "/api/categories", {
       method: editingCategoryId ? "PATCH" : "POST",
@@ -1017,10 +1093,10 @@ async function createCategory(event) {
     });
     const wasEditing = Boolean(editingCategoryId);
     resetCategoryForm();
-    resultBox.textContent = `${category.name} category ${wasEditing ? "updated" : "added"}.`;
+    showToast(`${category.name} category ${wasEditing ? "updated" : "added"}.`, "success");
     await loadState();
   } catch (error) {
-    resultBox.textContent = error.message;
+    showToast(error.message, "error");
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = editingCategoryId ? "Update Category" : "Add Category";
@@ -1045,10 +1121,8 @@ async function saveTechnicianMaster(event) {
   event.preventDefault();
   if (!canUseView("masters")) return;
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
-  const resultBox = document.querySelector("#masterCreateResult");
   submitButton.disabled = true;
   submitButton.textContent = editingTechnicianId ? "Updating..." : "Adding...";
-  resultBox.textContent = "";
   try {
     const serviceOutlets = selectedOptionValues(document.querySelector("#technicianOutlet"));
     const technician = await api(editingTechnicianId ? `/api/technicians/${editingTechnicianId}` : "/api/technicians", {
@@ -1062,12 +1136,12 @@ async function saveTechnicianMaster(event) {
     });
     const wasEditing = Boolean(editingTechnicianId);
     resetTechnicianForm();
-    resultBox.textContent = technician.login
+    showToast(technician.login
       ? `${technician.name} added. Login: ${technician.login.username} / ${technician.temporaryPassword}`
-      : `${technician.name} technician ${wasEditing ? "updated" : "added"}.`;
+      : `${technician.name} technician ${wasEditing ? "updated" : "added"}.`, "success", 5500);
     await loadState();
   } catch (error) {
-    resultBox.textContent = error.message;
+    showToast(error.message, "error");
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = editingTechnicianId ? "Update Technician" : "Add Technician";
@@ -1128,9 +1202,7 @@ async function saveUserAccess(event) {
   event.preventDefault();
   if (!canUseView("masters")) return;
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
-  const resultBox = document.querySelector("#masterCreateResult");
   submitButton.disabled = true;
-  resultBox.textContent = "";
   try {
     const payload = {
       role: document.querySelector("#accessRole").value,
@@ -1148,11 +1220,11 @@ async function saveUserAccess(event) {
     const path = editingUserAccessId ? `/api/admin/users/${editingUserAccessId}` : "/api/admin/users";
     const method = editingUserAccessId ? "PATCH" : "POST";
     await api(path, { method, body: JSON.stringify(payload) });
-    resultBox.textContent = editingUserAccessId ? "User access updated." : "User created.";
+    showToast(editingUserAccessId ? "User access updated." : "User created.", "success");
     resetUserAccessForm();
     await loadState();
   } catch (error) {
-    resultBox.textContent = error.message;
+    showToast(error.message, "error");
   } finally {
     submitButton.disabled = false;
   }
@@ -1160,15 +1232,13 @@ async function saveUserAccess(event) {
 
 async function deleteMasterRecord(type, id, label) {
   if (!canUseView("masters")) return;
-  if (!window.confirm(`Delete ${label}?`)) return;
-  const resultBox = document.querySelector("#masterCreateResult");
+  if (!await showConfirm(`Delete ${label}?`)) return;
   try {
     await api(`/api/${type}/${encodeURIComponent(id)}`, { method: "DELETE" });
-    resultBox.textContent = `${label} deleted.`;
+    showToast(`${label} deleted.`, "success");
     await loadState();
   } catch (error) {
-    resultBox.textContent = error.message;
-    window.alert(error.message);
+    showToast(error.message, "error");
   }
 }
 
@@ -1186,11 +1256,9 @@ async function createMaintenanceRule(event) {
   event.preventDefault();
   if (!canUseView("scheduler")) return;
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
-  const resultBox = document.querySelector("#ruleCreateResult");
   const isEditing = Boolean(editingMaintenanceRuleId);
   submitButton.disabled = true;
   submitButton.textContent = isEditing ? "Updating..." : "Adding...";
-  resultBox.textContent = "";
   try {
     const rule = await api(isEditing ? `/api/maintenance-rules/${editingMaintenanceRuleId}` : "/api/maintenance-rules", {
       method: isEditing ? "PATCH" : "POST",
@@ -1204,10 +1272,10 @@ async function createMaintenanceRule(event) {
       })
     });
     resetMaintenanceRuleForm();
-    resultBox.textContent = `${rule.frequency} rule ${isEditing ? "updated" : "added"} for ${rule.category}.`;
+    showToast(`${rule.frequency} rule ${isEditing ? "updated" : "added"} for ${rule.category}.`, "success");
     await loadState();
   } catch (error) {
-    resultBox.textContent = error.message;
+    showToast(error.message, "error");
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = isEditing ? "Update Rule" : "Add Rule";
@@ -1265,8 +1333,7 @@ async function createAttendancePlan(technicianId, payload) {
 }
 
 async function collectTaskEvidence(task) {
-  const required = true;
-  const comment = window.prompt(
+  const comment = await showPromptModal(
     taskRequiresEvidence(task) ? "Safety evidence note (photo required)" : "Completion note (photo required)",
     taskRequiresEvidence(task) ? "Checked and verified on site" : "Completed on site"
   );
@@ -1275,7 +1342,7 @@ async function collectTaskEvidence(task) {
   const photoUrl = await chooseEvidencePhoto();
 
   if (!photoUrl) {
-    window.alert("Photo evidence is required to complete this task.");
+    showToast("Photo evidence is required to complete this task.", "warning");
     return null;
   }
 
@@ -1293,7 +1360,7 @@ async function updateTaskStatus(taskId, status = "Done", evidence = {}) {
 
 async function deleteTask(taskId) {
   if (currentUser?.role !== "admin") return;
-  if (!window.confirm("Delete this task?")) return;
+  if (!await showConfirm("Delete this task?")) return;
   await api(`/api/tasks/${taskId}`, { method: "DELETE" });
   await loadState();
 }
@@ -2243,10 +2310,8 @@ async function saveAssignmentWindow(event) {
   event.preventDefault();
   if (!canUseView("masters") || currentUser?.role !== "admin") return;
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
-  const resultBox = document.querySelector("#masterCreateResult");
   submitButton.disabled = true;
   submitButton.textContent = editingAssignmentWindowId ? "Updating..." : "Adding...";
-  resultBox.textContent = "";
   try {
     const allDays = document.querySelector("#assignmentWindowAllDays").checked;
     const window = await api(editingAssignmentWindowId ? `/api/assignment-windows/${editingAssignmentWindowId}` : "/api/assignment-windows", {
@@ -2262,10 +2327,10 @@ async function saveAssignmentWindow(event) {
     });
     const wasEditing = Boolean(editingAssignmentWindowId);
     resetAssignmentWindowForm();
-    resultBox.textContent = `${window.name} dispatch window ${wasEditing ? "updated" : "added"}.`;
+    showToast(`${window.name} dispatch window ${wasEditing ? "updated" : "added"}.`, "success");
     await loadState();
   } catch (error) {
-    resultBox.textContent = error.message;
+    showToast(error.message, "error");
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = editingAssignmentWindowId ? "Update Window" : "Add Window";
@@ -3608,12 +3673,12 @@ document.addEventListener("click", async (event) => {
   const statusButton = event.target.closest?.("[data-status]");
   if (statusButton) {
     const [ticketId, status] = statusButton.dataset.status.split(":");
-    const detail = detailForStatus(status);
+    const detail = await detailForStatus(status);
     if (["Blocked", "Resolved", "Reopened"].includes(status) && !detail.trim()) return;
     try {
       await setTicketStatus(ticketId, status, detail);
     } catch (error) {
-      window.alert(error.message);
+      showToast(error.message, "error");
     }
     return;
   }
@@ -3625,7 +3690,7 @@ document.addEventListener("click", async (event) => {
     try {
       await assignTicket(assignId, select?.value || "");
     } catch (error) {
-      window.alert(error.message);
+      showToast(error.message, "error");
     }
     return;
   }
@@ -3659,7 +3724,7 @@ document.addEventListener("click", async (event) => {
     try {
       await downloadReport(exportButton.dataset.exportReport);
     } catch (error) {
-      window.alert(error.message);
+      showToast(error.message, "error");
     }
     return;
   }
@@ -3672,7 +3737,7 @@ document.addEventListener("click", async (event) => {
     try {
       await updateTaskStatus(taskDoneButton.dataset.taskDone, "Done", evidence);
     } catch (error) {
-      window.alert(error.message);
+      showToast(error.message, "error");
     }
     return;
   }
@@ -3681,10 +3746,10 @@ document.addEventListener("click", async (event) => {
   if (taskNotDoneButton) {
     const task = (state.tasks || []).find((item) => item.id === taskNotDoneButton.dataset.taskNotDone);
     if (!task) return;
-    const reason = window.prompt("Why is the checkup not done?", "Could not complete this time");
+    const reason = await showPromptModal("Why is the checkup not done?", "Could not complete this time");
     if (reason === null) return;
     if (!reason.trim()) {
-      window.alert("Reason is required.");
+      showToast("Reason is required.", "warning");
       return;
     }
     await updateTaskStatus(task.id, "Not Done", { comment: reason.trim() });
@@ -3737,6 +3802,9 @@ document.addEventListener("submit", async (event) => {
       to: document.querySelector("#attendanceTo").value,
       reason: document.querySelector("#attendanceReason").value
     });
+    showToast("Attendance saved.", "success");
+  } catch (error) {
+    showToast(error.message, "error");
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = "Save Attendance";
@@ -3768,6 +3836,7 @@ document.addEventListener("submit", async (event) => {
     document.querySelector("#loginError").textContent = "Password updated. Please sign in again.";
   } catch (error) {
     status.textContent = error.message;
+    showToast(error.message, "error");
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = "Update Password";
@@ -3801,9 +3870,11 @@ document.addEventListener("submit", async (event) => {
       method: "POST",
       body: JSON.stringify({ newPassword: requestedPassword })
     });
-    if (status) status.textContent = `${result.username} reset. Temporary password: ${result.temporaryPassword}`;
+    showToast(`${result.username} reset. Temporary password: ${result.temporaryPassword}`, "success", 6000);
+    if (status) status.textContent = `${result.username} reset. Temp pass: ${result.temporaryPassword}`;
     passwordInput.value = "";
   } catch (error) {
+    showToast(error.message, "error");
     if (status) status.textContent = error.message;
   } finally {
     submitButton.disabled = false;

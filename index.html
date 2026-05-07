@@ -813,6 +813,20 @@
       </section>
     </div>
 
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="false"></div>
+    <div id="modalOverlay" class="modal-overlay is-hidden" role="dialog" aria-modal="true">
+      <div class="modal-dialog">
+        <p class="modal-message" id="modalMessage"></p>
+        <div class="modal-input-wrap is-hidden">
+          <input id="modalInput" class="modal-input" type="text">
+        </div>
+        <div class="modal-actions">
+          <button id="modalConfirm" class="primary-button">Confirm</button>
+          <button id="modalCancel" class="small-button">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <script src="frontend-config.js"></script>
     <script src="app.js"></script>
     <script>
