@@ -342,7 +342,7 @@ function readJsonDb() {
   db.users = migratedUsers.users;
   if (migratedUsers.changed) shouldPersist = true;
   if (!Array.isArray(db.attendancePlans)) db.attendancePlans = [];
-  if (!Array.isArray(db.categories)) db.categories = seed.categories;
+  if (!Array.isArray(db.categories) || db.categories.length === 0) { db.categories = seed.categories; shouldPersist = true; }
   if (!Array.isArray(db.assets)) db.assets = seed.assets;
   if (!Array.isArray(db.tasks)) db.tasks = [];
   if (!Array.isArray(db.assignmentTimeWindows)) db.assignmentTimeWindows = [];

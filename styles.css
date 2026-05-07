@@ -2641,9 +2641,10 @@ input::placeholder {
 }
 
 #masters .master-list {
-  min-height: clamp(260px, 44vh, 560px);
-  overflow: visible;
-  padding-right: 0;
+  min-height: 80px;
+  max-height: clamp(300px, 46vh, 560px);
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .master-row {
