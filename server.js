@@ -3201,6 +3201,18 @@ app.delete(
   })
 );
 
+app.get(
+  "/api/categories",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can view categories" });
+    }
+    const db = await loadDb();
+    res.json(db.categories || []);
+  })
+);
+
 app.post(
   "/api/categories",
   asyncRoute(async (req, res) => {
