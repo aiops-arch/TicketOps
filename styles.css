@@ -10392,3 +10392,93 @@ select, textarea {
 /* Manager / admin card content */
 .ticket-card p,
 .ticket-card span:not(.priority-badge):not(.status-badge) { font-size: 13px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   KPI CARD — FULL COLOR BACKGROUNDS WITH HIGH-CONTRAST TEXT
+   ═══════════════════════════════════════════════════════════════════ */
+
+.ops-portal[data-view="dashboard"] .dashboard-kpi.blue {
+  background: linear-gradient(145deg, #1e3a8a 0%, #2563eb 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(37,99,235,0.35) !important;
+}
+.ops-portal[data-view="dashboard"] .dashboard-kpi.purple {
+  background: linear-gradient(145deg, #4c1d95 0%, #7c3aed 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(124,58,237,0.35) !important;
+}
+.ops-portal[data-view="dashboard"] .dashboard-kpi.green {
+  background: linear-gradient(145deg, #14532d 0%, #16a34a 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(22,163,74,0.35) !important;
+}
+.ops-portal[data-view="dashboard"] .dashboard-kpi.teal {
+  background: linear-gradient(145deg, #134e4a 0%, #0d9488 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(13,148,136,0.35) !important;
+}
+.ops-portal[data-view="dashboard"] .dashboard-kpi.gold {
+  background: linear-gradient(145deg, #78350f 0%, #d97706 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(217,119,6,0.35) !important;
+}
+.ops-portal[data-view="dashboard"] .dashboard-kpi.coral {
+  background: linear-gradient(145deg, #7f1d1d 0%, #dc2626 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(220,38,38,0.35) !important;
+}
+
+/* White text for all colored cards */
+.ops-portal[data-view="dashboard"] .dashboard-kpi.blue strong,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.purple strong,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.green strong,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.teal strong,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.gold strong,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.coral strong {
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.18);
+}
+
+.ops-portal[data-view="dashboard"] .dashboard-kpi.blue span,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.purple span,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.green span,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.teal span,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.gold span,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.coral span,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.blue small,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.purple small,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.green small,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.teal small,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.gold small,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.coral small {
+  color: rgba(255,255,255,0.82) !important;
+}
+
+/* Badge pill on colored cards */
+.ops-portal[data-view="dashboard"] .dashboard-kpi.blue .dashboard-kpi-head b,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.purple .dashboard-kpi-head b,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.green .dashboard-kpi-head b,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.teal .dashboard-kpi-head b,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.gold .dashboard-kpi-head b,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.coral .dashboard-kpi-head b {
+  background: rgba(255,255,255,0.18) !important;
+  color: #ffffff !important;
+}
+
+/* Progress meter bar on colored cards */
+.ops-portal[data-view="dashboard"] .dashboard-kpi.blue .dashboard-kpi-meter,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.purple .dashboard-kpi-meter,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.green .dashboard-kpi-meter,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.teal .dashboard-kpi-meter,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.gold .dashboard-kpi-meter,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.coral .dashboard-kpi-meter {
+  background: rgba(0,0,0,0.18) !important;
+}
+.ops-portal[data-view="dashboard"] .dashboard-kpi.blue .dashboard-kpi-meter em,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.purple .dashboard-kpi-meter em,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.green .dashboard-kpi-meter em,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.teal .dashboard-kpi-meter em,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.gold .dashboard-kpi-meter em,
+.ops-portal[data-view="dashboard"] .dashboard-kpi.coral .dashboard-kpi-meter em {
+  background: rgba(255,255,255,0.7) !important;
+}
