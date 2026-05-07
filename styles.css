@@ -10545,22 +10545,25 @@ select, textarea {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   SCHEDULER — COMPACT HERO
+   SCHEDULER + MASTERS — COMPACT HERO
    ═══════════════════════════════════════════════════════════════════ */
 
-.ops-portal #scheduler .page-stage {
+.ops-portal #scheduler .page-stage,
+.ops-portal #masters .page-stage {
   min-height: 72px !important;
   padding: 14px 24px !important;
 }
 
-.ops-portal #scheduler .page-stage h2 {
+.ops-portal #scheduler .page-stage h2,
+.ops-portal #masters .page-stage h2 {
   font-size: 26px !important;
   letter-spacing: -0.01em !important;
   margin: 2px 0 4px !important;
   line-height: 1.15 !important;
 }
 
-.ops-portal #scheduler .page-stage p {
+.ops-portal #scheduler .page-stage p,
+.ops-portal #masters .page-stage p {
   font-size: 13px !important;
   line-height: 1.4 !important;
 }
