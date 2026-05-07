@@ -1571,35 +1571,28 @@ async function createCategory(payload) {
   const name = String(payload.name || "").trim();
   const description = String(payload.description || "").trim();
   if (!name) return { status: 400, body: { error: "Category name is required" } };
-  if (db.categories.some((c) => (c.name || "").toLowerCase() === name.toLowerCase())) {
+  if ((db.categories || []).some((c) => (c.name || "").toLowerCase() === name.toLowerCase())) {
     return { status: 409, body: { error: "Category already exists" } };
   }
 
   const newCategory = { id: categoryIdFromName(name), name, description };
 
-  // Check if the same ID exists with a blank/corrupt name — repair it via upsert
-  const orphan = db.categories.find((c) => c.id === newCategory.id && !c.name);
-  if (orphan) {
-    if (useSupabase) {
+  if (useSupabase) {
+    const { error: insertError } = await supabase.from("categories").insert(newCategory);
+    if (!insertError) return { status: 201, body: newCategory };
+    if (insertError.code !== "23505") throw insertError;
+    // PK conflict — query the actual row to decide what to do
+    const { data: conflict } = await supabase.from("categories").select("id,name").eq("id", newCategory.id).maybeSingle();
+    if (conflict && !conflict.name) {
+      // Orphaned blank-name row — repair it
       await requireSupabase(await supabase.from("categories").update({ name, description }).eq("id", newCategory.id));
       return { status: 201, body: newCategory };
     }
-    db.categories = db.categories.map((c) => c.id === newCategory.id ? newCategory : c);
-    writeJsonDb(db);
-    return { status: 201, body: newCategory };
-  }
-
-  if (db.categories.some((c) => c.id === newCategory.id)) {
     return { status: 409, body: { error: "Category already exists" } };
   }
 
-  if (useSupabase) {
-    const { error } = await supabase.from("categories").insert(newCategory);
-    if (error) {
-      if (error.code === "23505") return { status: 409, body: { error: "Category already exists" } };
-      throw error;
-    }
-    return { status: 201, body: newCategory };
+  if ((db.categories || []).some((c) => c.id === newCategory.id)) {
+    return { status: 409, body: { error: "Category already exists" } };
   }
 
   db.categories.push(newCategory);
@@ -1665,7 +1658,13 @@ async function deleteOutlet(name) {
 
 async function deleteCategory(categoryId) {
   const db = await loadDb();
-  const category = (db.categories || []).find((item) => item.id === categoryId);
+  // If category exists in Supabase but not in local cache (orphaned row), still allow delete
+  let category = (db.categories || []).find((item) => item.id === categoryId);
+  if (!category && useSupabase) {
+    const { data } = await supabase.from("categories").select("id,name").eq("id", categoryId).maybeSingle();
+    if (!data) return { status: 404, body: { error: "Category not found" } };
+    category = data;
+  }
   if (!category) return { status: 404, body: { error: "Category not found" } };
   const inUse = [
     (db.assets || []).some((asset) => asset.category === category.name) && "assets",
