@@ -360,10 +360,11 @@ textarea:focus {
 }
 
 .brand-mark {
-  width: 68px;
+  width: 42px;
   height: 42px;
   flex: 0 0 auto;
-  object-fit: contain;
+  object-fit: cover;
+  object-position: left center;
   padding: 0;
   border: 0;
   border-radius: 0;
