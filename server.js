@@ -702,10 +702,25 @@ function rebalanceTodayChecklistTasks(db) {
 
 function generateTodayTasks(db) {
   const today = dateKey();
-  const isMonday = new Date(`${today}T00:00:00`).getDay() === 1;
-  const rules = (db.maintenanceRules || defaultMaintenanceRules()).filter((rule) =>
-    rule.active !== false && (rule.frequency === "daily" || (rule.frequency === "weekly" && isMonday))
-  );
+  const todayDate = new Date(`${today}T00:00:00`);
+  const dayOfWeek = todayDate.getDay();
+  const dayOfMonth = todayDate.getDate();
+  const month = todayDate.getMonth(); // 0-based
+  const isMonday = dayOfWeek === 1;
+  const isFirstOfMonth = dayOfMonth === 1;
+  const isQuarterStart = isFirstOfMonth && [0, 3, 6, 9].includes(month);
+  const isHalfYearStart = isFirstOfMonth && [0, 6].includes(month);
+  const isYearStart = isFirstOfMonth && month === 0;
+  const rules = (db.maintenanceRules || defaultMaintenanceRules()).filter((rule) => {
+    if (rule.active === false) return false;
+    const f = rule.frequency;
+    return f === "daily" ||
+      (f === "weekly" && isMonday) ||
+      (f === "monthly" && isFirstOfMonth) ||
+      (f === "quarterly" && isQuarterStart) ||
+      (f === "half-yearly" && isHalfYearStart) ||
+      (f === "yearly" && isYearStart);
+  });
   const tasks = [];
   const technicians = checklistTechnicians(db);
   const loadMap = new Map(technicians.map((tech) => [
@@ -731,6 +746,7 @@ function generateTodayTasks(db) {
     const outletAssets = (db.assets || []).filter((asset) => asset.status === "Active" && asset.outlet === outlet);
 
     rules.forEach((rule) => {
+      if (rule.outlet && rule.outlet !== outlet) return;
       const asset = outletAssets.find((item) => item.category === rule.category) || outletAssets[0];
       const technician = maintenanceRuleTechnician(db, rule, loadMap, technicians);
 
@@ -1184,6 +1200,7 @@ function mapTask(row) {
 function mapMaintenanceRule(row) {
   return {
     id: row.id,
+    outlet: row.outlet || "",
     category: row.category,
     title: row.title,
     startTime: row.start_time || "",
@@ -1224,7 +1241,7 @@ async function loadSupabaseDb() {
     supabase.from("tickets").select("*").order("created_at", { ascending: false }),
     supabase.from("ticket_history").select("ticket_id,action,created_at").order("created_at", { ascending: true }),
     supabase.from("attendance_plans").select("id,technician_id,status,from_date,to_date,reason,created_by,active,created_at").order("from_date"),
-    supabase.from("maintenance_rules").select("id,category,title,start_time,end_time,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }).then(r => r.error?.message?.includes("does not exist") ? supabase.from("maintenance_rules").select("id,category,title,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }) : r),
+    supabase.from("maintenance_rules").select("id,outlet,category,title,start_time,end_time,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }).then(r => r.error?.message?.includes("does not exist") ? supabase.from("maintenance_rules").select("id,category,title,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }) : r),
     supabase.from("assignment_time_windows").select("id,name,days,start_time,end_time,active,created_at").order("created_at", { ascending: false })
   ]);
 
@@ -2112,8 +2129,11 @@ async function deleteAssignmentWindow(windowId) {
   return { status: 200, body: { ok: true } };
 }
 
+const VALID_FREQUENCIES = ["daily", "weekly", "monthly", "quarterly", "half-yearly", "yearly"];
+
 async function createMaintenanceRule(payload) {
   const db = await loadDb();
+  const outlet = String(payload.outlet || "").trim();
   const category = String(payload.category || "").trim();
   const title = String(payload.title || "").trim();
   const startTime = normalizeTimeValue(payload.startTime);
@@ -2121,15 +2141,18 @@ async function createMaintenanceRule(payload) {
   const frequency = String(payload.frequency || "daily").trim().toLowerCase();
   const assignedTechnicianId = String(payload.assignedTechnicianId || "").trim();
   const allowOutsideWindow = normalizeMaybeBoolean(payload.allowOutsideWindow, false);
+  if (!outlet) return { status: 400, body: { error: "Outlet is required" } };
   if (!category || !title) return { status: 400, body: { error: "Category and task title are required" } };
+  if (outlet && !db.outlets.includes(outlet)) return { status: 400, body: { error: "Outlet is invalid" } };
   if (!db.categories.some((item) => item.name === category)) return { status: 400, body: { error: "Category is invalid" } };
-  if (!["daily", "weekly"].includes(frequency)) return { status: 400, body: { error: "Frequency must be daily or weekly" } };
+  if (!VALID_FREQUENCIES.includes(frequency)) return { status: 400, body: { error: "Invalid frequency" } };
   if (assignedTechnicianId && !db.technicians.some((tech) => tech.id === assignedTechnicianId)) {
     return { status: 400, body: { error: "Assigned technician is invalid" } };
   }
 
   const rule = {
     id: nextMaintenanceRuleId(db.maintenanceRules || []),
+    outlet,
     category,
     title,
     startTime,
@@ -2146,6 +2169,7 @@ async function createMaintenanceRule(payload) {
     await requireSupabase(
       await supabase.from("maintenance_rules").insert({
         id: rule.id,
+        outlet: rule.outlet || null,
         category: rule.category,
         title: rule.title,
         start_time: rule.startTime || null,
@@ -2172,6 +2196,7 @@ async function updateMaintenanceRule(ruleId, payload) {
   const active = payload.active === undefined ? rule.active : Boolean(payload.active);
   const assignedTechnicianId = payload.assignedTechnicianId === undefined ? rule.assignedTechnicianId || "" : String(payload.assignedTechnicianId || "").trim();
   const allowOutsideWindow = payload.allowOutsideWindow === undefined ? Boolean(rule.allowOutsideWindow) : normalizeMaybeBoolean(payload.allowOutsideWindow, false);
+  const outlet = String(payload.outlet !== undefined ? payload.outlet : (rule.outlet || "")).trim();
   const category = String(payload.category || rule.category || "").trim();
   const title = String(payload.title || rule.title || "").trim();
   const startTime = payload.startTime !== undefined ? normalizeTimeValue(payload.startTime) : (rule.startTime || "");
@@ -2179,13 +2204,15 @@ async function updateMaintenanceRule(ruleId, payload) {
   const frequency = String(payload.frequency || rule.frequency || "daily").trim().toLowerCase();
   const group = String(payload.group || rule.group || "Maintenance").trim() || "Maintenance";
   if (!category || !title) return { status: 400, body: { error: "Category and task title are required" } };
+  if (outlet && !db.outlets.includes(outlet)) return { status: 400, body: { error: "Outlet is invalid" } };
   if (!db.categories.some((item) => item.name === category)) return { status: 400, body: { error: "Category is invalid" } };
-  if (!["daily", "weekly"].includes(frequency)) return { status: 400, body: { error: "Frequency must be daily or weekly" } };
+  if (!VALID_FREQUENCIES.includes(frequency)) return { status: 400, body: { error: "Invalid frequency" } };
   if (assignedTechnicianId && !db.technicians.some((tech) => tech.id === assignedTechnicianId)) {
     return { status: 400, body: { error: "Assigned technician is invalid" } };
   }
   const updated = {
     ...rule,
+    outlet,
     category,
     title,
     startTime,
@@ -2200,6 +2227,7 @@ async function updateMaintenanceRule(ruleId, payload) {
   if (useSupabase) {
     await requireSupabase(
       await supabase.from("maintenance_rules").update({
+        outlet: updated.outlet || null,
         category: updated.category,
         title: updated.title,
         start_time: updated.startTime || null,

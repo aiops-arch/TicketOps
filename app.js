@@ -1270,6 +1270,7 @@ async function createMaintenanceRule(event) {
     const rule = await api(isEditing ? `/api/maintenance-rules/${editingMaintenanceRuleId}` : "/api/maintenance-rules", {
       method: isEditing ? "PATCH" : "POST",
       body: JSON.stringify({
+        outlet: document.querySelector("#ruleOutlet").value,
         category: document.querySelector("#ruleCategory").value,
         title: document.querySelector("#ruleTitle").value,
         startTime: document.querySelector("#ruleStartTime").value,
@@ -1307,18 +1308,32 @@ function updateRuleTimeDisabled() {
   if (to) to.disabled = allDay;
 }
 
+function populateRuleTechnicians(outlet, keepValue) {
+  const el = document.querySelector("#ruleTechnician");
+  if (!el) return;
+  const techs = outlet
+    ? (state.technicians || []).filter((t) => (t.serviceOutlets || []).includes(outlet))
+    : (state.technicians || []);
+  el.innerHTML = [
+    `<option value="">Balanced / auto assign</option>`,
+    ...techs.map((t) => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`)
+  ].join("");
+  if (keepValue && techs.some((t) => t.id === keepValue)) el.value = keepValue;
+}
+
 function fillMaintenanceRuleForm(ruleId) {
   const rule = (state.maintenanceRules || []).find((item) => item.id === ruleId);
   if (!rule) return;
   editingMaintenanceRuleId = rule.id;
+  document.querySelector("#ruleOutlet").value = rule.outlet || "";
   document.querySelector("#ruleCategory").value = rule.category || "";
   document.querySelector("#ruleTitle").value = rule.title || "";
   document.querySelector("#ruleStartTime").value = rule.startTime || "09:00";
   document.querySelector("#ruleEndTime").value = rule.endTime || "18:00";
   document.querySelector("#ruleFrequency").value = rule.frequency || "daily";
-  document.querySelector("#ruleTechnician").value = rule.assignedTechnicianId || "";
   document.querySelector("#ruleAllowOutsideWindow").checked = Boolean(rule.allowOutsideWindow);
   document.querySelector("#ruleSubmit").textContent = "Update Rule";
+  populateRuleTechnicians(rule.outlet || "", rule.assignedTechnicianId || "");
   updateRuleTimeDisabled();
 }
 
@@ -1444,6 +1459,7 @@ function renderSelects() {
   const accessSkill = document.querySelector("#accessSkill");
   const accessOutlets = document.querySelector("#accessOutlets");
   const ticketCategory = document.querySelector("#ticketCategory");
+  const ruleOutlet = document.querySelector("#ruleOutlet");
   const ruleCategory = document.querySelector("#ruleCategory");
   const ruleTechnician = document.querySelector("#ruleTechnician");
   const activeTechnician = document.querySelector("#activeTechnician");
@@ -1460,6 +1476,7 @@ function renderSelects() {
   const selectedAccessSkill = accessSkill?.value;
   const selectedAccessOutlets = selectedOptionValues(accessOutlets);
   const selectedTicketCategory = ticketCategory?.value;
+  const selectedRuleOutlet = ruleOutlet?.value;
   const selectedRuleTechnician = ruleTechnician?.value;
 
   const categories = state.categories?.length
@@ -1566,6 +1583,15 @@ function renderSelects() {
     }
   }
 
+  if (ruleOutlet) {
+    ruleOutlet.innerHTML = (state.outlets || [])
+      .map((o) => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`)
+      .join("");
+    if (selectedRuleOutlet && (state.outlets || []).includes(selectedRuleOutlet)) {
+      ruleOutlet.value = selectedRuleOutlet;
+    }
+  }
+
   if (ruleCategory) {
     const selectedRuleCategory = ruleCategory.value;
     ruleCategory.innerHTML = categories
@@ -1577,13 +1603,7 @@ function renderSelects() {
   }
 
   if (ruleTechnician) {
-    ruleTechnician.innerHTML = [
-      `<option value="">Balanced / auto assign</option>`,
-      ...(state.technicians || []).map((tech) => `<option value="${escapeHtml(tech.id)}">${escapeHtml(tech.name)}</option>`)
-    ].join("");
-    if (selectedRuleTechnician && (state.technicians || []).some((tech) => tech.id === selectedRuleTechnician)) {
-      ruleTechnician.value = selectedRuleTechnician;
-    }
+    populateRuleTechnicians(selectedRuleOutlet, selectedRuleTechnician);
   }
 
   if (activeTechnician) {
@@ -2588,7 +2608,7 @@ function renderMaintenanceScheduler() {
       <article class="rule-row ${rule.active === false ? "is-paused" : ""}">
         <div>
           <strong>${escapeHtml(rule.title)}</strong>
-          <span>${escapeHtml(rule.category)} / ${rule.allowOutsideWindow ? "All day" : `${escapeHtml(rule.startTime || "?")} – ${escapeHtml(rule.endTime || "?")}`} / ${escapeHtml(rule.frequency)} / ${escapeHtml(maintenanceRuleTechnicianLabel(rule))}</span>
+          <span>${escapeHtml(rule.outlet || "All outlets")} / ${escapeHtml(rule.category)} / ${rule.allowOutsideWindow ? "All day" : `${escapeHtml(rule.startTime || "?")} – ${escapeHtml(rule.endTime || "?")}`} / ${escapeHtml(rule.frequency)} / ${escapeHtml(maintenanceRuleTechnicianLabel(rule))}</span>
         </div>
         <div class="rule-actions">
           <button class="small-button" data-edit-rule="${escapeHtml(rule.id)}">Edit</button>
@@ -3552,6 +3572,7 @@ document.querySelector("#assignmentWindowCancel").addEventListener("click", rese
 document.querySelector("#maintenanceRuleForm").addEventListener("submit", createMaintenanceRule);
 document.querySelector("#ruleCancel").addEventListener("click", resetMaintenanceRuleForm);
 document.querySelector("#ruleAllowOutsideWindow").addEventListener("change", updateRuleTimeDisabled);
+document.querySelector("#ruleOutlet").addEventListener("change", () => populateRuleTechnicians(document.querySelector("#ruleOutlet").value, ""));
 document.querySelector("#activeTechnician").addEventListener("change", renderTechnician);
 document.querySelectorAll("[data-master-tab]").forEach((button) => {
   button.addEventListener("click", () => switchMasterTab(button.dataset.masterTab));
