@@ -2214,6 +2214,19 @@ async function updateMaintenanceRule(ruleId, payload) {
   return { status: 200, body: updated };
 }
 
+async function deleteMaintenanceRule(ruleId) {
+  const db = await loadDb();
+  const rule = (db.maintenanceRules || []).find((item) => item.id === ruleId);
+  if (!rule) return { status: 404, body: { error: "Maintenance rule not found" } };
+  if (useSupabase) {
+    await requireSupabase(await supabase.from("maintenance_rules").delete().eq("id", ruleId));
+    return { status: 200, body: { ok: true } };
+  }
+  db.maintenanceRules = db.maintenanceRules.filter((item) => item.id !== ruleId);
+  writeJsonDb(db);
+  return { status: 200, body: { ok: true } };
+}
+
 async function updateTaskStatus(taskId, status, user, evidence = {}) {
   const db = await loadDb();
   const task = (db.tasks || []).find((item) => item.id === taskId);
@@ -3389,6 +3402,18 @@ app.patch(
       return res.status(403).json({ error: "Only admin can update maintenance rules" });
     }
     const result = await updateMaintenanceRule(req.params.id, req.body);
+    res.status(result.status).json(result.body);
+  })
+);
+
+app.delete(
+  "/api/maintenance-rules/:id",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can delete maintenance rules" });
+    }
+    const result = await deleteMaintenanceRule(req.params.id);
     res.status(result.status).json(result.body);
   })
 );

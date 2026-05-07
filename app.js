@@ -1318,6 +1318,13 @@ async function toggleMaintenanceRule(ruleId, active) {
   await loadState();
 }
 
+async function deleteMaintenanceRule(ruleId, title) {
+  if (!canUseView("scheduler")) return;
+  if (!confirm(`Delete rule "${title}"? This cannot be undone.`)) return;
+  await api(`/api/maintenance-rules/${ruleId}`, { method: "DELETE" });
+  await loadState();
+}
+
 async function updateTechnicianStatus(technicianId, status) {
   if (!canUseView("admin")) return;
 
@@ -2574,6 +2581,7 @@ function renderMaintenanceScheduler() {
           <button class="small-button ${rule.active === false ? "success" : "warning"}" data-rule-toggle="${escapeHtml(rule.id)}:${rule.active === false ? "true" : "false"}">
             ${rule.active === false ? "Enable" : "Pause"}
           </button>
+          <button class="small-button danger" data-delete-rule="${escapeHtml(rule.id)}" data-delete-rule-title="${escapeHtml(rule.title)}">Delete</button>
         </div>
       </article>
     `).join("")
@@ -3664,6 +3672,12 @@ document.addEventListener("click", async (event) => {
   if (ruleToggle) {
     const [ruleId, active] = ruleToggle.dataset.ruleToggle.split(":");
     await toggleMaintenanceRule(ruleId, active === "true");
+    return;
+  }
+
+  const deleteRule = event.target.closest?.("[data-delete-rule]");
+  if (deleteRule) {
+    await deleteMaintenanceRule(deleteRule.dataset.deleteRule, deleteRule.dataset.deleteRuleTitle);
     return;
   }
 
