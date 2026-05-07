@@ -1089,7 +1089,10 @@ async function createCategory(event) {
   try {
     const category = await api(editingCategoryId ? `/api/categories/${editingCategoryId}` : "/api/categories", {
       method: editingCategoryId ? "PATCH" : "POST",
-      body: JSON.stringify({ name: document.querySelector("#categoryName").value })
+      body: JSON.stringify({
+        name: document.querySelector("#categoryName").value,
+        description: document.querySelector("#categoryDescription").value.trim()
+      })
     });
     const wasEditing = Boolean(editingCategoryId);
     resetCategoryForm();
@@ -1106,6 +1109,7 @@ async function createCategory(event) {
 function resetCategoryForm() {
   editingCategoryId = "";
   document.querySelector("#categoryName").value = "";
+  document.querySelector("#categoryDescription").value = "";
   document.querySelector("#categorySubmit").textContent = "Add Category";
 }
 
@@ -1114,6 +1118,7 @@ function fillCategoryForm(categoryId) {
   if (!category) return;
   editingCategoryId = category.id;
   document.querySelector("#categoryName").value = category.name || "";
+  document.querySelector("#categoryDescription").value = category.description || "";
   document.querySelector("#categorySubmit").textContent = "Update Category";
 }
 
