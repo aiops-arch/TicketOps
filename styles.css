@@ -10569,6 +10569,43 @@ select, textarea {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   MASTERS — REMOVE EMPTY VERTICAL SPACE
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* View: stop stretching children to fill full height */
+.ops-portal #masters {
+  align-items: start !important;
+  gap: 10px !important;
+}
+
+/* Panel: tighten internal spacing */
+.ops-portal #masters .master-control-panel {
+  gap: 8px !important;
+  padding: 14px 16px !important;
+}
+
+/* Section: tighten padding and internal gap */
+.ops-portal #masters .master-section {
+  padding: 12px !important;
+  gap: 8px !important;
+}
+
+/* Panel heading: no extra bottom gap */
+.ops-portal #masters .panel-heading {
+  padding-bottom: 4px !important;
+}
+
+/* Form-hint result paragraph: collapse when empty */
+.ops-portal #masters .form-hint:empty {
+  display: none !important;
+}
+
+/* Master list: no unnecessary minimum height */
+.ops-portal #masters .master-list {
+  min-height: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    RULE ROW — ONE HORIZONTAL LINE
    ═══════════════════════════════════════════════════════════════════ */
 
