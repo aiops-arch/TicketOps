@@ -8530,14 +8530,15 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
 
 .ops-portal[data-view="dashboard"] .trend-head {
   display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 4px !important;
 }
 
 .ops-portal[data-view="dashboard"] .trend-legend {
   display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
+  flex-direction: column !important;
+  gap: 3px !important;
   font-size: 10px !important;
   font-weight: 600 !important;
   color: #64748b !important;
@@ -8549,7 +8550,7 @@ body[data-theme="dark"].ops-portal[data-view="dashboard"] .portal-ambient {
   width: 8px !important;
   height: 8px !important;
   border-radius: 50% !important;
-  margin-right: 3px !important;
+  margin-right: 4px !important;
   flex-shrink: 0 !important;
 }
 
