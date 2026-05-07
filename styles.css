@@ -1796,7 +1796,7 @@ body.has-session .topbar:focus-within .tabs {
 }
 
 #categoryForm {
-  grid-template-columns: minmax(240px, 1fr) auto auto;
+  grid-template-columns: minmax(160px, 0.9fr) minmax(220px, 1.3fr) auto auto;
   align-items: end;
 }
 
