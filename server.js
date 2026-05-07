@@ -1571,20 +1571,28 @@ async function createCategory(payload) {
   const name = String(payload.name || "").trim();
   const description = String(payload.description || "").trim();
   if (!name) return { status: 400, body: { error: "Category name is required" } };
-  if (db.categories.some((category) => category.name.toLowerCase() === name.toLowerCase())) {
+  if (db.categories.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
     return { status: 409, body: { error: "Category already exists" } };
   }
 
-  const category = { id: categoryIdFromName(name), name, description };
+  const newCategory = { id: categoryIdFromName(name), name, description };
 
-  if (useSupabase) {
-    await requireSupabase(await supabase.from("categories").insert(category));
-    return { status: 201, body: category };
+  if (db.categories.some((c) => c.id === newCategory.id)) {
+    return { status: 409, body: { error: "Category already exists" } };
   }
 
-  db.categories.push(category);
+  if (useSupabase) {
+    const { error } = await supabase.from("categories").insert(newCategory);
+    if (error) {
+      if (error.code === "23505") return { status: 409, body: { error: "Category already exists" } };
+      throw error;
+    }
+    return { status: 201, body: newCategory };
+  }
+
+  db.categories.push(newCategory);
   writeJsonDb(db);
-  return { status: 201, body: category };
+  return { status: 201, body: newCategory };
 }
 
 async function updateCategory(categoryId, payload) {
