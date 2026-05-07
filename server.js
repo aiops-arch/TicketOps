@@ -1224,7 +1224,7 @@ async function loadSupabaseDb() {
     supabase.from("tickets").select("*").order("created_at", { ascending: false }),
     supabase.from("ticket_history").select("ticket_id,action,created_at").order("created_at", { ascending: true }),
     supabase.from("attendance_plans").select("id,technician_id,status,from_date,to_date,reason,created_by,active,created_at").order("from_date"),
-    supabase.from("maintenance_rules").select("id,category,title,start_time,end_time,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }),
+    supabase.from("maintenance_rules").select("id,category,title,start_time,end_time,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }).then(r => r.error?.message?.includes("does not exist") ? supabase.from("maintenance_rules").select("id,category,title,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }) : r),
     supabase.from("assignment_time_windows").select("id,name,days,start_time,end_time,active,created_at").order("created_at", { ascending: false })
   ]);
 
