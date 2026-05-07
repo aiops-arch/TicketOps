@@ -10482,3 +10482,42 @@ select, textarea {
 .ops-portal[data-view="dashboard"] .dashboard-kpi.coral .dashboard-kpi-meter em {
   background: rgba(255,255,255,0.7) !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   TECHNICIAN WISE — DISPATCH CARD TEXT OVERFLOW FIX
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Clip anything that escapes the card border */
+.ops-portal[data-view="dashboard"] #dashboard .dispatch-card {
+  overflow: hidden !important;
+}
+
+/* Col-1 wrapper div: must have min-width:0 so the grid column can
+   actually constrain it and allow text-overflow to trigger */
+.ops-portal[data-view="dashboard"] #dashboard .dispatch-card > div:not(.dispatch-score):not(.tech-load-bar) {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Col-1 name + role/status lines: truncate with ellipsis */
+.ops-portal[data-view="dashboard"] #dashboard .dispatch-card > div:not(.dispatch-score):not(.tech-load-bar) strong,
+.ops-portal[data-view="dashboard"] #dashboard .dispatch-card > div:not(.dispatch-score):not(.tech-load-bar) span {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Col-2 service-area span: constrain and truncate */
+.ops-portal[data-view="dashboard"] #dashboard .dispatch-card > span:not([class]) {
+  min-width: 0 !important;
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Load bar: stretch across all 3 columns in its row */
+.ops-portal[data-view="dashboard"] #dashboard .dispatch-card .tech-load-bar {
+  grid-column: 1 / -1 !important;
+}
