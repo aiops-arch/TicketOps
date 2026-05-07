@@ -1571,11 +1571,23 @@ async function createCategory(payload) {
   const name = String(payload.name || "").trim();
   const description = String(payload.description || "").trim();
   if (!name) return { status: 400, body: { error: "Category name is required" } };
-  if (db.categories.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
+  if (db.categories.some((c) => (c.name || "").toLowerCase() === name.toLowerCase())) {
     return { status: 409, body: { error: "Category already exists" } };
   }
 
   const newCategory = { id: categoryIdFromName(name), name, description };
+
+  // Check if the same ID exists with a blank/corrupt name — repair it via upsert
+  const orphan = db.categories.find((c) => c.id === newCategory.id && !c.name);
+  if (orphan) {
+    if (useSupabase) {
+      await requireSupabase(await supabase.from("categories").update({ name, description }).eq("id", newCategory.id));
+      return { status: 201, body: newCategory };
+    }
+    db.categories = db.categories.map((c) => c.id === newCategory.id ? newCategory : c);
+    writeJsonDb(db);
+    return { status: 201, body: newCategory };
+  }
 
   if (db.categories.some((c) => c.id === newCategory.id)) {
     return { status: 409, body: { error: "Category already exists" } };

@@ -2381,8 +2381,9 @@ function renderMasters() {
     }).join("")
     : `<div class="empty mini">No outlets yet.</div>`;
 
-  document.querySelector("#categoryBoard").innerHTML = (state.categories || []).length
-    ? state.categories.map((category) => masterEntry({
+  const visibleCategories = (state.categories || []).filter((c) => c.name);
+  document.querySelector("#categoryBoard").innerHTML = visibleCategories.length
+    ? visibleCategories.map((category) => masterEntry({
       editAttr: `data-edit-category="${escapeHtml(category.id)}"`,
       title: escapeHtml(category.name),
       detail: escapeHtml(category.description || "Category"),
