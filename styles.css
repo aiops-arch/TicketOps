@@ -10143,10 +10143,24 @@ body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] #dashboard
 }
 
 body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] #dashboardSummaryActions {
+  flex: 1 1 auto !important;
   min-height: 0 !important;
   overflow-y: auto !important;
   overscroll-behavior: contain !important;
   padding-right: 4px !important;
+}
+
+@media (min-width: 1401px) {
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] #dashboardSummaryGrid .dashboard-panel:first-child {
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] #dashboardSummaryActions {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+  }
 }
 
 body[data-theme="dark"] .ops-portal[data-view="dashboard"] .app-shell {
