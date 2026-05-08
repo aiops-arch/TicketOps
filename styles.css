@@ -9985,7 +9985,13 @@ body[data-dashboard-mode="detail"] .ops-portal[data-view="dashboard"] #dashboard
   }
 
   .ops-portal[data-view="dashboard"] .dashboard-kpi-grid,
-  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid,
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-auto-flow: row !important;
+    align-items: stretch !important;
+    overflow: visible !important;
+  }
+
   body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .dashboard-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     grid-auto-flow: row !important;
@@ -10014,6 +10020,17 @@ body[data-dashboard-mode="detail"] .ops-portal[data-view="dashboard"] #dashboard
 
 @media (min-width: 1181px) and (max-width: 1400px) {
   .ops-portal[data-view="dashboard"] .intel-strip,
+  .ops-portal[data-view="dashboard"] .dashboard-kpi-grid,
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .dashboard-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
   .ops-portal[data-view="dashboard"] .dashboard-kpi-grid,
   .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid,
   body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .dashboard-summary-grid {
