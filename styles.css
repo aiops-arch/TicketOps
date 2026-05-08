@@ -11240,6 +11240,42 @@ select, textarea {
   padding: 0 10px 10px !important;
 }
 
+@media (min-width: 1180px) {
+  .ops-portal #history .closed-history-detail .ticket-card {
+    grid-template-columns: minmax(360px, 1.25fr) minmax(280px, 0.95fr) minmax(300px, 1fr) !important;
+    align-items: start !important;
+    gap: 10px 14px !important;
+  }
+
+  .ops-portal #history .closed-history-detail .ticket-top {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+
+  .ops-portal #history .closed-history-detail .ticket-flow {
+    grid-column: 1 / span 2 !important;
+    grid-row: 2 !important;
+  }
+
+  .ops-portal #history .closed-history-detail .ticket-progress {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+
+  .ops-portal #history .closed-history-detail .badge-row {
+    grid-column: 3 !important;
+    grid-row: 1 / span 2 !important;
+    align-content: start !important;
+  }
+
+  .ops-portal #history .closed-history-detail .ticket-card > .ticket-meta,
+  .ops-portal #history .closed-history-detail .ticket-photo,
+  .ops-portal #history .closed-history-detail .dispatch-confidence,
+  .ops-portal #history .closed-history-detail .assignment-signal {
+    grid-column: 1 / span 2 !important;
+  }
+}
+
 .ops-portal #technician .attendance-layout,
 .ops-portal #technician .technician-dashboard,
 .ops-portal #technician .technician-work-grid {
