@@ -11018,7 +11018,6 @@ select, textarea {
 }
 
 /* Other workspaces: use the same compact sizing rhythm as Scheduler/Masters. */
-.ops-portal #manager,
 .ops-portal #admin,
 .ops-portal #history,
 .ops-portal #reports,
@@ -11027,7 +11026,6 @@ select, textarea {
   gap: 10px !important;
 }
 
-.ops-portal #manager .page-stage,
 .ops-portal #admin .page-stage,
 .ops-portal #history .page-stage,
 .ops-portal #reports .page-stage,
@@ -11036,7 +11034,6 @@ select, textarea {
   padding: 14px 24px !important;
 }
 
-.ops-portal #manager .page-stage h2,
 .ops-portal #admin .page-stage h2,
 .ops-portal #history .page-stage h2,
 .ops-portal #reports .page-stage h2,
@@ -11047,7 +11044,6 @@ select, textarea {
   letter-spacing: 0 !important;
 }
 
-.ops-portal #manager .page-stage p,
 .ops-portal #admin .page-stage p,
 .ops-portal #history .page-stage p,
 .ops-portal #reports .page-stage p,
@@ -11057,7 +11053,6 @@ select, textarea {
   line-height: 1.4 !important;
 }
 
-.ops-portal #manager .panel,
 .ops-portal #admin .panel,
 .ops-portal #history .panel,
 .ops-portal #reports .panel,
@@ -11066,7 +11061,6 @@ select, textarea {
   padding: 14px 16px !important;
 }
 
-.ops-portal #manager .panel-heading,
 .ops-portal #admin .panel-heading,
 .ops-portal #history .panel-heading,
 .ops-portal #reports .panel-heading,
@@ -11075,7 +11069,6 @@ select, textarea {
   padding-bottom: 4px !important;
 }
 
-.ops-portal #manager .panel-heading h2,
 .ops-portal #admin .panel-heading h2,
 .ops-portal #history .panel-heading h2,
 .ops-portal #reports .panel-heading h2,
@@ -11084,7 +11077,6 @@ select, textarea {
   line-height: 1.15 !important;
 }
 
-.ops-portal #manager .form-hint:empty,
 .ops-portal #admin .form-hint:empty,
 .ops-portal #history .form-hint:empty,
 .ops-portal #reports .form-hint:empty,
@@ -11092,7 +11084,6 @@ select, textarea {
   display: none !important;
 }
 
-.ops-portal #manager .dashboard-grid,
 .ops-portal #admin .dashboard-grid,
 .ops-portal #history .dashboard-grid,
 .ops-portal #reports .dashboard-grid,
@@ -11100,7 +11091,6 @@ select, textarea {
   gap: 10px !important;
 }
 
-.ops-portal #manager .metric,
 .ops-portal #admin .metric,
 .ops-portal #history .metric,
 .ops-portal #reports .metric,
@@ -11109,7 +11099,6 @@ select, textarea {
   padding: 12px 14px !important;
 }
 
-.ops-portal #manager .metric strong,
 .ops-portal #admin .metric strong,
 .ops-portal #history .metric strong,
 .ops-portal #reports .metric strong,
@@ -11118,7 +11107,6 @@ select, textarea {
   font-size: 24px !important;
 }
 
-.ops-portal #manager .card-list,
 .ops-portal #admin .card-list,
 .ops-portal #history .card-list,
 .ops-portal #reports .report-row-list,
@@ -11126,7 +11114,6 @@ select, textarea {
   gap: 8px !important;
 }
 
-.ops-portal #manager .ticket-card,
 .ops-portal #admin .ticket-card,
 .ops-portal #history .ticket-card,
 .ops-portal #technician .ticket-card {
@@ -11135,7 +11122,6 @@ select, textarea {
   border-radius: 10px !important;
 }
 
-.ops-portal #manager .ticket-title,
 .ops-portal #admin .ticket-title,
 .ops-portal #history .ticket-title,
 .ops-portal #technician .ticket-title {
@@ -11143,7 +11129,6 @@ select, textarea {
   line-height: 1.2 !important;
 }
 
-.ops-portal #manager .ticket-meta,
 .ops-portal #admin .ticket-meta,
 .ops-portal #history .ticket-meta,
 .ops-portal #technician .ticket-meta {
@@ -11151,7 +11136,6 @@ select, textarea {
   line-height: 1.28 !important;
 }
 
-.ops-portal #manager .ticket-flow span,
 .ops-portal #admin .ticket-flow span,
 .ops-portal #history .ticket-flow span,
 .ops-portal #technician .ticket-flow span {
@@ -11160,7 +11144,6 @@ select, textarea {
   font-size: 9px !important;
 }
 
-.ops-portal #manager .badge,
 .ops-portal #admin .badge,
 .ops-portal #history .badge,
 .ops-portal #technician .badge {
@@ -11169,34 +11152,16 @@ select, textarea {
   font-size: 11px !important;
 }
 
-.ops-portal #manager .actions,
 .ops-portal #admin .actions,
 .ops-portal #technician .actions {
   gap: 6px !important;
 }
 
-.ops-portal #manager .actions .small-button,
 .ops-portal #admin .actions .small-button,
 .ops-portal #technician .actions .small-button,
-.ops-portal #manager .actions select,
 .ops-portal #admin .actions select,
 .ops-portal #technician .actions select {
   min-height: 36px !important;
-}
-
-.ops-portal #manager .ticket-form {
-  gap: 8px !important;
-  padding: 12px !important;
-}
-
-.ops-portal #manager .ticket-form label {
-  gap: 4px !important;
-}
-
-.ops-portal #manager .ticket-form input,
-.ops-portal #manager .ticket-form select,
-.ops-portal #manager .ticket-form button {
-  min-height: 38px !important;
 }
 
 .ops-portal #admin .admin-tech-dashboard,
@@ -11326,204 +11291,11 @@ select, textarea {
   border-radius: 10px !important;
 }
 
-@media (min-width: 1180px) {
-  .ops-portal #manager .ticket-form {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    align-items: end !important;
-  }
-
-  .ops-portal #manager .ticket-form label:nth-of-type(6),
-  .ops-portal #manager .ticket-form .photo-upload,
-  .ops-portal #manager .ticket-priority-preview,
-  .ops-portal #manager .ticket-form .primary-button {
-    grid-column: auto !important;
-  }
-
-  .ops-portal #manager .ticket-form label:nth-of-type(6) {
-    grid-column: span 2 !important;
-  }
-
-  .ops-portal #manager .ticket-priority-preview {
-    min-height: 38px !important;
-    align-self: end !important;
-  }
-}
-
 @media (max-width: 900px) {
-  .ops-portal #manager .page-stage,
   .ops-portal #admin .page-stage,
   .ops-portal #history .page-stage,
   .ops-portal #reports .page-stage,
   .ops-portal #technician .page-stage {
     padding: 12px 14px !important;
-  }
-
-  .ops-portal #manager .ticket-form {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-}
-
-/* Manager Desk: full-width intake first, queue below. */
-.ops-portal #manager.view.is-active {
-  grid-template-columns: minmax(0, 1fr) !important;
-  align-items: start !important;
-  gap: 12px !important;
-}
-
-.ops-portal #manager .page-stage,
-.ops-portal #manager .intake-panel,
-.ops-portal #manager .admin-access-panel {
-  grid-column: 1 / -1 !important;
-}
-
-.ops-portal #manager .intake-panel {
-  position: static !important;
-}
-
-.ops-portal #manager .ticket-form {
-  display: grid !important;
-  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
-  align-items: end !important;
-  gap: 10px !important;
-  padding: 14px !important;
-}
-
-.ops-portal #manager .ticket-form label {
-  min-width: 0 !important;
-}
-
-.ops-portal #manager .ticket-form label:nth-of-type(1),
-.ops-portal #manager .ticket-form label:nth-of-type(3),
-.ops-portal #manager .ticket-form label:nth-of-type(4),
-.ops-portal #manager .ticket-form label:nth-of-type(7) {
-  grid-column: span 2 !important;
-}
-
-.ops-portal #manager .ticket-form label:nth-of-type(2),
-.ops-portal #manager .ticket-form label:nth-of-type(5) {
-  grid-column: span 3 !important;
-}
-
-.ops-portal #manager .ticket-form label:nth-of-type(6) {
-  grid-column: span 5 !important;
-}
-
-.ops-portal #manager .ticket-priority-preview {
-  grid-column: span 2 !important;
-  min-height: 48px !important;
-}
-
-.ops-portal #manager .ticket-form .primary-button {
-  grid-column: span 3 !important;
-  min-height: 48px !important;
-}
-
-.ops-portal #manager .ticket-form input,
-.ops-portal #manager .ticket-form select {
-  width: 100% !important;
-}
-
-.ops-portal #manager .photo-upload input[type="file"] {
-  max-width: 100% !important;
-  min-width: 0 !important;
-}
-
-.ops-portal #managerTickets .ticket-card {
-  grid-template-columns: minmax(360px, 1.25fr) minmax(260px, 0.85fr) minmax(300px, 0.95fr) !important;
-  align-items: start !important;
-  gap: 10px 14px !important;
-}
-
-.ops-portal #managerTickets .ticket-top {
-  grid-column: 1 !important;
-  grid-row: 1 !important;
-}
-
-.ops-portal #managerTickets .ticket-progress {
-  grid-column: 2 !important;
-  grid-row: 1 !important;
-}
-
-.ops-portal #managerTickets .badge-row {
-  grid-column: 3 !important;
-  grid-row: 1 / span 2 !important;
-  align-content: start !important;
-}
-
-.ops-portal #managerTickets .ticket-flow {
-  grid-column: 1 / span 2 !important;
-  grid-row: 2 !important;
-}
-
-.ops-portal #managerTickets .ticket-card > .ticket-meta,
-.ops-portal #managerTickets .ticket-photo,
-.ops-portal #managerTickets .dispatch-confidence {
-  grid-column: auto !important;
-  margin: 0 !important;
-}
-
-.ops-portal #managerTickets .ticket-card > .ticket-meta,
-.ops-portal #managerTickets .dispatch-confidence {
-  min-height: 34px !important;
-  padding: 8px 10px !important;
-  border: 1px solid rgba(74, 142, 162, 0.12) !important;
-  border-radius: 8px !important;
-  background: rgba(255, 255, 255, 0.42) !important;
-}
-
-.ops-portal #managerTickets .actions {
-  grid-column: 1 / -1 !important;
-  grid-row: auto !important;
-  grid-template-columns: repeat(4, minmax(120px, 1fr)) !important;
-}
-
-@media (max-width: 1180px) {
-  .ops-portal #manager .ticket-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
-  .ops-portal #manager .ticket-form label,
-  .ops-portal #manager .ticket-form label:nth-of-type(1),
-  .ops-portal #manager .ticket-form label:nth-of-type(2),
-  .ops-portal #manager .ticket-form label:nth-of-type(3),
-  .ops-portal #manager .ticket-form label:nth-of-type(4),
-  .ops-portal #manager .ticket-form label:nth-of-type(5),
-  .ops-portal #manager .ticket-form label:nth-of-type(6),
-  .ops-portal #manager .ticket-form label:nth-of-type(7),
-  .ops-portal #manager .ticket-priority-preview,
-  .ops-portal #manager .ticket-form .primary-button {
-    grid-column: span 1 !important;
-  }
-
-  .ops-portal #manager .ticket-form label:nth-of-type(6) {
-    grid-column: 1 / -1 !important;
-  }
-
-  .ops-portal #managerTickets .ticket-card {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-
-  .ops-portal #managerTickets .ticket-top,
-  .ops-portal #managerTickets .ticket-progress,
-  .ops-portal #managerTickets .badge-row,
-  .ops-portal #managerTickets .ticket-flow,
-  .ops-portal #managerTickets .ticket-card > .ticket-meta,
-  .ops-portal #managerTickets .ticket-photo,
-  .ops-portal #managerTickets .dispatch-confidence,
-  .ops-portal #managerTickets .actions {
-    grid-column: 1 / -1 !important;
-    grid-row: auto !important;
-  }
-}
-
-@media (max-width: 640px) {
-  .ops-portal #manager .ticket-form {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-
-  .ops-portal #manager .ticket-form label,
-  .ops-portal #manager .ticket-priority-preview,
-  .ops-portal #manager .ticket-form .primary-button {
-    grid-column: 1 / -1 !important;
   }
 }
