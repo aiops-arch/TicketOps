@@ -10007,8 +10007,20 @@ body[data-dashboard-mode="detail"] .ops-portal[data-view="dashboard"] #dashboard
     grid-auto-rows: minmax(116px, auto) !important;
   }
 
-  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .dashboard-summary-grid {
+body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .dashboard-summary-grid {
     grid-auto-rows: minmax(0, auto) !important;
+  }
+
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] #dashboardSummaryGrid .dashboard-panel:first-child {
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] #dashboardSummaryActions {
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    padding-right: 4px !important;
   }
 
   .ops-portal[data-view="dashboard"] .dashboard-kpi,
@@ -10123,6 +10135,18 @@ body[data-dashboard-mode="detail"] .ops-portal[data-view="dashboard"] #dashboard
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
   }
+}
+
+body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] #dashboardSummaryGrid .dashboard-panel:first-child {
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] #dashboardSummaryActions {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  padding-right: 4px !important;
 }
 
 body[data-theme="dark"] .ops-portal[data-view="dashboard"] .app-shell {
