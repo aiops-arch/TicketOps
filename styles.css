@@ -9935,6 +9935,179 @@ body[data-dashboard-mode="detail"] .ops-portal[data-view="dashboard"] #dashboard
    Triggered by body[data-theme="dark"]
    ═══════════════════════════════════════════════════════════════════ */
 
+/* Overview is a one-screen command board only on wide displays. Below that it scrolls. */
+@media (max-width: 1400px) {
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .app-shell {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+  }
+
+  .ops-portal[data-view="dashboard"] #dashboard.view.is-active {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    grid-template-rows: auto auto auto auto !important;
+    grid-auto-rows: minmax(0, auto) !important;
+    align-content: start !important;
+    overflow: visible !important;
+  }
+
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] #dashboardDetailGrid {
+    display: none !important;
+  }
+
+  body[data-dashboard-mode="detail"].ops-portal[data-view="dashboard"] #dashboardSummaryGrid {
+    display: none !important;
+  }
+
+  .ops-portal[data-view="dashboard"] #dashboard > *,
+  .ops-portal[data-view="dashboard"] .command-hero,
+  .ops-portal[data-view="dashboard"] .dashboard-kpi-grid,
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid,
+  .ops-portal[data-view="dashboard"] .dashboard-summary-grid,
+  .ops-portal[data-view="dashboard"] #dashboard .panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .command-hero {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .hero-metrics {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .dashboard-kpi-grid,
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid,
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .dashboard-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-auto-flow: row !important;
+    align-items: stretch !important;
+    overflow: visible !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .dashboard-kpi-grid {
+    grid-auto-rows: minmax(108px, auto) !important;
+  }
+
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
+    grid-auto-rows: minmax(116px, auto) !important;
+  }
+
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .dashboard-summary-grid {
+    grid-auto-rows: minmax(0, auto) !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .dashboard-kpi,
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart {
+    height: auto !important;
+    min-height: 108px !important;
+  }
+}
+
+@media (min-width: 1181px) and (max-width: 1400px) {
+  .ops-portal[data-view="dashboard"] .intel-strip,
+  .ops-portal[data-view="dashboard"] .dashboard-kpi-grid,
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid,
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .dashboard-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1401px) {
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .app-shell,
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"]:has(.topbar:hover) .app-shell,
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"]:has(.topbar:focus-within) .app-shell {
+    height: 100vh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] #dashboard.view.is-active {
+    height: calc(100vh - 155px) !important;
+    grid-template-rows: 150px 126px 116px minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] #dashboardDetailGrid {
+    display: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .app-shell,
+  body[data-dashboard-mode="detail"].ops-portal[data-view="dashboard"] .app-shell {
+    padding: 80px 12px 24px !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .intel-strip {
+    display: flex !important;
+    grid-template-columns: none !important;
+    gap: 10px !important;
+    margin: 0 -12px 12px !important;
+    padding: 0 12px 8px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-snap-type: x mandatory !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .intel-card {
+    flex: 0 0 min(78vw, 285px) !important;
+    scroll-snap-align: start !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .command-hero {
+    padding: 16px !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .hero-metrics,
+  .ops-portal[data-view="dashboard"] .dashboard-kpi-grid,
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid,
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .dashboard-summary-grid,
+  body[data-dashboard-mode="detail"].ops-portal[data-view="dashboard"] #dashboardDetailGrid,
+  .ops-portal[data-view="dashboard"] .summary-signal-grid,
+  .ops-portal[data-view="dashboard"] .summary-mini-stack {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .hero-metrics {
+    display: grid !important;
+  }
+
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart {
+    grid-template-columns: 64px minmax(0, 1fr) !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .repair-row {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .ops-portal[data-view="dashboard"] .repair-row > div:nth-child(2) {
+    grid-column: 1 / -1;
+  }
+
+  .ops-portal[data-view="dashboard"] #dashboard .heading-chip {
+    white-space: normal !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .ops-portal[data-view="dashboard"] .dashboard-kpi-grid,
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid,
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .dashboard-summary-grid,
+  body[data-dashboard-mode="detail"].ops-portal[data-view="dashboard"] #dashboardDetailGrid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
 body[data-theme="dark"] .ops-portal[data-view="dashboard"] .app-shell {
   background: linear-gradient(160deg, #080e1a 0%, #0c1525 55%, #10102a 100%) !important;
 }
