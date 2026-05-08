@@ -11016,3 +11016,278 @@ select, textarea {
   font-size: 11px !important;
   color: var(--muted) !important;
 }
+
+/* Other workspaces: use the same compact sizing rhythm as Scheduler/Masters. */
+.ops-portal #manager,
+.ops-portal #admin,
+.ops-portal #history,
+.ops-portal #reports,
+.ops-portal #technician {
+  align-items: start !important;
+  gap: 10px !important;
+}
+
+.ops-portal #manager .page-stage,
+.ops-portal #admin .page-stage,
+.ops-portal #history .page-stage,
+.ops-portal #reports .page-stage,
+.ops-portal #technician .page-stage {
+  min-height: 72px !important;
+  padding: 14px 24px !important;
+}
+
+.ops-portal #manager .page-stage h2,
+.ops-portal #admin .page-stage h2,
+.ops-portal #history .page-stage h2,
+.ops-portal #reports .page-stage h2,
+.ops-portal #technician .page-stage h2 {
+  margin: 2px 0 4px !important;
+  font-size: 26px !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0 !important;
+}
+
+.ops-portal #manager .page-stage p,
+.ops-portal #admin .page-stage p,
+.ops-portal #history .page-stage p,
+.ops-portal #reports .page-stage p,
+.ops-portal #technician .page-stage p {
+  margin: 0 !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+
+.ops-portal #manager .panel,
+.ops-portal #admin .panel,
+.ops-portal #history .panel,
+.ops-portal #reports .panel,
+.ops-portal #technician .panel {
+  gap: 8px !important;
+  padding: 14px 16px !important;
+}
+
+.ops-portal #manager .panel-heading,
+.ops-portal #admin .panel-heading,
+.ops-portal #history .panel-heading,
+.ops-portal #reports .panel-heading,
+.ops-portal #technician .panel-heading {
+  min-height: 0 !important;
+  padding-bottom: 4px !important;
+}
+
+.ops-portal #manager .panel-heading h2,
+.ops-portal #admin .panel-heading h2,
+.ops-portal #history .panel-heading h2,
+.ops-portal #reports .panel-heading h2,
+.ops-portal #technician .panel-heading h2 {
+  font-size: 16px !important;
+  line-height: 1.15 !important;
+}
+
+.ops-portal #manager .form-hint:empty,
+.ops-portal #admin .form-hint:empty,
+.ops-portal #history .form-hint:empty,
+.ops-portal #reports .form-hint:empty,
+.ops-portal #technician .form-hint:empty {
+  display: none !important;
+}
+
+.ops-portal #manager .dashboard-grid,
+.ops-portal #admin .dashboard-grid,
+.ops-portal #history .dashboard-grid,
+.ops-portal #reports .dashboard-grid,
+.ops-portal #technician .dashboard-grid {
+  gap: 10px !important;
+}
+
+.ops-portal #manager .metric,
+.ops-portal #admin .metric,
+.ops-portal #history .metric,
+.ops-portal #reports .metric,
+.ops-portal #technician .metric {
+  min-height: 72px !important;
+  padding: 12px 14px !important;
+}
+
+.ops-portal #manager .metric strong,
+.ops-portal #admin .metric strong,
+.ops-portal #history .metric strong,
+.ops-portal #reports .metric strong,
+.ops-portal #technician .metric strong {
+  margin-top: 4px !important;
+  font-size: 24px !important;
+}
+
+.ops-portal #manager .card-list,
+.ops-portal #admin .card-list,
+.ops-portal #history .card-list,
+.ops-portal #reports .report-row-list,
+.ops-portal #technician .card-list {
+  gap: 8px !important;
+}
+
+.ops-portal #manager .ticket-card,
+.ops-portal #admin .ticket-card,
+.ops-portal #history .ticket-card,
+.ops-portal #technician .ticket-card {
+  gap: 8px 10px !important;
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+}
+
+.ops-portal #manager .ticket-title,
+.ops-portal #admin .ticket-title,
+.ops-portal #history .ticket-title,
+.ops-portal #technician .ticket-title {
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+}
+
+.ops-portal #manager .ticket-meta,
+.ops-portal #admin .ticket-meta,
+.ops-portal #history .ticket-meta,
+.ops-portal #technician .ticket-meta {
+  font-size: 11px !important;
+  line-height: 1.28 !important;
+}
+
+.ops-portal #manager .ticket-flow span,
+.ops-portal #admin .ticket-flow span,
+.ops-portal #history .ticket-flow span,
+.ops-portal #technician .ticket-flow span {
+  min-height: 22px !important;
+  padding: 3px 5px !important;
+  font-size: 9px !important;
+}
+
+.ops-portal #manager .badge,
+.ops-portal #admin .badge,
+.ops-portal #history .badge,
+.ops-portal #technician .badge {
+  min-height: 23px !important;
+  padding: 0 8px !important;
+  font-size: 11px !important;
+}
+
+.ops-portal #manager .actions,
+.ops-portal #admin .actions,
+.ops-portal #technician .actions {
+  gap: 6px !important;
+}
+
+.ops-portal #manager .actions .small-button,
+.ops-portal #admin .actions .small-button,
+.ops-portal #technician .actions .small-button,
+.ops-portal #manager .actions select,
+.ops-portal #admin .actions select,
+.ops-portal #technician .actions select {
+  min-height: 36px !important;
+}
+
+.ops-portal #manager .ticket-form {
+  gap: 8px !important;
+  padding: 12px !important;
+}
+
+.ops-portal #manager .ticket-form label {
+  gap: 4px !important;
+}
+
+.ops-portal #manager .ticket-form input,
+.ops-portal #manager .ticket-form select,
+.ops-portal #manager .ticket-form button {
+  min-height: 38px !important;
+}
+
+.ops-portal #admin .admin-tech-dashboard,
+.ops-portal #admin .tech-grid {
+  gap: 10px !important;
+}
+
+.ops-portal #admin .admin-tech-card,
+.ops-portal #admin .tech-card {
+  min-height: 0 !important;
+  padding: 12px !important;
+}
+
+.ops-portal #admin .admin-tech-stats span {
+  min-height: 48px !important;
+  padding: 6px 5px !important;
+}
+
+.ops-portal #admin .password-reset-panel {
+  gap: 10px !important;
+}
+
+.ops-portal #reports .report-card,
+.ops-portal #reports .report-table,
+.ops-portal #history .closed-history-card {
+  border-radius: 10px !important;
+}
+
+.ops-portal #reports .report-card {
+  min-height: 86px !important;
+  padding: 12px 14px !important;
+}
+
+.ops-portal #reports .report-row,
+.ops-portal #history .closed-history-summary {
+  min-height: 62px !important;
+  padding: 10px 12px !important;
+}
+
+.ops-portal #history .closed-history-detail {
+  padding: 0 10px 10px !important;
+}
+
+.ops-portal #technician .attendance-layout,
+.ops-portal #technician .technician-dashboard,
+.ops-portal #technician .technician-work-grid {
+  gap: 10px !important;
+}
+
+.ops-portal #technician .technician-command-card,
+.ops-portal #technician .technician-status-card,
+.ops-portal #technician .technician-next,
+.ops-portal #technician .technician-flow,
+.ops-portal #technician .technician-work-panel {
+  padding: 12px !important;
+  border-radius: 10px !important;
+}
+
+@media (min-width: 1180px) {
+  .ops-portal #manager .ticket-form {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    align-items: end !important;
+  }
+
+  .ops-portal #manager .ticket-form label:nth-of-type(6),
+  .ops-portal #manager .ticket-form .photo-upload,
+  .ops-portal #manager .ticket-priority-preview,
+  .ops-portal #manager .ticket-form .primary-button {
+    grid-column: auto !important;
+  }
+
+  .ops-portal #manager .ticket-form label:nth-of-type(6) {
+    grid-column: span 2 !important;
+  }
+
+  .ops-portal #manager .ticket-priority-preview {
+    min-height: 38px !important;
+    align-self: end !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .ops-portal #manager .page-stage,
+  .ops-portal #admin .page-stage,
+  .ops-portal #history .page-stage,
+  .ops-portal #reports .page-stage,
+  .ops-portal #technician .page-stage {
+    padding: 12px 14px !important;
+  }
+
+  .ops-portal #manager .ticket-form {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
