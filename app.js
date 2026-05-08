@@ -2781,6 +2781,61 @@ function historyScopeLabel() {
   return "Closed tickets";
 }
 
+function userById(userId) {
+  return directoryUsers.find((user) => user.id === userId);
+}
+
+function closedTicketManager(ticket) {
+  const creator = userById(ticket.createdBy);
+  if (creator?.role === "manager") return creator.name;
+  const outletManager = directoryUsers.find((user) => user.role === "manager" && outletAccessForUser(user).includes(ticket.outlet));
+  return outletManager?.name || creator?.name || "Not recorded";
+}
+
+function formatDurationBetween(start, end) {
+  const started = new Date(start || 0);
+  const ended = new Date(end || 0);
+  if (Number.isNaN(started.getTime()) || Number.isNaN(ended.getTime()) || ended < started) return "Not recorded";
+  const minutes = Math.max(1, Math.round((ended - started) / 60000));
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const mins = minutes % 60;
+  if (days) return `${days}d ${hours}h`;
+  if (hours) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+}
+
+function closedHistoryCard(ticket) {
+  const assigned = technicianById(ticket.assignedTo);
+  const asset = assetById(ticket.assetId);
+  const closedTime = closedAt(ticket);
+  const duration = formatDurationBetween(ticket.createdAt, closedTime);
+  const problem = ticket.note || ticket.latestDetail || "Maintenance request";
+  const fullCard = ticketCard(ticket, "archive");
+
+  return `
+    <details class="closed-history-card">
+      <summary class="closed-history-summary">
+        <div class="closed-history-problem">
+          <span class="section-kicker">${escapeHtml(ticket.id)}</span>
+          <strong>${escapeHtml(problem)}</strong>
+          <small>${escapeHtml(asset?.name || ticket.category || "General repair")}</small>
+        </div>
+        <div class="closed-history-facts" aria-label="Closed ticket summary">
+          <span><b>Manager</b>${escapeHtml(closedTicketManager(ticket))}</span>
+          <span><b>Outlet</b>${escapeHtml(ticket.outlet || "Not recorded")}</span>
+          <span><b>Technician</b>${escapeHtml(assigned?.name || "Unassigned")}</span>
+          <span><b>Time</b>${escapeHtml(duration)}</span>
+        </div>
+        <span class="closed-history-toggle">View full</span>
+      </summary>
+      <div class="closed-history-detail">
+        ${fullCard}
+      </div>
+    </details>
+  `;
+}
+
 function renderClosedHistory() {
   const closedTickets = ticketsForCurrentUser(state.tickets)
     .filter((ticket) => ticket.status === "Closed")
@@ -2802,7 +2857,7 @@ function renderClosedHistory() {
     </article>
   `).join("");
   document.querySelector("#closedTicketHistory").innerHTML = closedTickets.length
-    ? closedTickets.map((ticket) => ticketCard(ticket, "archive")).join("")
+    ? closedTickets.map((ticket) => closedHistoryCard(ticket)).join("")
     : `<div class="empty">No closed tickets found for this login.</div>`;
 }
 
