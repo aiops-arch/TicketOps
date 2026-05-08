@@ -11244,6 +11244,7 @@ select, textarea {
   .ops-portal #history .closed-history-detail .ticket-card {
     grid-template-columns: minmax(360px, 1.25fr) minmax(280px, 0.95fr) minmax(300px, 1fr) !important;
     align-items: start !important;
+    grid-auto-flow: row dense !important;
     gap: 10px 14px !important;
   }
 
@@ -11268,11 +11269,45 @@ select, textarea {
     align-content: start !important;
   }
 
-  .ops-portal #history .closed-history-detail .ticket-card > .ticket-meta,
+  .ops-portal #history .closed-history-detail .ticket-card > .ticket-meta {
+    grid-column: auto !important;
+    margin: 0 !important;
+    min-height: 36px !important;
+    padding: 8px 10px !important;
+    border: 1px solid rgba(74, 142, 162, 0.12) !important;
+    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.42) !important;
+  }
+
   .ops-portal #history .closed-history-detail .ticket-photo,
   .ops-portal #history .closed-history-detail .dispatch-confidence,
   .ops-portal #history .closed-history-detail .assignment-signal {
-    grid-column: 1 / span 2 !important;
+    grid-column: auto !important;
+  }
+
+  .ops-portal #history .closed-history-detail .ticket-photo {
+    width: 100% !important;
+  }
+
+  .ops-portal #history .closed-history-detail .closed-history-summary,
+  .ops-portal #history .closed-history-summary {
+    grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.65fr) auto !important;
+  }
+
+  .ops-portal #history .closed-history-facts {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .ops-portal #history .closed-history-facts span {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    min-height: 38px !important;
+  }
+
+  .ops-portal #history .closed-history-facts b {
+    flex: 0 0 auto !important;
   }
 }
 
