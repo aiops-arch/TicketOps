@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v13-technician-tickets";
+const CACHE_NAME = "ticketops-v14-manager-restore";
 const APP_SHELL = [
   "./",
   "./index.html",
