@@ -11362,3 +11362,168 @@ select, textarea {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+/* Manager Desk: full-width intake first, queue below. */
+.ops-portal #manager.view.is-active {
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-items: start !important;
+  gap: 12px !important;
+}
+
+.ops-portal #manager .page-stage,
+.ops-portal #manager .intake-panel,
+.ops-portal #manager .admin-access-panel {
+  grid-column: 1 / -1 !important;
+}
+
+.ops-portal #manager .intake-panel {
+  position: static !important;
+}
+
+.ops-portal #manager .ticket-form {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  align-items: end !important;
+  gap: 10px !important;
+  padding: 14px !important;
+}
+
+.ops-portal #manager .ticket-form label {
+  min-width: 0 !important;
+}
+
+.ops-portal #manager .ticket-form label:nth-of-type(1),
+.ops-portal #manager .ticket-form label:nth-of-type(3),
+.ops-portal #manager .ticket-form label:nth-of-type(4),
+.ops-portal #manager .ticket-form label:nth-of-type(7) {
+  grid-column: span 2 !important;
+}
+
+.ops-portal #manager .ticket-form label:nth-of-type(2),
+.ops-portal #manager .ticket-form label:nth-of-type(5) {
+  grid-column: span 3 !important;
+}
+
+.ops-portal #manager .ticket-form label:nth-of-type(6) {
+  grid-column: span 5 !important;
+}
+
+.ops-portal #manager .ticket-priority-preview {
+  grid-column: span 2 !important;
+  min-height: 48px !important;
+}
+
+.ops-portal #manager .ticket-form .primary-button {
+  grid-column: span 3 !important;
+  min-height: 48px !important;
+}
+
+.ops-portal #manager .ticket-form input,
+.ops-portal #manager .ticket-form select {
+  width: 100% !important;
+}
+
+.ops-portal #manager .photo-upload input[type="file"] {
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.ops-portal #managerTickets .ticket-card {
+  grid-template-columns: minmax(360px, 1.25fr) minmax(260px, 0.85fr) minmax(300px, 0.95fr) !important;
+  align-items: start !important;
+  gap: 10px 14px !important;
+}
+
+.ops-portal #managerTickets .ticket-top {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+}
+
+.ops-portal #managerTickets .ticket-progress {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+}
+
+.ops-portal #managerTickets .badge-row {
+  grid-column: 3 !important;
+  grid-row: 1 / span 2 !important;
+  align-content: start !important;
+}
+
+.ops-portal #managerTickets .ticket-flow {
+  grid-column: 1 / span 2 !important;
+  grid-row: 2 !important;
+}
+
+.ops-portal #managerTickets .ticket-card > .ticket-meta,
+.ops-portal #managerTickets .ticket-photo,
+.ops-portal #managerTickets .dispatch-confidence {
+  grid-column: auto !important;
+  margin: 0 !important;
+}
+
+.ops-portal #managerTickets .ticket-card > .ticket-meta,
+.ops-portal #managerTickets .dispatch-confidence {
+  min-height: 34px !important;
+  padding: 8px 10px !important;
+  border: 1px solid rgba(74, 142, 162, 0.12) !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.42) !important;
+}
+
+.ops-portal #managerTickets .actions {
+  grid-column: 1 / -1 !important;
+  grid-row: auto !important;
+  grid-template-columns: repeat(4, minmax(120px, 1fr)) !important;
+}
+
+@media (max-width: 1180px) {
+  .ops-portal #manager .ticket-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .ops-portal #manager .ticket-form label,
+  .ops-portal #manager .ticket-form label:nth-of-type(1),
+  .ops-portal #manager .ticket-form label:nth-of-type(2),
+  .ops-portal #manager .ticket-form label:nth-of-type(3),
+  .ops-portal #manager .ticket-form label:nth-of-type(4),
+  .ops-portal #manager .ticket-form label:nth-of-type(5),
+  .ops-portal #manager .ticket-form label:nth-of-type(6),
+  .ops-portal #manager .ticket-form label:nth-of-type(7),
+  .ops-portal #manager .ticket-priority-preview,
+  .ops-portal #manager .ticket-form .primary-button {
+    grid-column: span 1 !important;
+  }
+
+  .ops-portal #manager .ticket-form label:nth-of-type(6) {
+    grid-column: 1 / -1 !important;
+  }
+
+  .ops-portal #managerTickets .ticket-card {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ops-portal #managerTickets .ticket-top,
+  .ops-portal #managerTickets .ticket-progress,
+  .ops-portal #managerTickets .badge-row,
+  .ops-portal #managerTickets .ticket-flow,
+  .ops-portal #managerTickets .ticket-card > .ticket-meta,
+  .ops-portal #managerTickets .ticket-photo,
+  .ops-portal #managerTickets .dispatch-confidence,
+  .ops-portal #managerTickets .actions {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .ops-portal #manager .ticket-form {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ops-portal #manager .ticket-form label,
+  .ops-portal #manager .ticket-priority-preview,
+  .ops-portal #manager .ticket-form .primary-button {
+    grid-column: 1 / -1 !important;
+  }
+}
