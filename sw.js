@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v16-render-performance";
+const CACHE_NAME = "ticketops-v17-scheduler-time-fields";
 const APP_SHELL = [
   "./",
   "./index.html",
