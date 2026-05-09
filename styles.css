@@ -11383,3 +11383,369 @@ select, textarea {
     padding: 12px 14px !important;
   }
 }
+
+/* Small desktop / square monitor workstation layout. */
+@media (min-width: 768px) and (max-width: 1280px), (min-width: 768px) and (max-height: 850px) {
+  .ops-portal {
+    --sidebar-peek: 76px;
+    --sidebar-expanded: 232px;
+    padding-left: 76px !important;
+    background: #f3f8f8 !important;
+  }
+
+  .ops-portal:has(.topbar:hover),
+  .ops-portal:has(.topbar:focus-within) {
+    padding-left: 232px !important;
+  }
+
+  .ops-portal::after,
+  .ops-portal .portal-ambient::before {
+    display: none !important;
+  }
+
+  .ops-portal .topbar {
+    width: 76px !important;
+    padding: 12px 8px !important;
+    gap: 8px !important;
+    box-shadow: 8px 0 22px rgba(31, 66, 75, 0.08) !important;
+  }
+
+  .ops-portal .topbar:hover,
+  .ops-portal .topbar:focus-within {
+    width: 232px !important;
+    padding: 12px 10px !important;
+  }
+
+  .ops-portal .brand-mark,
+  .ops-portal .topbar:hover .brand-mark,
+  .ops-portal .topbar:focus-within .brand-mark {
+    width: 46px !important;
+    height: 46px !important;
+  }
+
+  .ops-portal.has-session .topbar .tabs {
+    gap: 7px !important;
+  }
+
+  .ops-portal .topbar .tab {
+    min-height: 42px !important;
+    border-radius: 11px !important;
+  }
+
+  .ops-portal .topbar .tab .nav-icon {
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    border-radius: 9px !important;
+  }
+
+  .ops-portal .topbar .tab .nav-icon::before {
+    font-size: 16px !important;
+  }
+
+  .ops-portal .topbar:hover .tab,
+  .ops-portal .topbar:focus-within .tab {
+    padding: 0 9px !important;
+    font-size: 13px !important;
+  }
+
+  .ops-portal .live-pill {
+    display: none !important;
+  }
+
+  .ops-portal .app-shell,
+  .ops-portal:has(.topbar:hover) .app-shell,
+  .ops-portal:has(.topbar:focus-within) .app-shell {
+    padding: 10px 12px 18px !important;
+  }
+
+  .ops-portal .intel-strip {
+    gap: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .ops-portal .intel-card {
+    min-height: 74px !important;
+    padding: 10px 12px !important;
+    border-radius: 10px !important;
+  }
+
+  .ops-portal .page-stage {
+    min-height: 74px !important;
+    padding: 12px 16px !important;
+    border-radius: 12px !important;
+  }
+
+  .ops-portal .page-stage h2 {
+    margin: 0 0 3px !important;
+    font-size: 24px !important;
+    line-height: 1.1 !important;
+  }
+
+  .ops-portal .page-stage p {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+
+  .ops-portal .stage-pulse {
+    gap: 7px !important;
+  }
+
+  .ops-portal .stage-pulse article {
+    min-height: 56px !important;
+    padding: 8px 10px !important;
+    border-radius: 9px !important;
+  }
+
+  .ops-portal .stage-pulse strong {
+    font-size: 19px !important;
+  }
+
+  .ops-portal .panel,
+  .ops-portal .ticket-card,
+  .ops-portal .scheduler-form,
+  .ops-portal .ticket-form,
+  .ops-portal .admin-tech-card,
+  .ops-portal .report-card {
+    border-radius: 10px !important;
+    box-shadow: 0 8px 20px rgba(31, 66, 75, 0.07) !important;
+  }
+
+  .ops-portal .panel {
+    padding: 12px 14px !important;
+    gap: 8px !important;
+  }
+
+  .ops-portal .panel-heading {
+    min-height: 0 !important;
+    padding-bottom: 5px !important;
+  }
+
+  .ops-portal .panel-heading h2 {
+    font-size: 16px !important;
+    line-height: 1.15 !important;
+  }
+
+  .ops-portal .heading-chip,
+  .ops-portal .section-kicker {
+    font-size: 11px !important;
+  }
+
+  .ops-portal input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  .ops-portal select,
+  .ops-portal textarea,
+  .ops-portal .primary-button,
+  .ops-portal .small-button {
+    min-height: 36px !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1280px), (min-width: 768px) and (max-height: 850px) {
+  .ops-portal.single-role-workspace,
+  .ops-portal.single-role-workspace:has(.topbar:hover),
+  .ops-portal.single-role-workspace:has(.topbar:focus-within) {
+    padding-left: 0 !important;
+    background: #f6faf9 !important;
+  }
+
+  .ops-portal.single-role-workspace .topbar,
+  .ops-portal.single-role-workspace .topbar:hover,
+  .ops-portal.single-role-workspace .topbar:focus-within {
+    min-height: 54px !important;
+    padding: 7px 16px !important;
+    gap: 10px !important;
+    background: rgba(246, 252, 251, 0.92) !important;
+    box-shadow: 0 6px 18px rgba(14, 31, 41, 0.07) !important;
+  }
+
+  .ops-portal.single-role-workspace .brand-mark,
+  .ops-portal.single-role-workspace .topbar:hover .brand-mark,
+  .ops-portal.single-role-workspace .topbar:focus-within .brand-mark {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .ops-portal.single-role-workspace .topbar h1 {
+    font-size: 14px !important;
+  }
+
+  .ops-portal.single-role-workspace .live-pill {
+    display: none !important;
+  }
+
+  .ops-portal.single-role-workspace .account-dock {
+    gap: 7px !important;
+    padding: 5px !important;
+    box-shadow: none !important;
+  }
+
+  .ops-portal.single-role-workspace .user-pill {
+    min-width: 128px !important;
+    min-height: 34px !important;
+    padding: 6px 8px !important;
+  }
+
+  .ops-portal.single-role-workspace .account-actions .ghost-button {
+    min-width: 68px !important;
+    min-height: 34px !important;
+  }
+
+  .ops-portal.single-role-workspace .app-shell,
+  .ops-portal.single-role-workspace:has(.topbar:hover) .app-shell,
+  .ops-portal.single-role-workspace:has(.topbar:focus-within) .app-shell {
+    padding: 10px 14px 18px !important;
+  }
+
+  .ops-portal.single-role-workspace .page-stage {
+    min-height: 78px !important;
+    padding: 12px 16px !important;
+    grid-template-columns: minmax(260px, 1fr) minmax(320px, 0.85fr) !important;
+    gap: 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .ops-portal.single-role-workspace .page-stage h2 {
+    font-size: 24px !important;
+  }
+
+  .ops-portal.single-role-workspace .page-stage p {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+
+  .ops-portal.single-role-workspace .stage-pulse {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .ops-portal.single-role-workspace .stage-pulse article {
+    min-height: 50px !important;
+    padding: 7px 9px !important;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1280px), (min-width: 900px) and (max-height: 850px) {
+  .ops-portal #technician > .panel {
+    display: grid !important;
+    grid-template-columns: minmax(210px, 0.34fr) minmax(0, 0.66fr);
+    align-items: start !important;
+    gap: 10px 12px !important;
+  }
+
+  .ops-portal #technician > .panel > .panel-heading,
+  .ops-portal #technician #activeTechnicianControl,
+  .ops-portal #technician #technicianTickets {
+    grid-column: 1 / -1;
+  }
+
+  .ops-portal #technician #technicianDashboard {
+    grid-column: 1;
+  }
+
+  .ops-portal #technician #technicianAttendanceTools {
+    grid-column: 2;
+  }
+
+  .ops-portal .technician-simple-dashboard {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .ops-portal .technician-simple-stat {
+    min-height: 64px !important;
+    padding: 10px 12px !important;
+    border-left-width: 4px !important;
+  }
+
+  .ops-portal .technician-simple-stat span {
+    font-size: 10px !important;
+  }
+
+  .ops-portal .technician-simple-stat strong {
+    margin-top: 4px !important;
+    font-size: 25px !important;
+  }
+
+  .ops-portal .technician-ticket-panel {
+    margin: 0 !important;
+    border-radius: 10px !important;
+    box-shadow: 0 8px 18px rgba(18, 38, 34, 0.06) !important;
+  }
+
+  .ops-portal .technician-ticket-panel .panel-heading {
+    padding: 10px 12px !important;
+  }
+
+  .ops-portal .technician-ticket-panel .ticket-form {
+    grid-template-columns: minmax(110px, 0.8fr) minmax(120px, 0.8fr) minmax(120px, 0.8fr) minmax(0, 1.15fr) auto !important;
+    gap: 8px !important;
+    padding: 10px 12px 12px !important;
+  }
+
+  .ops-portal .technician-ticket-panel .photo-upload {
+    grid-column: 1 / span 2 !important;
+  }
+
+  .ops-portal .technician-ticket-panel .ticket-form .primary-button {
+    grid-column: auto !important;
+    margin-top: 0 !important;
+    align-self: end !important;
+    white-space: nowrap !important;
+  }
+
+  .ops-portal #technicianTickets {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .ops-portal #technicianTickets .ticket-card {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ops-portal #technicianTickets .ticket-progress,
+  .ops-portal #technicianTickets .badge-row,
+  .ops-portal #technicianTickets .ticket-photo,
+  .ops-portal #technicianTickets .dispatch-confidence,
+  .ops-portal #technicianTickets .actions {
+    grid-column: 1 / -1 !important;
+  }
+
+  .ops-portal #technicianTickets .actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1080px) {
+  .ops-portal #technician > .panel {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ops-portal #technician #technicianDashboard,
+  .ops-portal #technician #technicianAttendanceTools {
+    grid-column: 1 !important;
+  }
+
+  .ops-portal .technician-simple-dashboard {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .ops-portal .technician-ticket-panel .ticket-form {
+    grid-template-columns: minmax(116px, 0.8fr) minmax(116px, 0.8fr) minmax(116px, 0.8fr) minmax(180px, 1.2fr) minmax(132px, 0.75fr) !important;
+  }
+
+  .ops-portal .technician-ticket-panel .ticket-form label:nth-child(4) {
+    grid-column: 4 / span 2 !important;
+  }
+
+  .ops-portal .technician-ticket-panel .photo-upload {
+    grid-column: 1 / span 3 !important;
+  }
+
+  .ops-portal .technician-ticket-panel .ticket-form .primary-button {
+    grid-column: 4 / span 2 !important;
+  }
+
+  .ops-portal #technicianTickets {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
