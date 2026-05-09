@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v18-small-pc-workstations";
+const CACHE_NAME = "ticketops-v19-manager-workstation";
 const APP_SHELL = [
   "./",
   "./index.html",
