@@ -865,14 +865,14 @@ async function createTechnicianTicket(event) {
         impact,
         note,
         area: "Technician raised",
-        assignedTo: "",
+        assignedTo: currentUser.technicianId || "",
         photoUrl: photoUrls[0] || "",
         photoUrls
       })
     });
     document.querySelector("#technicianTicketNote").value = "";
     document.querySelector("#technicianTicketPhotos").value = "";
-    showToast(`${created.id} created for admin assignment.`, "success");
+    showToast(`${created.id} created and assigned to you.`, "success");
     await loadState();
   } catch (error) {
     showToast(error.message, "error");
@@ -917,7 +917,7 @@ async function detailForStatus(status) {
 }
 
 async function assignTicket(ticketId, technicianId) {
-  if (!["admin", "manager"].includes(currentUser?.role)) return;
+  if (currentUser?.role !== "admin") return;
   if (!technicianId) {
     showToast("No technician is selected. Add outlet coverage to a technician first, then assign again.", "warning");
     return;
@@ -2914,7 +2914,7 @@ function renderTechnician() {
           <span class="section-kicker">Field Support</span>
           <h2>Raise Field Ticket</h2>
         </div>
-        <span class="heading-chip">Admin assignment</span>
+        <span class="heading-chip">Self assigned</span>
       </div>
       <form id="technicianTicketForm" class="ticket-form technician-ticket-form">
         <label>

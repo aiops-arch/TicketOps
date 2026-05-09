@@ -1346,14 +1346,19 @@ async function createTicket(payload, user) {
   if (unknownAsset) {
     ticket.latestDetail = `Manager marked asset as Other / unknown${cleanArea ? ` in ${cleanArea}` : ""}`;
   }
+  const isTechnicianSelfAssignment = Boolean(
+    requestedTechnician && user?.role === "technician" && requestedTechnician.id === user.technicianId
+  );
   if (requestedTechnician && user?.role !== "admin") {
-    return { status: 403, body: { error: "Only admin can assign technicians" } };
+    if (!isTechnicianSelfAssignment) {
+      return { status: 403, body: { error: "Only admin can assign technicians" } };
+    }
   }
   const assignmentWindow = assignmentWindowStatus(db);
-  if (requestedTechnician && !assignmentWindow.open) {
+  if (requestedTechnician && !isTechnicianSelfAssignment && !assignmentWindow.open) {
     return { status: 409, body: { error: `${assignmentWindow.reason}. Admin can edit Master > Dispatch Time.` } };
   }
-  const assignedTechnician = assignmentWindow.open && requestedTechnician ? requestedTechnician : null;
+  const assignedTechnician = (assignmentWindow.open || isTechnicianSelfAssignment) && requestedTechnician ? requestedTechnician : null;
   if (assignedTechnician) {
     ticket.status = "Assigned";
     ticket.assignedTo = assignedTechnician.id;
@@ -3495,7 +3500,8 @@ app.post(
       return res.status(403).json({ error: "You do not have access to this outlet" });
     }
     if (assignedTo) {
-      if (user.role !== "admin") {
+      const isTechnicianSelfAssignment = user.role === "technician" && assignedTo === user.technicianId;
+      if (user.role !== "admin" && !isTechnicianSelfAssignment) {
         return res.status(403).json({ error: "Only admin can assign technicians" });
       }
       const technician = db.technicians.find((tech) => tech.id === assignedTo);
