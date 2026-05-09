@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v15-technician-self-assign";
+const CACHE_NAME = "ticketops-v16-render-performance";
 const APP_SHELL = [
   "./",
   "./index.html",

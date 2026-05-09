@@ -78,6 +78,57 @@ let state = {
   reports: {}
 };
 
+let stateIndex = {
+  assetsById: new Map(),
+  techniciansById: new Map(),
+  maintenanceRulesById: new Map(),
+  ticketsByAssetId: new Map(),
+  tasksByAssetId: new Map(),
+  ticketsByTechnicianId: new Map(),
+  tasksByTechnicianId: new Map(),
+  todayPendingTasksByTechnicianId: new Map()
+};
+
+function pushIndex(map, key, value) {
+  if (!key) return;
+  const list = map.get(key);
+  if (list) {
+    list.push(value);
+  } else {
+    map.set(key, [value]);
+  }
+}
+
+function rebuildStateIndex() {
+  const today = todayInputValue();
+  stateIndex = {
+    assetsById: new Map((state.assets || []).map((asset) => [asset.id, asset])),
+    techniciansById: new Map((state.technicians || []).map((tech) => [tech.id, tech])),
+    maintenanceRulesById: new Map((state.maintenanceRules || []).map((rule) => [rule.id, rule])),
+    ticketsByAssetId: new Map(),
+    tasksByAssetId: new Map(),
+    ticketsByTechnicianId: new Map(),
+    tasksByTechnicianId: new Map(),
+    todayPendingTasksByTechnicianId: new Map()
+  };
+
+  for (const ticket of state.tickets || []) {
+    pushIndex(stateIndex.ticketsByAssetId, ticket.assetId, ticket);
+    pushIndex(stateIndex.ticketsByTechnicianId, ticket.assignedTo, ticket);
+  }
+
+  for (const task of state.tasks || []) {
+    pushIndex(stateIndex.tasksByAssetId, task.assetId, task);
+    pushIndex(stateIndex.tasksByTechnicianId, task.assignedTo, task);
+    if (task.date === today && task.status === "Pending") {
+      stateIndex.todayPendingTasksByTechnicianId.set(
+        task.assignedTo,
+        (stateIndex.todayPendingTasksByTechnicianId.get(task.assignedTo) || 0) + 1
+      );
+    }
+  }
+}
+
 /* ─── Toast / Modal notification system ─── */
 
 function showToast(message, type = "info", duration = 3800) {
@@ -525,16 +576,13 @@ function ticketWorkflowSteps(ticket) {
 }
 
 function technicianOpenWorkload(technicianId) {
-  return (state.tickets || []).filter((ticket) =>
-    ticket.assignedTo === technicianId && !["Closed", "Cancelled"].includes(ticket.status)
-  ).length;
+  return (stateIndex.ticketsByTechnicianId.get(technicianId) || [])
+    .filter((ticket) => !["Closed", "Cancelled"].includes(ticket.status))
+    .length;
 }
 
 function technicianPendingTasks(technicianId) {
-  const today = todayInputValue();
-  return (state.tasks || []).filter((task) =>
-    task.assignedTo === technicianId && task.date === today && task.status === "Pending"
-  ).length;
+  return stateIndex.todayPendingTasksByTechnicianId.get(technicianId) || 0;
 }
 
 function technicianSkillLabel() {
@@ -548,7 +596,7 @@ function maintenanceRuleTechnicianLabel(rule) {
 
 function maintenanceRuleForTask(task) {
   if (!task?.ruleId) return null;
-  return (state.maintenanceRules || []).find((rule) => rule.id === task.ruleId) || null;
+  return stateIndex.maintenanceRulesById.get(task.ruleId) || null;
 }
 
 function technicianAssignmentSummary(tech, ticket) {
@@ -591,15 +639,15 @@ function adminTicketSort(a, b) {
 }
 
 function assetById(id) {
-  return (state.assets || []).find((asset) => asset.id === id);
+  return stateIndex.assetsById.get(id);
 }
 
 function tasksForAsset(assetId) {
-  return (state.tasks || []).filter((task) => task.assetId === assetId);
+  return stateIndex.tasksByAssetId.get(assetId) || [];
 }
 
 function ticketsForAsset(assetId) {
-  return (state.tickets || []).filter((ticket) => ticket.assetId === assetId);
+  return stateIndex.ticketsByAssetId.get(assetId) || [];
 }
 
 function assetCurrentTechnicians(assetId) {
@@ -735,9 +783,10 @@ async function enterApp() {
   document.querySelector("#loginScreen").classList.add("is-hidden");
   document.querySelector("#appShell").classList.remove("is-hidden");
   renderAuthChrome();
-  await loadState();
   const savedView = sessionStorage.getItem("ticketops-last-view");
-  switchView(savedView && canOpenView(savedView) ? savedView : roleHomeView());
+  document.body.dataset.view = savedView && canOpenView(savedView) ? savedView : roleHomeView();
+  await loadState();
+  switchView(document.body.dataset.view);
 }
 
 function renderAuthChrome() {
@@ -767,6 +816,7 @@ function renderAuthChrome() {
 async function loadState() {
   if (!currentUser) return;
   state = await api("/api/bootstrap");
+  rebuildStateIndex();
   if (currentUser?.role === "admin" && state.stitch?.configured) {
     try {
       state.stitch = { ...state.stitch, ...(await api("/api/stitch/status")) };
@@ -774,7 +824,11 @@ async function loadState() {
       state.stitch = { ...state.stitch, connected: false, error: "Unable to verify Stitch right now" };
     }
   }
-  await loadDirectoryUsers();
+  if (["admin", "auditor"].includes(currentUser?.role) || canUseView("masters") || canUseView("history")) {
+    await loadDirectoryUsers();
+  } else {
+    directoryUsers = [];
+  }
   renderSelects();
   render();
   updateLiveIntel();
@@ -1431,7 +1485,7 @@ async function downloadReport(type) {
 }
 
 function technicianById(id) {
-  return state.technicians.find((tech) => tech.id === id);
+  return stateIndex.techniciansById.get(id);
 }
 
 function updateTicketPriorityPreview() {
@@ -2094,6 +2148,7 @@ function renderDashboard() {
   const reports = state.reports || {};
   const allScopedTickets = ticketsForCurrentUser(state.tickets);
   const scopedTickets = allScopedTickets.filter((ticket) => ticket.status !== "Closed");
+  const scopedTicketIds = new Set(scopedTickets.map((ticket) => ticket.id));
   const readyTechs = state.technicians.filter((tech) => ["Present", "Emergency Available"].includes(tech.status)).length;
   const actions = actionItems();
   const activities = latestActivities();
@@ -2183,8 +2238,10 @@ function renderDashboard() {
     : `<div class="empty mini">No urgent action right now.</div>`;
 
   document.querySelector("#dispatchBrainBoard").innerHTML = state.technicians.slice(0, 6).map((tech) => {
-    const activeJobs = scopedTickets.filter((ticket) => ticket.assignedTo === tech.id).length;
-    const todayPending = (state.tasks || []).filter((task) => task.assignedTo === tech.id && task.date === todayInputValue() && task.status === "Pending").length;
+    const activeJobs = (stateIndex.ticketsByTechnicianId.get(tech.id) || [])
+      .filter((ticket) => scopedTicketIds.has(ticket.id))
+      .length;
+    const todayPending = technicianPendingTasks(tech.id);
     const loadTotal = Math.max(activeJobs + todayPending, 1);
     return `
       <article class="dispatch-card status-${token(tech.status)}">
@@ -2512,8 +2569,8 @@ function renderAdmin() {
 
   document.querySelector("#adminTechnicianDashboard").innerHTML = state.technicians.length
     ? state.technicians.map((tech) => {
-      const techTickets = state.tickets.filter((ticket) => ticket.assignedTo === tech.id && ticket.status !== "Closed");
-      const techTasks = (state.tasks || []).filter((task) => task.assignedTo === tech.id);
+      const techTickets = (stateIndex.ticketsByTechnicianId.get(tech.id) || []).filter((ticket) => ticket.status !== "Closed");
+      const techTasks = stateIndex.tasksByTechnicianId.get(tech.id) || [];
       const todayTasks = techTasks.filter((task) => task.date === today);
       const doneTasks = todayTasks.filter((task) => task.status === "Done").length;
       const pendingTasks = todayTasks.filter((task) => task.status === "Pending").length;
@@ -3467,63 +3524,50 @@ function updateLiveIntel() {
 
 function render() {
   renderAuthChrome();
-  renderDashboard();
   renderStagePulse();
-
-  if (canUseView("manager")) {
-    renderManager();
-  } else {
-    document.querySelector("#managerTickets").innerHTML = "";
-  }
-
-  if (canUseView("admin")) {
-    renderAdmin();
-  } else {
-    document.querySelector("#adminTechnicianDashboard").innerHTML = "";
-    document.querySelector("#adminTickets").innerHTML = "";
-    document.querySelector("#attendanceBoard").innerHTML = "";
-  }
-
-  if (canUseView("scheduler")) {
-    renderMaintenanceScheduler();
-  } else {
-    document.querySelector("#maintenanceRulesBoard").innerHTML = "";
-    document.querySelector("#maintenancePreviewBoard").innerHTML = "";
-  }
-
-  if (canUseView("masters")) {
-    renderMasters();
-  } else {
-    document.querySelector("#outletBoard").innerHTML = "";
-    document.querySelector("#categoryBoard").innerHTML = "";
-    document.querySelector("#assetBoard").innerHTML = "";
-    document.querySelector("#technicianMasterBoard").innerHTML = "";
-    document.querySelector("#peopleAccessBoard").innerHTML = "";
-  }
-
-  if (canUseView("technician")) {
-    renderTechnician();
-  } else {
-    document.querySelector("#technicianDashboard").innerHTML = "";
-    document.querySelector("#technicianTickets").innerHTML = "";
-    document.querySelector("#technicianAttendanceTools").innerHTML = "";
-  }
-
-  if (canUseView("reports")) {
-    renderReports();
-  } else {
-    document.querySelector("#reportExportActions").innerHTML = "";
-    document.querySelector("#reportsBoard").innerHTML = "";
-  }
-
-  if (canUseView("history")) {
-    renderClosedHistory();
-  } else {
-    document.querySelector("#historyStats").innerHTML = "";
-    document.querySelector("#closedTicketHistory").innerHTML = "";
-  }
-
+  renderActiveView(document.body.dataset.view || roleHomeView());
   renderUtilityViews();
+}
+
+function renderActiveView(viewName) {
+  if (viewName === "dashboard" && canUseView("dashboard")) {
+    renderDashboard();
+    return;
+  }
+
+  if (viewName === "manager" && canUseView("manager")) {
+    renderManager();
+    return;
+  }
+
+  if (viewName === "admin" && canUseView("admin")) {
+    renderAdmin();
+    return;
+  }
+
+  if (viewName === "scheduler" && canUseView("scheduler")) {
+    renderMaintenanceScheduler();
+    return;
+  }
+
+  if (viewName === "masters" && canUseView("masters")) {
+    renderMasters();
+    return;
+  }
+
+  if (viewName === "technician" && canUseView("technician")) {
+    renderTechnician();
+    return;
+  }
+
+  if (viewName === "reports" && canUseView("reports")) {
+    renderReports();
+    return;
+  }
+
+  if (viewName === "history" && canUseView("history")) {
+    renderClosedHistory();
+  }
 }
 
 function switchView(viewName) {
@@ -3534,6 +3578,7 @@ function switchView(viewName) {
   document.body.dataset.view = nextView;
   document.querySelectorAll(".tab[data-view]").forEach((tab) => tab.classList.toggle("is-active", tab.dataset.view === nextView));
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("is-active", view.id === nextView));
+  renderActiveView(nextView);
   closeMobileNav();
 
   if (document.activeElement instanceof HTMLElement) {
