@@ -4,6 +4,8 @@ const API_BASE = localStorage.getItem("ticketops-api-base") || CONFIG_API_BASE |
 const AUTH_STORAGE_KEY = "ticketops-auth-user-v2";
 const THEME_STORAGE_KEY = "ticketops-theme";
 const DASHBOARD_MODE_STORAGE_KEY = "ticketops-dashboard-mode";
+const LAST_ACTIVITY_STORAGE_KEY = "ticketops-last-activity";
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_TICKET_PHOTOS = 5;
 const MAX_IMAGE_EDGE = 1600;
 const IMAGE_QUALITY = 0.72;
@@ -229,6 +231,7 @@ let editingMaintenanceRuleId = "";
 let mobileNavOpen = false;
 let currentTheme = readStoredTheme();
 let currentDashboardMode = readStoredDashboardMode();
+let inactivityTimer = null;
 
 applyTheme(currentTheme);
 applyDashboardMode(currentDashboardMode);
@@ -258,6 +261,13 @@ function normalizeSessionUser(user) {
 
 function readStoredUser() {
   try {
+    const lastActivity = Number(localStorage.getItem(LAST_ACTIVITY_STORAGE_KEY) || 0);
+    if (lastActivity && Date.now() - lastActivity > INACTIVITY_TIMEOUT_MS) {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      localStorage.removeItem(LAST_ACTIVITY_STORAGE_KEY);
+      sessionStorage.removeItem("ticketops-last-view");
+      return null;
+    }
     const user = normalizeSessionUser(JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY)) || null);
     if (user) localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
     return user;
@@ -269,12 +279,38 @@ function readStoredUser() {
 function saveUser(user) {
   currentUser = normalizeSessionUser(user);
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(currentUser));
+  markUserActivity();
 }
 
 function clearUser() {
   currentUser = null;
   localStorage.removeItem(AUTH_STORAGE_KEY);
+  localStorage.removeItem(LAST_ACTIVITY_STORAGE_KEY);
   sessionStorage.removeItem("ticketops-last-view");
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+  inactivityTimer = null;
+}
+
+function markUserActivity() {
+  if (!currentUser) return;
+  localStorage.setItem(LAST_ACTIVITY_STORAGE_KEY, String(Date.now()));
+  scheduleInactivityLogout();
+}
+
+function scheduleInactivityLogout() {
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+  if (!currentUser) return;
+
+  const lastActivity = Number(localStorage.getItem(LAST_ACTIVITY_STORAGE_KEY) || Date.now());
+  const remaining = Math.max(0, INACTIVITY_TIMEOUT_MS - (Date.now() - lastActivity));
+  inactivityTimer = setTimeout(logoutForInactivity, remaining);
+}
+
+function logoutForInactivity() {
+  if (!currentUser) return;
+  clearUser();
+  showLogin();
+  showToast("Session closed after 15 minutes of inactivity.", "warning", 5000);
 }
 
 function readStoredTheme() {
@@ -787,6 +823,7 @@ async function enterApp() {
   document.body.dataset.view = savedView && canOpenView(savedView) ? savedView : roleHomeView();
   await loadState();
   switchView(document.body.dataset.view);
+  markUserActivity();
 }
 
 function renderAuthChrome() {
@@ -965,7 +1002,7 @@ async function detailForStatus(status) {
     return await showPromptModal("Reopen / rejection reason", "Issue not fixed") || "";
   }
   if (status === "Closed") {
-    return "Manager approved resolution";
+    return currentUser?.role === "admin" ? "Admin closed ticket" : "Manager approved resolution";
   }
   return "";
 }
@@ -1723,6 +1760,7 @@ function renderSelects() {
 
 function renderActionButtons(ticket, mode, canVerify, canWork) {
   const canDeleteAssignment = Boolean(ticket.assignedTo) && (currentUser?.role === "admin" || ticket.createdBy === currentUser?.id);
+  const canAdminClose = currentUser?.role === "admin" && ticket.status !== "Closed";
   const assignableForRole = state.technicians
     .filter((tech) => ["Present", "Busy", "Emergency Available"].includes(tech.status));
   const assignmentOptions = assignableForRole
@@ -1750,6 +1788,7 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
       <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign Job</button>
       ${canDeleteAssignment ? `<button class="small-button danger" data-delete-assignment="${escapeHtml(ticket.id)}">Delete</button>` : ""}
       <button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Blocked">Blocked</button>
+      ${canAdminClose ? `<button class="small-button success" data-status="${escapeHtml(ticket.id)}:Closed">Close Ticket</button>` : ""}
     `;
   }
 
@@ -4052,6 +4091,20 @@ document.addEventListener("change", async (event) => {
   const techId = event.target.dataset.techStatus;
   if (!techId) return;
   await updateTechnicianStatus(techId, event.target.value);
+});
+
+["pointerdown", "keydown", "touchstart", "input", "change", "submit"].forEach((eventName) => {
+  document.addEventListener(eventName, markUserActivity, { passive: true });
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!currentUser || document.hidden) return;
+  const lastActivity = Number(localStorage.getItem(LAST_ACTIVITY_STORAGE_KEY) || 0);
+  if (lastActivity && Date.now() - lastActivity > INACTIVITY_TIMEOUT_MS) {
+    logoutForInactivity();
+    return;
+  }
+  scheduleInactivityLogout();
 });
 
 updateLiveClock();
