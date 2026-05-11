@@ -595,11 +595,13 @@
                 </label>
                 <label>
                   Skill
-                  <select id="technicianSkill"></select>
+                  <select id="technicianSkill" class="native-selection-source"></select>
+                  <div id="technicianSkillPanel" class="selection-panel skill-selection-panel" aria-label="Technician skill"></div>
                 </label>
                 <label>
                   Outlet coverage
-                  <select id="technicianOutlet" multiple size="4"></select>
+                  <select id="technicianOutlet" class="native-selection-source" multiple size="4"></select>
+                  <div id="technicianOutletPanel" class="selection-panel outlet-selection-panel" aria-label="Technician outlet coverage"></div>
                 </label>
                 <button id="technicianSubmit" type="submit" class="primary-button">Add Technician</button>
                 <button id="technicianCancel" type="button" class="small-button">Clear</button>
@@ -641,7 +643,8 @@
                 </label>
                 <label>
                   Technician skill
-                  <select id="accessSkill"></select>
+                  <select id="accessSkill" class="native-selection-source"></select>
+                  <div id="accessSkillPanel" class="selection-panel skill-selection-panel" aria-label="User technician skill"></div>
                 </label>
                 <label class="checkline">
                   <input id="accessAllOutlets" type="checkbox">
@@ -649,7 +652,8 @@
                 </label>
                 <label>
                   Outlet access
-                  <select id="accessOutlets" multiple size="4"></select>
+                  <select id="accessOutlets" class="native-selection-source" multiple size="4"></select>
+                  <div id="accessOutletPanel" class="selection-panel outlet-selection-panel" aria-label="User outlet access"></div>
                 </label>
                 <label>
                   Person location / base

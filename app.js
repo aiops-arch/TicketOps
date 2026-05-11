@@ -748,6 +748,30 @@ function selectedOptionValues(select) {
   return [...(select?.selectedOptions || [])].map((option) => option.value).filter(Boolean);
 }
 
+function renderSelectionPanel(select, panel, { multiple = false, emptyText = "No options yet" } = {}) {
+  if (!select || !panel) return;
+  const selectedValues = new Set(selectedOptionValues(select));
+  if (!multiple && select.value) selectedValues.add(select.value);
+  const options = [...select.options].filter((option) => option.value);
+  panel.innerHTML = options.length
+    ? options.map((option) => {
+      const selected = selectedValues.has(option.value);
+      return `
+        <button type="button" class="selection-pill ${selected ? "is-selected" : ""}" data-select-panel-option="${escapeHtml(select.id)}" data-option-value="${escapeHtml(option.value)}" aria-pressed="${selected}">
+          <span>${escapeHtml(option.textContent || option.value)}</span>
+        </button>
+      `;
+    }).join("")
+    : `<span class="selection-empty">${escapeHtml(emptyText)}</span>`;
+}
+
+function renderMasterSelectionPanels() {
+  renderSelectionPanel(document.querySelector("#technicianSkill"), document.querySelector("#technicianSkillPanel"), { emptyText: "Add categories first" });
+  renderSelectionPanel(document.querySelector("#accessSkill"), document.querySelector("#accessSkillPanel"), { emptyText: "Add categories first" });
+  renderSelectionPanel(document.querySelector("#technicianOutlet"), document.querySelector("#technicianOutletPanel"), { multiple: true, emptyText: "Add outlets first" });
+  renderSelectionPanel(document.querySelector("#accessOutlets"), document.querySelector("#accessOutletPanel"), { multiple: true, emptyText: "Add outlets first" });
+}
+
 function userOutletLabel(user) {
   if (user.accessAllOutlets) return "All outlets";
   const outlets = Array.isArray(user.allowedOutlets) && user.allowedOutlets.length ? user.allowedOutlets : user.outlet ? [user.outlet] : [];
@@ -1267,6 +1291,7 @@ function resetTechnicianForm() {
   editingTechnicianId = "";
   document.querySelector("#technicianForm")?.reset();
   [...(document.querySelector("#technicianOutlet")?.options || [])].forEach((option) => { option.selected = false; });
+  renderMasterSelectionPanels();
   document.querySelector("#technicianSubmit").textContent = "Add Technician";
 }
 
@@ -1279,6 +1304,7 @@ function fillTechnicianForm(technicianId) {
   [...(document.querySelector("#technicianOutlet")?.options || [])].forEach((option) => {
     option.selected = (tech.serviceOutlets || []).includes(option.value);
   });
+  renderMasterSelectionPanels();
   document.querySelector("#technicianSubmit").textContent = "Update Technician";
 }
 
@@ -1289,6 +1315,7 @@ function resetUserAccessForm() {
   document.querySelector("#accessPassword").required = true;
   document.querySelector("#userAccessSubmit").textContent = "Add User";
   [...(document.querySelector("#accessOutlets")?.options || [])].forEach((option) => { option.selected = false; });
+  renderMasterSelectionPanels();
 }
 
 function fillUserAccessForm(userId) {
@@ -1310,6 +1337,7 @@ function fillUserAccessForm(userId) {
   [...(document.querySelector("#accessOutlets")?.options || [])].forEach((option) => {
     option.selected = outlets.includes(option.value);
   });
+  renderMasterSelectionPanels();
   document.querySelector("#userAccessSubmit").textContent = "Update User";
 }
 
@@ -1773,6 +1801,8 @@ function renderSelects() {
       }
     }
   }
+
+  renderMasterSelectionPanels();
 }
 
 function renderActionButtons(ticket, mode, canVerify, canWork) {
@@ -3755,6 +3785,23 @@ document.querySelector("#resetData").addEventListener("click", async () => {
 });
 
 document.addEventListener("click", async (event) => {
+  const selectPanelOption = event.target.closest?.("[data-select-panel-option]");
+  if (selectPanelOption) {
+    const select = document.getElementById(selectPanelOption.dataset.selectPanelOption);
+    const value = selectPanelOption.dataset.optionValue || "";
+    const option = [...(select?.options || [])].find((item) => item.value === value);
+    if (select && option) {
+      if (select.multiple) {
+        option.selected = !option.selected;
+      } else {
+        select.value = value;
+      }
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      renderMasterSelectionPanels();
+    }
+    return;
+  }
+
   const assetDetailButton = event.target.closest?.("[data-asset-detail]");
   if (assetDetailButton) {
     openAssetDetail(assetDetailButton.dataset.assetDetail);

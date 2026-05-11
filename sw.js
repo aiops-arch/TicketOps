@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v21-admin-close-flow";
+const CACHE_NAME = "ticketops-v22-master-selection-panels";
 const APP_SHELL = [
   "./",
   "./index.html",
