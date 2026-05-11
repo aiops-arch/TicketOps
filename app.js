@@ -753,7 +753,13 @@ function renderSelectionPanel(select, panel, { multiple = false, emptyText = "No
   const selectedValues = new Set(selectedOptionValues(select));
   if (!multiple && select.value) selectedValues.add(select.value);
   const options = [...select.options].filter((option) => option.value);
-  panel.innerHTML = options.length
+  const controls = multiple && options.length ? `
+    <div class="selection-panel-tools">
+      <button type="button" class="selection-tool" data-select-panel-action="${escapeHtml(select.id)}" data-select-action="all">Select all</button>
+      <button type="button" class="selection-tool" data-select-panel-action="${escapeHtml(select.id)}" data-select-action="none">Deselect all</button>
+    </div>
+  ` : "";
+  const choices = options.length
     ? options.map((option) => {
       const selected = selectedValues.has(option.value);
       return `
@@ -763,6 +769,7 @@ function renderSelectionPanel(select, panel, { multiple = false, emptyText = "No
       `;
     }).join("")
     : `<span class="selection-empty">${escapeHtml(emptyText)}</span>`;
+  panel.innerHTML = `${controls}<div class="selection-panel-options">${choices}</div>`;
 }
 
 function renderMasterSelectionPanels() {
@@ -3785,6 +3792,20 @@ document.querySelector("#resetData").addEventListener("click", async () => {
 });
 
 document.addEventListener("click", async (event) => {
+  const selectPanelAction = event.target.closest?.("[data-select-panel-action]");
+  if (selectPanelAction) {
+    const select = document.getElementById(selectPanelAction.dataset.selectPanelAction);
+    if (select?.multiple) {
+      const selectAll = selectPanelAction.dataset.selectAction === "all";
+      [...select.options].forEach((option) => {
+        if (option.value) option.selected = selectAll;
+      });
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      renderMasterSelectionPanels();
+    }
+    return;
+  }
+
   const selectPanelOption = event.target.closest?.("[data-select-panel-option]");
   if (selectPanelOption) {
     const select = document.getElementById(selectPanelOption.dataset.selectPanelOption);

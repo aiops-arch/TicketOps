@@ -588,25 +588,27 @@
                   <h3>Technician Master</h3>
                 </div>
               </div>
-              <form id="technicianForm" class="master-form">
-                <label>
-                  Name
-                  <input id="technicianName" required placeholder="Example: Imran">
-                </label>
-                <label>
-                  Skill
-                  <select id="technicianSkill" class="native-selection-source"></select>
-                  <div id="technicianSkillPanel" class="selection-panel skill-selection-panel" aria-label="Technician skill"></div>
-                </label>
-                <label>
-                  Outlet coverage
-                  <select id="technicianOutlet" class="native-selection-source" multiple size="4"></select>
-                  <div id="technicianOutletPanel" class="selection-panel outlet-selection-panel" aria-label="Technician outlet coverage"></div>
-                </label>
-                <button id="technicianSubmit" type="submit" class="primary-button">Add Technician</button>
-                <button id="technicianCancel" type="button" class="small-button">Clear</button>
-              </form>
-              <div id="technicianMasterBoard" class="master-list"></div>
+              <div class="master-split-layout">
+                <form id="technicianForm" class="master-form">
+                  <label>
+                    Name
+                    <input id="technicianName" required placeholder="Example: Imran">
+                  </label>
+                  <label>
+                    Skill
+                    <select id="technicianSkill" class="native-selection-source"></select>
+                    <div id="technicianSkillPanel" class="selection-panel skill-selection-panel" aria-label="Technician skill"></div>
+                  </label>
+                  <label>
+                    Outlet coverage
+                    <select id="technicianOutlet" class="native-selection-source" multiple size="4"></select>
+                    <div id="technicianOutletPanel" class="selection-panel outlet-selection-panel" aria-label="Technician outlet coverage"></div>
+                  </label>
+                  <button id="technicianSubmit" type="submit" class="primary-button">Add Technician</button>
+                  <button id="technicianCancel" type="button" class="small-button">Clear</button>
+                </form>
+                <div id="technicianMasterBoard" class="master-list"></div>
+              </div>
             </section>
 
             <section class="master-section wide-master-section" data-master-panel="users">
@@ -616,53 +618,55 @@
                   <h3>User + Outlet Access</h3>
                 </div>
               </div>
-              <form id="userAccessForm" class="master-form user-access-form">
-                <label>
-                  Role
-                  <select id="accessRole">
-                    <option value="manager">Manager</option>
-                    <option value="technician">Technician</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </label>
-                <label>
-                  Name
-                  <input id="accessName" required placeholder="Full name">
-                </label>
-                <label>
-                  Username
-                  <input id="accessUsername" placeholder="Required for new user">
-                </label>
-                <label>
-                  Password
-                  <input id="accessPassword" type="password" required placeholder="Required for new user">
-                </label>
-                <label>
-                  Post
-                  <input id="accessPost" placeholder="Outlet Manager, Admin, Technician">
-                </label>
-                <label>
-                  Technician skill
-                  <select id="accessSkill" class="native-selection-source"></select>
-                  <div id="accessSkillPanel" class="selection-panel skill-selection-panel" aria-label="User technician skill"></div>
-                </label>
-                <label class="checkline">
-                  <input id="accessAllOutlets" type="checkbox">
-                  <span>Access all outlets</span>
-                </label>
-                <label>
-                  Outlet access
-                  <select id="accessOutlets" class="native-selection-source" multiple size="4"></select>
-                  <div id="accessOutletPanel" class="selection-panel outlet-selection-panel" aria-label="User outlet access"></div>
-                </label>
-                <label>
-                  Person location / base
-                  <input id="accessAddress" placeholder="Home base, area, city">
-                </label>
-                <button id="userAccessSubmit" type="submit" class="primary-button">Add User</button>
-                <button id="userAccessCancel" type="button" class="small-button">Clear</button>
-              </form>
-              <div id="peopleAccessBoard" class="master-list"></div>
+              <div class="master-split-layout user-master-split">
+                <form id="userAccessForm" class="master-form user-access-form">
+                  <label>
+                    Role
+                    <select id="accessRole">
+                      <option value="manager">Manager</option>
+                      <option value="technician">Technician</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </label>
+                  <label>
+                    Name
+                    <input id="accessName" required placeholder="Full name">
+                  </label>
+                  <label>
+                    Username
+                    <input id="accessUsername" placeholder="Required for new user">
+                  </label>
+                  <label>
+                    Password
+                    <input id="accessPassword" type="password" required placeholder="Required for new user">
+                  </label>
+                  <label>
+                    Post
+                    <input id="accessPost" placeholder="Outlet Manager, Admin, Technician">
+                  </label>
+                  <label>
+                    Technician skill
+                    <select id="accessSkill" class="native-selection-source"></select>
+                    <div id="accessSkillPanel" class="selection-panel skill-selection-panel" aria-label="User technician skill"></div>
+                  </label>
+                  <label class="checkline">
+                    <input id="accessAllOutlets" type="checkbox">
+                    <span>Access all outlets</span>
+                  </label>
+                  <label>
+                    Outlet access
+                    <select id="accessOutlets" class="native-selection-source" multiple size="4"></select>
+                    <div id="accessOutletPanel" class="selection-panel outlet-selection-panel" aria-label="User outlet access"></div>
+                  </label>
+                  <label>
+                    Person location / base
+                    <input id="accessAddress" placeholder="Home base, area, city">
+                  </label>
+                  <button id="userAccessSubmit" type="submit" class="primary-button">Add User</button>
+                  <button id="userAccessCancel" type="button" class="small-button">Clear</button>
+                </form>
+                <div id="peopleAccessBoard" class="master-list"></div>
+              </div>
             </section>
 
             <section class="master-section wide-master-section" data-master-panel="time">

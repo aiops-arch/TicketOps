@@ -1806,8 +1806,23 @@ body.has-session .topbar:focus-within .tabs {
 }
 
 #technicianForm {
-  grid-template-columns: minmax(180px, 0.8fr) minmax(260px, 1fr) minmax(360px, 1.45fr) auto auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
+}
+
+#technicianForm label:nth-child(3) {
+  grid-column: 1 / -1;
+}
+
+.master-split-layout {
+  display: grid;
+  grid-template-columns: minmax(380px, 0.95fr) minmax(360px, 1.05fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.user-master-split {
+  grid-template-columns: minmax(520px, 1.1fr) minmax(340px, 0.9fr);
 }
 
 #outletForm {
@@ -1870,9 +1885,9 @@ body.has-session .topbar:focus-within .tabs {
 }
 
 .user-access-form {
-  grid-template-columns: 120px 180px 160px 160px 190px minmax(260px, 1fr) 150px minmax(340px, 1.35fr) 220px auto auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
-  overflow-x: auto;
+  overflow-x: visible;
   padding-bottom: 2px;
 }
 
@@ -1888,6 +1903,12 @@ body.has-session .topbar:focus-within .tabs {
 .user-access-form .checkline {
   min-height: 39px;
   align-items: center;
+}
+
+.user-access-form label:nth-child(5),
+.user-access-form label:nth-child(8),
+.user-access-form label:nth-child(9) {
+  grid-column: 1 / -1;
 }
 
 #masters .master-form input,
@@ -1907,17 +1928,50 @@ body.has-session .topbar:focus-within .tabs {
 .selection-panel {
   min-height: 78px;
   max-height: 112px;
-  display: flex;
-  align-content: flex-start;
-  align-items: flex-start;
+  display: grid;
   gap: 7px;
-  flex-wrap: wrap;
+  align-content: start;
   overflow: auto;
   padding: 8px;
   border: 1px solid rgba(74, 142, 162, 0.18);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.48);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
+.selection-panel-options,
+.selection-panel-tools {
+  min-width: 0;
+  display: flex;
+  align-content: flex-start;
+  align-items: flex-start;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.selection-panel-tools {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-bottom: 2px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.64));
+}
+
+.selection-tool {
+  min-height: 26px;
+  border: 1px solid rgba(74, 142, 162, 0.2);
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--teal-deep);
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.selection-tool:hover {
+  border-color: rgba(19, 127, 154, 0.38);
+  background: rgba(79, 198, 184, 0.14);
 }
 
 .skill-selection-panel {
@@ -1974,16 +2028,13 @@ body.has-session .topbar:focus-within .tabs {
 }
 
 @media (max-width: 1180px) {
-  #technicianForm,
-  .user-access-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    overflow-x: visible;
+  .master-split-layout,
+  .user-master-split {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  #technicianForm label:nth-child(3),
-  .user-access-form label:nth-child(8),
-  .user-access-form label:nth-child(9) {
-    grid-column: 1 / -1;
+  #masters .master-split-layout .master-list {
+    max-height: 320px;
   }
 }
 
@@ -1994,6 +2045,7 @@ body.has-session .topbar:focus-within .tabs {
   }
 
   #technicianForm label:nth-child(3),
+  .user-access-form label:nth-child(5),
   .user-access-form label:nth-child(8),
   .user-access-form label:nth-child(9) {
     grid-column: auto;
