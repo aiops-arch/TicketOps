@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v24-role-aware-masters";
+const CACHE_NAME = "ticketops-v25-technician-scheduled-jobs";
 const APP_SHELL = [
   "./",
   "./index.html",

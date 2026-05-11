@@ -2774,6 +2774,20 @@ input::placeholder {
   justify-items: end;
 }
 
+.technician-job-section {
+  display: grid;
+  gap: 10px;
+}
+
+.technician-task-list {
+  display: grid;
+  gap: 8px;
+}
+
+.technician-task-list .task-row {
+  grid-template-columns: minmax(0, 1fr) minmax(104px, auto);
+}
+
 .weekly-stat-grid {
   display: grid;
   gap: 8px;

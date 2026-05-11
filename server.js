@@ -360,8 +360,7 @@ function readJsonDb() {
         : (seeded.serviceOutlets || db.outlets || [])
     };
   });
-  if (generateTodayTasks(db) > 0) shouldPersist = true;
-  if (rebalanceTodayChecklistTasks(db)) shouldPersist = true;
+  if (refreshTodayMaintenanceTasks(db)) shouldPersist = true;
   if (shouldPersist) writeJsonDb(db);
   return db;
 }
@@ -596,6 +595,18 @@ function buildSkillValue(payload, db, fallback = "") {
   return { value: skills.join(", ") };
 }
 
+function frequencyLabel(value = "") {
+  const labels = {
+    daily: "Daily",
+    weekly: "Weekly",
+    monthly: "Monthly",
+    quarterly: "Quarterly",
+    "half-yearly": "Half Yearly",
+    yearly: "Yearly"
+  };
+  return labels[String(value || "").toLowerCase()] || "Scheduled";
+}
+
 function allowedViewsForRole(role) {
   if (role === "admin") return ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"];
   if (role === "manager") return ["manager"];
@@ -723,24 +734,9 @@ function rebalanceTodayChecklistTasks(db) {
 
 function generateTodayTasks(db) {
   const today = dateKey();
-  const todayDate = new Date(`${today}T00:00:00`);
-  const dayOfWeek = todayDate.getDay();
-  const dayOfMonth = todayDate.getDate();
-  const month = todayDate.getMonth(); // 0-based
-  const isMonday = dayOfWeek === 1;
-  const isFirstOfMonth = dayOfMonth === 1;
-  const isQuarterStart = isFirstOfMonth && [0, 3, 6, 9].includes(month);
-  const isHalfYearStart = isFirstOfMonth && [0, 6].includes(month);
-  const isYearStart = isFirstOfMonth && month === 0;
   const rules = (db.maintenanceRules || defaultMaintenanceRules()).filter((rule) => {
     if (rule.active === false) return false;
-    const f = rule.frequency;
-    return f === "daily" ||
-      (f === "weekly" && isMonday) ||
-      (f === "monthly" && isFirstOfMonth) ||
-      (f === "quarterly" && isQuarterStart) ||
-      (f === "half-yearly" && isHalfYearStart) ||
-      (f === "yearly" && isYearStart);
+    return isMaintenanceRuleDue(rule, today);
   });
   const tasks = [];
   const technicians = checklistTechnicians(db);
@@ -787,7 +783,7 @@ function generateTodayTasks(db) {
         status: "Pending",
         date: today,
         completedAt: "",
-        notes: `${rule.group || "Maintenance"} / ${rule.frequency === "weekly" ? "Weekly" : "Daily"}${rule.allowOutsideWindow ? " / outside window allowed" : ""}`
+        notes: `${rule.group || "Maintenance"} / ${frequencyLabel(rule.frequency)}${rule.allowOutsideWindow ? " / outside window allowed" : ""}`
       });
       loadMap.set(technician.id, (loadMap.get(technician.id) || 0) + 1);
     });
@@ -795,6 +791,64 @@ function generateTodayTasks(db) {
 
   db.tasks.push(...tasks);
   return tasks.length;
+}
+
+function isMaintenanceRuleDue(rule, day = dateKey()) {
+  const date = new Date(`${day}T00:00:00`);
+  const dayOfWeek = date.getDay();
+  const dayOfMonth = date.getDate();
+  const month = date.getMonth();
+  const isMonday = dayOfWeek === 1;
+  const isFirstOfMonth = dayOfMonth === 1;
+  const isQuarterStart = isFirstOfMonth && [0, 3, 6, 9].includes(month);
+  const isHalfYearStart = isFirstOfMonth && [0, 6].includes(month);
+  const isYearStart = isFirstOfMonth && month === 0;
+  const frequency = String(rule?.frequency || "daily").toLowerCase();
+  return frequency === "daily" ||
+    (frequency === "weekly" && isMonday) ||
+    (frequency === "monthly" && isFirstOfMonth) ||
+    (frequency === "quarterly" && isQuarterStart) ||
+    (frequency === "half-yearly" && isHalfYearStart) ||
+    (frequency === "yearly" && isYearStart);
+}
+
+function refreshTodayMaintenanceTasks(db) {
+  const today = dateKey();
+  let changed = generateTodayTasks(db) > 0;
+  const loadMap = new Map(checklistTechnicians(db).map((tech) => [tech.id, 0]));
+  const removeTaskIds = new Set();
+  (db.tasks || [])
+    .filter((task) => task.date === today && isChecklistTask(task))
+    .forEach((task) => {
+      const rule = maintenanceRuleById(db, task.ruleId);
+      if (!rule) return;
+      if (rule.active === false || !isMaintenanceRuleDue(rule, today)) {
+        if (task.status === "Pending") removeTaskIds.add(task.id);
+        return;
+      }
+      const title = `${rule.phase || "Checklist"}: ${rule.title}`;
+      const notes = `${rule.group || "Maintenance"} / ${frequencyLabel(rule.frequency)}${rule.allowOutsideWindow ? " / outside window allowed" : ""}`;
+      if (task.title !== title) {
+        task.title = title;
+        changed = true;
+      }
+      if (task.notes !== notes) {
+        task.notes = notes;
+        changed = true;
+      }
+      const technician = maintenanceRuleTechnician(db, rule, loadMap);
+      if (technician && task.assignedTo !== technician.id && task.status !== "Done") {
+        task.assignedTo = technician.id;
+        changed = true;
+      }
+      if (technician) loadMap.set(technician.id, (loadMap.get(technician.id) || 0) + 1);
+    });
+  if (removeTaskIds.size) {
+    db.tasks = (db.tasks || []).filter((task) => !removeTaskIds.has(task.id));
+    changed = true;
+  }
+  if (rebalanceTodayChecklistTasks(db)) changed = true;
+  return changed;
 }
 
 function assetById(db, assetId) {
@@ -2225,6 +2279,7 @@ async function createMaintenanceRule(payload) {
   }
 
   db.maintenanceRules = [...(db.maintenanceRules || []), rule];
+  refreshTodayMaintenanceTasks(db);
   writeJsonDb(db);
   return { status: 201, body: rule };
 }
@@ -2284,6 +2339,7 @@ async function updateMaintenanceRule(ruleId, payload) {
   }
 
   Object.assign(rule, updated);
+  refreshTodayMaintenanceTasks(db);
   writeJsonDb(db);
   return { status: 200, body: updated };
 }

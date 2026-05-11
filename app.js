@@ -538,6 +538,26 @@ function taskRequiresEvidence(task) {
   return /(temperature|freezer|refrigerator|gas|fire|extinguisher|leak|pest|safety)/.test(text);
 }
 
+function frequencyLabel(value = "") {
+  const labels = {
+    daily: "Daily",
+    weekly: "Weekly",
+    monthly: "Monthly",
+    quarterly: "Quarterly",
+    "half-yearly": "Half Yearly",
+    yearly: "Yearly"
+  };
+  return labels[String(value || "").toLowerCase()] || "Scheduled";
+}
+
+function taskFrequencyLabel(task) {
+  const rule = maintenanceRuleForTask(task);
+  if (rule?.frequency) return frequencyLabel(rule.frequency);
+  const text = String(task?.notes || "");
+  const match = text.match(/\b(Daily|Weekly|Monthly|Quarterly|Half Yearly|Yearly)\b/i);
+  return match ? frequencyLabel(match[1].toLowerCase().replace(/\s+/g, "-")) : "Scheduled";
+}
+
 function chooseEvidencePhoto() {
   const input = document.createElement("input");
   input.type = "file";
@@ -3084,6 +3104,15 @@ function renderTechnician() {
   const blockedTickets = tickets.filter((ticket) => ticket.status === "Blocked");
   const doneTickets = tickets.filter((ticket) => ["Resolved", "Verification Pending", "Closed"].includes(ticket.status));
   const liveTickets = tickets.filter((ticket) => ["New", "Assigned", "Acknowledged", "In Progress", "Blocked", "Reopened"].includes(ticket.status));
+  const today = todayInputValue();
+  const todayTasks = activeTech
+    ? (state.tasks || [])
+      .filter((task) => task.assignedTo === activeTech.id && task.date === today)
+      .sort((a, b) => (a.status === "Done") - (b.status === "Done")
+        || taskPhaseRank(a.title) - taskPhaseRank(b.title)
+        || String(a.title || "").localeCompare(String(b.title || "")))
+    : [];
+  const doneTasks = todayTasks.filter((task) => task.status === "Done");
 
   dashboard.innerHTML = activeTech ? `
     <div class="technician-simple-dashboard">
@@ -3091,7 +3120,8 @@ function renderTechnician() {
         ["Active", activeTickets.length],
         ["Running", runningTickets.length],
         ["Blocked", blockedTickets.length],
-        ["Done", doneTickets.length]
+        ["Done", doneTickets.length],
+        ["Jobs", todayTasks.length ? `${doneTasks.length}/${todayTasks.length}` : "0/0"]
       ].map(([label, count]) => `
         <article class="technician-simple-stat status-${token(label)}">
           <span>${escapeHtml(label)}</span>
@@ -3147,10 +3177,56 @@ function renderTechnician() {
     </div>
   ` : "";
 
+  const scheduledJobs = activeTech ? `
+    <section class="technician-job-section">
+      <div class="mini-heading">
+        <span class="section-kicker">Scheduled Jobs</span>
+        <strong>${escapeHtml(doneTasks.length)}/${escapeHtml(todayTasks.length || 0)} done today</strong>
+      </div>
+      <div class="technician-task-list">
+        ${todayTasks.length ? todayTasks.map((task) => {
+          const phase = taskPhase(task.title);
+          const title = String(task.title || "").replace(`${phase}: `, "");
+          const rule = maintenanceRuleForTask(task);
+          const windowText = rule?.allowOutsideWindow ? "All day" : rule ? `${rule.startTime || "?"} - ${rule.endTime || "?"}` : "Scheduled";
+          const needsEvidence = taskRequiresEvidence(task);
+          return `
+            <article class="task-row status-${token(task.status)} ${needsEvidence && task.status !== "Done" ? "requires-evidence" : ""}">
+              <div>
+                <strong>${escapeHtml(title)}</strong>
+                <span>${escapeHtml(task.outlet)} / ${escapeHtml(phase)} / ${escapeHtml(taskFrequencyLabel(task))} / ${escapeHtml(windowText)}</span>
+                <div class="task-tags">
+                  <span>${escapeHtml(task.status)}</span>
+                  ${needsEvidence ? `<span>Photo evidence</span>` : `<span>Photo on close</span>`}
+                  ${task.evidenceComment ? `<span>${escapeHtml(task.evidenceComment)}</span>` : ""}
+                </div>
+              </div>
+              <div class="task-actions">
+                ${task.evidencePhotoUrl ? `<button type="button" class="small-button" data-task-photo="${escapeHtml(task.id)}">Evidence</button>` : ""}
+                ${task.status !== "Done" ? `<button type="button" class="small-button success task-done-button" data-task-done="${escapeHtml(task.id)}">Done</button>` : ""}
+                ${task.status !== "Done" ? `<button type="button" class="small-button warning" data-task-not-done="${escapeHtml(task.id)}">Not Done</button>` : ""}
+              </div>
+            </article>
+          `;
+        }).join("") : `<div class="empty">No scheduled jobs for today.</div>`}
+      </div>
+    </section>
+  ` : "";
+
+  const ticketJobs = activeTech ? `
+    <section class="technician-job-section">
+      <div class="mini-heading">
+        <span class="section-kicker">Repair Tickets</span>
+        <strong>${escapeHtml(liveTickets.length)} active</strong>
+      </div>
+      ${liveTickets.length
+        ? liveTickets.map((ticket) => ticketCard(ticket, "technician")).join("")
+        : `<div class="empty">No active tickets right now.</div>`}
+    </section>
+  ` : "";
+
   ticketBoard.innerHTML = activeTech
-    ? liveTickets.length
-      ? liveTickets.map((ticket) => ticketCard(ticket, "technician")).join("")
-      : `<div class="empty">No active tickets right now.</div>`
+    ? scheduledJobs + ticketJobs
     : "";
 }
 
