@@ -150,7 +150,7 @@ function showToast(message, type = "info", duration = 3800) {
   toast.querySelector(".toast-dismiss").addEventListener("click", () => { clearTimeout(timer); dismiss(); });
 }
 
-function showConfirm(message) {
+function showConfirm(message, confirmText = "Delete", confirmClass = "primary-button modal-danger") {
   return new Promise((resolve) => {
     const overlay = document.getElementById("modalOverlay");
     const msgEl = document.getElementById("modalMessage");
@@ -159,8 +159,8 @@ function showConfirm(message) {
     const cancelBtn = document.getElementById("modalCancel");
     msgEl.textContent = message;
     inputWrap.classList.add("is-hidden");
-    confirmBtn.textContent = "Delete";
-    confirmBtn.className = "primary-button modal-danger";
+    confirmBtn.textContent = confirmText;
+    confirmBtn.className = confirmClass;
     overlay.classList.remove("is-hidden");
     const close = (result) => {
       overlay.classList.add("is-hidden");
@@ -984,6 +984,20 @@ async function setTicketStatus(ticketId, status, detail = "") {
     payload.evidencePhotoUrls = [photoUrl];
     payload.evidencePhotoUrl = photoUrl;
   }
+  if (status === "Closed" && currentUser?.role === "admin") {
+    const attachPhoto = await showConfirm(
+      "Attach completion photo before closing? Admin can skip this image if it is not needed.",
+      "Add Photo",
+      "primary-button"
+    );
+    if (attachPhoto) {
+      const photoUrl = await chooseEvidencePhoto();
+      if (photoUrl) {
+        payload.evidencePhotoUrls = [photoUrl];
+        payload.evidencePhotoUrl = photoUrl;
+      }
+    }
+  }
   await api(`/api/tickets/${ticketId}/status`, {
     method: "PATCH",
     body: JSON.stringify(payload)
@@ -1002,7 +1016,10 @@ async function detailForStatus(status) {
     return await showPromptModal("Reopen / rejection reason", "Issue not fixed") || "";
   }
   if (status === "Closed") {
-    return currentUser?.role === "admin" ? "Admin closed ticket" : "Manager approved resolution";
+    if (currentUser?.role === "admin") {
+      return await showPromptModal("Closure note", "Admin verified completion and closed the ticket") || "";
+    }
+    return "Manager approved resolution";
   }
   return "";
 }
@@ -3872,7 +3889,7 @@ document.addEventListener("click", async (event) => {
   if (statusButton) {
     const [ticketId, status] = statusButton.dataset.status.split(":");
     const detail = await detailForStatus(status);
-    if (["Blocked", "Resolved", "Reopened"].includes(status) && !detail.trim()) return;
+    if ((["Blocked", "Resolved", "Reopened"].includes(status) || (status === "Closed" && currentUser?.role === "admin")) && !detail.trim()) return;
     try {
       await setTicketStatus(ticketId, status, detail);
     } catch (error) {

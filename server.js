@@ -2604,6 +2604,9 @@ async function updateTicketStatus(ticketId, status, detail, user, evidence = {})
   if (DETAIL_REQUIRED_STATUSES[status] && !String(detail || "").trim()) {
     return { status: 400, body: { error: DETAIL_REQUIRED_STATUSES[status] } };
   }
+  if (user.role === "admin" && status === "Closed" && !String(detail || "").trim()) {
+    return { status: 400, body: { error: "Closure note is required" } };
+  }
   const resolutionPhotoUrls = sanitizePhotoUrls(evidence.evidencePhotoUrls?.length ? evidence.evidencePhotoUrls : evidence.evidencePhotoUrl);
   if (user.role === "technician" && status === "Resolved" && !resolutionPhotoUrls.length) {
     return { status: 400, body: { error: "Completion photo is required before resolving the ticket" } };
@@ -2612,7 +2615,7 @@ async function updateTicketStatus(ticketId, status, detail, user, evidence = {})
   const action = detail || `Status changed to ${status}`;
   if (useSupabase) {
     const updatePayload = { status, latest_detail: action, updated_at: new Date().toISOString() };
-    if (status === "Resolved" && resolutionPhotoUrls.length) updatePayload.resolution_photo_urls = resolutionPhotoUrls;
+    if ((status === "Resolved" || status === "Closed") && resolutionPhotoUrls.length) updatePayload.resolution_photo_urls = resolutionPhotoUrls;
     await requireSupabase(
       await supabase
         .from("tickets")
@@ -2625,7 +2628,7 @@ async function updateTicketStatus(ticketId, status, detail, user, evidence = {})
 
   ticket.status = status;
   ticket.latestDetail = action;
-  if (status === "Resolved" && resolutionPhotoUrls.length) ticket.resolutionPhotoUrls = resolutionPhotoUrls;
+  if ((status === "Resolved" || status === "Closed") && resolutionPhotoUrls.length) ticket.resolutionPhotoUrls = resolutionPhotoUrls;
   ticket.history.push({ at: new Date().toISOString(), action });
   writeJsonDb(db);
   return { status: 200, body: ticket };
