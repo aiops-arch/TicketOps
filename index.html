@@ -596,7 +596,7 @@
                   </label>
                   <label>
                     Skill
-                    <select id="technicianSkill" class="native-selection-source"></select>
+                    <select id="technicianSkill" class="native-selection-source" multiple></select>
                     <div id="technicianSkillPanel" class="selection-panel skill-selection-panel" aria-label="Technician skill"></div>
                   </label>
                   <label>
@@ -644,16 +644,16 @@
                     Post
                     <input id="accessPost" placeholder="Outlet Manager, Admin, Technician">
                   </label>
-                  <label>
+                  <label class="user-skill-field">
                     Technician skill
-                    <select id="accessSkill" class="native-selection-source"></select>
+                    <select id="accessSkill" class="native-selection-source" multiple></select>
                     <div id="accessSkillPanel" class="selection-panel skill-selection-panel" aria-label="User technician skill"></div>
                   </label>
-                  <label class="checkline">
+                  <label class="checkline user-all-outlets-field">
                     <input id="accessAllOutlets" type="checkbox">
                     <span>Access all outlets</span>
                   </label>
-                  <label>
+                  <label class="user-outlet-field">
                     Outlet access
                     <select id="accessOutlets" class="native-selection-source" multiple size="4"></select>
                     <div id="accessOutletPanel" class="selection-panel outlet-selection-panel" aria-label="User outlet access"></div>

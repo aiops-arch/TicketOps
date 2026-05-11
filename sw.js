@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v23-master-split-selection";
+const CACHE_NAME = "ticketops-v24-role-aware-masters";
 const APP_SHELL = [
   "./",
   "./index.html",

@@ -748,6 +748,45 @@ function selectedOptionValues(select) {
   return [...(select?.selectedOptions || [])].map((option) => option.value).filter(Boolean);
 }
 
+function skillValuesFromText(value) {
+  return String(value || "")
+    .split(/[,|]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function selectedSkillValues(select) {
+  const selected = selectedOptionValues(select);
+  return selected.length ? selected : skillValuesFromText(select?.value);
+}
+
+function setSelectedValues(select, values = []) {
+  const wanted = new Set(values.filter(Boolean));
+  [...(select?.options || [])].forEach((option) => {
+    option.selected = wanted.has(option.value);
+  });
+}
+
+function userAccessRole() {
+  return document.querySelector("#accessRole")?.value || "manager";
+}
+
+function updateUserAccessVisibility() {
+  const role = userAccessRole();
+  const allOutlets = document.querySelector("#accessAllOutlets");
+  const skillField = document.querySelector(".user-skill-field");
+  const allOutletField = document.querySelector(".user-all-outlets-field");
+  const outletField = document.querySelector(".user-outlet-field");
+  const isAdmin = role === "admin";
+  const isTechnician = role === "technician";
+
+  if (allOutlets && isAdmin) allOutlets.checked = true;
+  if (allOutlets) allOutlets.disabled = isAdmin;
+  skillField?.classList.toggle("is-collapsed", !isTechnician);
+  allOutletField?.classList.toggle("is-admin-locked", isAdmin);
+  outletField?.classList.toggle("is-collapsed", Boolean(allOutlets?.checked));
+}
+
 function renderSelectionPanel(select, panel, { multiple = false, emptyText = "No options yet" } = {}) {
   if (!select || !panel) return;
   const selectedValues = new Set(selectedOptionValues(select));
@@ -773,8 +812,9 @@ function renderSelectionPanel(select, panel, { multiple = false, emptyText = "No
 }
 
 function renderMasterSelectionPanels() {
-  renderSelectionPanel(document.querySelector("#technicianSkill"), document.querySelector("#technicianSkillPanel"), { emptyText: "Add categories first" });
-  renderSelectionPanel(document.querySelector("#accessSkill"), document.querySelector("#accessSkillPanel"), { emptyText: "Add categories first" });
+  updateUserAccessVisibility();
+  renderSelectionPanel(document.querySelector("#technicianSkill"), document.querySelector("#technicianSkillPanel"), { multiple: true, emptyText: "Add categories first" });
+  renderSelectionPanel(document.querySelector("#accessSkill"), document.querySelector("#accessSkillPanel"), { multiple: true, emptyText: "Add categories first" });
   renderSelectionPanel(document.querySelector("#technicianOutlet"), document.querySelector("#technicianOutletPanel"), { multiple: true, emptyText: "Add outlets first" });
   renderSelectionPanel(document.querySelector("#accessOutlets"), document.querySelector("#accessOutletPanel"), { multiple: true, emptyText: "Add outlets first" });
 }
@@ -1271,11 +1311,13 @@ async function saveTechnicianMaster(event) {
   submitButton.textContent = editingTechnicianId ? "Updating..." : "Adding...";
   try {
     const serviceOutlets = selectedOptionValues(document.querySelector("#technicianOutlet"));
+    const skills = selectedSkillValues(document.querySelector("#technicianSkill"));
     const technician = await api(editingTechnicianId ? `/api/technicians/${editingTechnicianId}` : "/api/technicians", {
       method: editingTechnicianId ? "PATCH" : "POST",
       body: JSON.stringify({
         name: document.querySelector("#technicianName").value,
-        skill: document.querySelector("#technicianSkill").value,
+        skill: skills.join(", "),
+        skills,
         outlet: serviceOutlets[0] || "",
         serviceOutlets
       })
@@ -1298,6 +1340,7 @@ function resetTechnicianForm() {
   editingTechnicianId = "";
   document.querySelector("#technicianForm")?.reset();
   [...(document.querySelector("#technicianOutlet")?.options || [])].forEach((option) => { option.selected = false; });
+  setSelectedValues(document.querySelector("#technicianSkill"), []);
   renderMasterSelectionPanels();
   document.querySelector("#technicianSubmit").textContent = "Add Technician";
 }
@@ -1307,7 +1350,7 @@ function fillTechnicianForm(technicianId) {
   if (!tech) return;
   editingTechnicianId = tech.id;
   document.querySelector("#technicianName").value = tech.name || "";
-  document.querySelector("#technicianSkill").value = tech.skill || "";
+  setSelectedValues(document.querySelector("#technicianSkill"), skillValuesFromText(tech.skill));
   [...(document.querySelector("#technicianOutlet")?.options || [])].forEach((option) => {
     option.selected = (tech.serviceOutlets || []).includes(option.value);
   });
@@ -1322,6 +1365,7 @@ function resetUserAccessForm() {
   document.querySelector("#accessPassword").required = true;
   document.querySelector("#userAccessSubmit").textContent = "Add User";
   [...(document.querySelector("#accessOutlets")?.options || [])].forEach((option) => { option.selected = false; });
+  setSelectedValues(document.querySelector("#accessSkill"), []);
   renderMasterSelectionPanels();
 }
 
@@ -1339,7 +1383,7 @@ function fillUserAccessForm(userId) {
   document.querySelector("#accessAllOutlets").checked = Boolean(user.accessAllOutlets);
   document.querySelector("#accessAddress").value = user.address || "";
   const tech = state.technicians.find((item) => item.id === user.technicianId);
-  if (tech && document.querySelector("#accessSkill")) document.querySelector("#accessSkill").value = tech.skill;
+  if (tech && document.querySelector("#accessSkill")) setSelectedValues(document.querySelector("#accessSkill"), skillValuesFromText(tech.skill));
   const outlets = Array.isArray(user.allowedOutlets) && user.allowedOutlets.length ? user.allowedOutlets : user.outlet ? [user.outlet] : [];
   [...(document.querySelector("#accessOutlets")?.options || [])].forEach((option) => {
     option.selected = outlets.includes(option.value);
@@ -1354,15 +1398,19 @@ async function saveUserAccess(event) {
   const submitButton = event.currentTarget.querySelector("button[type='submit']");
   submitButton.disabled = true;
   try {
+    const role = document.querySelector("#accessRole").value;
+    const accessAllOutlets = document.querySelector("#accessAllOutlets").checked || role === "admin";
+    const skills = role === "technician" ? selectedSkillValues(document.querySelector("#accessSkill")) : [];
     const payload = {
-      role: document.querySelector("#accessRole").value,
+      role,
       name: document.querySelector("#accessName").value,
       username: document.querySelector("#accessUsername").value,
       password: document.querySelector("#accessPassword").value,
       post: document.querySelector("#accessPost").value,
-      skill: document.querySelector("#accessSkill").value,
-      accessAllOutlets: document.querySelector("#accessAllOutlets").checked,
-      allowedOutlets: selectedOptionValues(document.querySelector("#accessOutlets")),
+      skill: skills.join(", "),
+      skills,
+      accessAllOutlets,
+      allowedOutlets: accessAllOutlets ? [] : selectedOptionValues(document.querySelector("#accessOutlets")),
       address: document.querySelector("#accessAddress").value,
       latitude: "",
       longitude: ""
@@ -1613,10 +1661,10 @@ function renderSelects() {
   const selectedTicketAsset = ticketAsset?.value;
   const selectedAssetOutlet = assetOutlet?.value;
   const selectedAssetCategory = assetCategory?.value;
-  const selectedTechnicianSkill = technicianSkill?.value;
+  const selectedTechnicianSkills = selectedSkillValues(technicianSkill);
   const selectedTechnicianOutlet = technicianOutlet?.value;
   const selectedTechnicianOutlets = selectedOptionValues(technicianOutlet);
-  const selectedAccessSkill = accessSkill?.value;
+  const selectedAccessSkills = selectedSkillValues(accessSkill);
   const selectedAccessOutlets = selectedOptionValues(accessOutlets);
   const selectedTicketCategory = ticketCategory?.value;
   const selectedRuleOutlet = ruleOutlet?.value;
@@ -1703,18 +1751,14 @@ function renderSelects() {
     technicianSkill.innerHTML = categories
       .map((category) => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`)
       .join("");
-    if (selectedTechnicianSkill && categories.some((category) => category.name === selectedTechnicianSkill)) {
-      technicianSkill.value = selectedTechnicianSkill;
-    }
+    setSelectedValues(technicianSkill, selectedTechnicianSkills.filter((skill) => categories.some((category) => category.name === skill)));
   }
 
   if (accessSkill) {
     accessSkill.innerHTML = categories
       .map((category) => `<option value="${escapeHtml(category.name)}">${escapeHtml(category.name)}</option>`)
       .join("");
-    if (selectedAccessSkill && categories.some((category) => category.name === selectedAccessSkill)) {
-      accessSkill.value = selectedAccessSkill;
-    }
+    setSelectedValues(accessSkill, selectedAccessSkills.filter((skill) => categories.some((category) => category.name === skill)));
   }
 
   if (ticketCategory) {
@@ -3760,6 +3804,14 @@ document.querySelector("#technicianForm").addEventListener("submit", saveTechnic
 document.querySelector("#technicianCancel").addEventListener("click", resetTechnicianForm);
 document.querySelector("#userAccessForm").addEventListener("submit", saveUserAccess);
 document.querySelector("#userAccessCancel").addEventListener("click", resetUserAccessForm);
+document.querySelector("#accessRole").addEventListener("change", () => {
+  updateUserAccessVisibility();
+  renderMasterSelectionPanels();
+});
+document.querySelector("#accessAllOutlets").addEventListener("change", () => {
+  updateUserAccessVisibility();
+  renderMasterSelectionPanels();
+});
 document.querySelector("#assignmentWindowForm").addEventListener("submit", saveAssignmentWindow);
 document.querySelector("#assignmentWindowCancel").addEventListener("click", resetAssignmentWindowForm);
 document.querySelector("#maintenanceRuleForm").addEventListener("submit", createMaintenanceRule);

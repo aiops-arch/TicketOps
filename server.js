@@ -575,6 +575,27 @@ function normalizeOutletList(value, db) {
     });
 }
 
+function skillListFromValue(value) {
+  const raw = Array.isArray(value) ? value : String(value || "").split(/[,|]/);
+  const seen = new Set();
+  return raw
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .filter((item) => {
+      if (seen.has(item)) return false;
+      seen.add(item);
+      return true;
+    });
+}
+
+function buildSkillValue(payload, db, fallback = "") {
+  const skills = skillListFromValue(payload.skills?.length ? payload.skills : payload.skill || fallback);
+  if (!skills.length) return { error: "At least one technician skill is required" };
+  const validSkills = new Set((db.categories || []).map((category) => category.name));
+  if (skills.some((skill) => !validSkills.has(skill))) return { error: "Skill category is invalid" };
+  return { value: skills.join(", ") };
+}
+
 function allowedViewsForRole(role) {
   if (role === "admin") return ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"];
   if (role === "manager") return ["manager"];
@@ -1640,7 +1661,11 @@ async function updateCategory(categoryId, payload) {
     if (name !== existing.name) {
       await requireSupabase(await supabase.from("assets").update({ category: name, updated_at: new Date().toISOString() }).eq("category", existing.name));
       await requireSupabase(await supabase.from("tickets").update({ category: name, updated_at: new Date().toISOString() }).eq("category", existing.name));
-      await requireSupabase(await supabase.from("technicians").update({ skill: name, updated_at: new Date().toISOString() }).eq("skill", existing.name));
+      const technicians = (await loadDb()).technicians || [];
+      for (const tech of technicians.filter((item) => skillListFromValue(item.skill).includes(existing.name))) {
+        const renamedSkills = skillListFromValue(tech.skill).map((skill) => skill === existing.name ? name : skill).join(", ");
+        await requireSupabase(await supabase.from("technicians").update({ skill: renamedSkills, updated_at: new Date().toISOString() }).eq("id", tech.id));
+      }
       await requireSupabase(await supabase.from("maintenance_rules").update({ category: name, updated_at: new Date().toISOString() }).eq("category", existing.name));
     }
     return { status: 200, body: updated };
@@ -1650,7 +1675,10 @@ async function updateCategory(categoryId, payload) {
   if (name !== existing.name) {
     db.assets = (db.assets || []).map((asset) => asset.category === existing.name ? { ...asset, category: name } : asset);
     db.tickets = (db.tickets || []).map((ticket) => ticket.category === existing.name ? { ...ticket, category: name } : ticket);
-    db.technicians = (db.technicians || []).map((tech) => tech.skill === existing.name ? { ...tech, skill: name } : tech);
+    db.technicians = (db.technicians || []).map((tech) => {
+      const skills = skillListFromValue(tech.skill);
+      return skills.includes(existing.name) ? { ...tech, skill: skills.map((skill) => skill === existing.name ? name : skill).join(", ") } : tech;
+    });
     db.maintenanceRules = (db.maintenanceRules || []).map((rule) => rule.category === existing.name ? { ...rule, category: name } : rule);
   }
   writeJsonDb(db);
@@ -1692,7 +1720,7 @@ async function deleteCategory(categoryId) {
   const inUse = [
     (db.assets || []).some((asset) => asset.category === category.name) && "assets",
     (db.tickets || []).some((ticket) => ticket.category === category.name) && "tickets",
-    (db.technicians || []).some((tech) => tech.skill === category.name) && "technicians",
+    (db.technicians || []).some((tech) => skillListFromValue(tech.skill).includes(category.name)) && "technicians",
     (db.maintenanceRules || []).some((rule) => rule.category === category.name) && "scheduler rules"
   ].filter(Boolean);
   if (inUse.length) return { status: 409, body: { error: `Category is used by ${inUse.join(", ")}. Remove those links first.` } };
@@ -1725,14 +1753,15 @@ async function deleteAsset(assetId) {
 async function createTechnician(payload) {
   const db = await loadDb();
   const name = String(payload.name || "").trim();
-  const skill = String(payload.skill || "").trim();
+  const skillResult = buildSkillValue(payload, db);
+  const skill = skillResult.value || "";
   const outlet = String(payload.outlet || "").trim();
   const requestedOutlets = normalizeOutletList(payload.serviceOutlets?.length ? payload.serviceOutlets : payload.allowedOutlets?.length ? payload.allowedOutlets : outlet ? [outlet] : db.outlets, db);
   const address = String(payload.address || "").trim();
   const latitude = parseNullableNumber(payload.latitude);
   const longitude = parseNullableNumber(payload.longitude);
   if (!name) return { status: 400, body: { error: "Technician name is required" } };
-  if (!db.categories.some((category) => category.name === skill)) return { status: 400, body: { error: "Skill category is invalid" } };
+  if (skillResult.error) return { status: 400, body: { error: skillResult.error } };
   if (!requestedOutlets.length) return { status: 400, body: { error: "At least one outlet is required" } };
 
   const technician = {
@@ -1808,10 +1837,11 @@ async function updateTechnicianMaster(technicianId, payload) {
   const technician = db.technicians.find((tech) => tech.id === technicianId);
   if (!technician) return { status: 404, body: { error: "Technician not found" } };
   const name = String(payload.name || technician.name || "").trim();
-  const skill = String(payload.skill || technician.skill || "").trim();
+  const skillResult = buildSkillValue(payload, db, technician.skill);
+  const skill = skillResult.value || "";
   const serviceOutlets = normalizeOutletList(payload.serviceOutlets?.length ? payload.serviceOutlets : payload.allowedOutlets?.length ? payload.allowedOutlets : technician.serviceOutlets || [], db);
   if (!name) return { status: 400, body: { error: "Technician name is required" } };
-  if (!db.categories.some((category) => category.name === skill)) return { status: 400, body: { error: "Skill category is invalid" } };
+  if (skillResult.error) return { status: 400, body: { error: skillResult.error } };
   if (!serviceOutlets.length) return { status: 400, body: { error: "At least one outlet is required" } };
 
   const updated = { ...technician, name, skill, serviceOutlets };
@@ -1911,12 +1941,12 @@ async function createAdminUser(payload) {
   let technician = null;
   let technicianId = "";
   if (access.role === "technician") {
-    const skill = String(payload.skill || "").trim();
-    if (!db.categories.some((category) => category.name === skill)) return { status: 400, body: { error: "Skill category is invalid" } };
+    const skillResult = buildSkillValue(payload, db);
+    if (skillResult.error) return { status: 400, body: { error: skillResult.error } };
     technician = {
       id: nextTechnicianId(db.technicians),
       name: access.name,
-      skill,
+      skill: skillResult.value,
       status: String(payload.status || "Present").trim() || "Present",
       quality: 90,
       serviceOutlets: access.allowedOutlets.length ? access.allowedOutlets : [...db.outlets]
@@ -1991,11 +2021,12 @@ async function updateAdminUser(userId, payload) {
   let technicianId = access.role === "technician" ? existing.technicianId || "" : "";
 
   if (access.role === "technician" && !technicianId) {
-    const skill = String(payload.skill || "General").trim();
+    const skillResult = buildSkillValue(payload, db, payload.skill || db.categories?.[0]?.name || "");
+    if (skillResult.error) return { status: 400, body: { error: skillResult.error } };
     const technician = {
       id: nextTechnicianId(db.technicians),
       name: access.name,
-      skill,
+      skill: skillResult.value,
       status: String(payload.status || "Present").trim() || "Present",
       quality: 90,
       serviceOutlets: access.allowedOutlets.length ? access.allowedOutlets : [...db.outlets]
@@ -2021,7 +2052,11 @@ async function updateAdminUser(userId, payload) {
       service_outlets: access.accessAllOutlets ? [...db.outlets] : access.allowedOutlets,
       updated_at: new Date().toISOString()
     };
-    if (payload.skill) technicianUpdates.skill = String(payload.skill).trim();
+    if (payload.skill || payload.skills?.length) {
+      const skillResult = buildSkillValue(payload, db);
+      if (skillResult.error) return { status: 400, body: { error: skillResult.error } };
+      technicianUpdates.skill = skillResult.value;
+    }
     if (payload.status) technicianUpdates.status = String(payload.status).trim();
     if (useSupabase) {
       await requireSupabase(await supabase.from("technicians").update(technicianUpdates).eq("id", technicianId));
