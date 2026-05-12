@@ -558,6 +558,67 @@ function taskFrequencyLabel(task) {
   return match ? frequencyLabel(match[1].toLowerCase().replace(/\s+/g, "-")) : "Scheduled";
 }
 
+function isMaintenanceRuleDueOn(rule, day) {
+  const date = new Date(`${day}T00:00:00`);
+  const dayOfWeek = date.getDay();
+  const dayOfMonth = date.getDate();
+  const month = date.getMonth();
+  const frequency = String(rule?.frequency || "daily").toLowerCase();
+  const isFirstOfMonth = dayOfMonth === 1;
+  return frequency === "daily" ||
+    (frequency === "weekly" && dayOfWeek === 1) ||
+    (frequency === "monthly" && isFirstOfMonth) ||
+    (frequency === "quarterly" && isFirstOfMonth && [0, 3, 6, 9].includes(month)) ||
+    (frequency === "half-yearly" && isFirstOfMonth && [0, 6].includes(month)) ||
+    (frequency === "yearly" && isFirstOfMonth && month === 0);
+}
+
+function scheduledTasksForScope(scope = "admin") {
+  const today = todayInputValue();
+  let tasks = (state.tasks || []).filter((task) => task.date === today);
+  if (scope === "manager") {
+    const outlets = outletAccessForUser(currentUser);
+    tasks = tasks.filter((task) => outlets.includes(task.outlet));
+  }
+  if (scope === "technician" && currentUser?.technicianId) {
+    tasks = tasks.filter((task) => task.assignedTo === currentUser.technicianId);
+  }
+  return tasks.sort((a, b) => String(a.outlet || "").localeCompare(String(b.outlet || ""))
+    || String(technicianById(a.assignedTo)?.name || "").localeCompare(String(technicianById(b.assignedTo)?.name || ""))
+    || (a.status === "Done") - (b.status === "Done")
+    || String(a.title || "").localeCompare(String(b.title || "")));
+}
+
+function scheduledTaskRows(tasks, { allowActions = false } = {}) {
+  return tasks.length ? tasks.map((task) => {
+    const phase = taskPhase(task.title);
+    const title = String(task.title || "").replace(`${phase}: `, "");
+    const rule = maintenanceRuleForTask(task);
+    const windowText = rule?.allowOutsideWindow ? "All day" : rule ? `${rule.startTime || "?"} - ${rule.endTime || "?"}` : "Scheduled";
+    const technician = technicianById(task.assignedTo);
+    const needsEvidence = taskRequiresEvidence(task);
+    return `
+      <article class="task-row status-${token(task.status)} ${needsEvidence && task.status !== "Done" ? "requires-evidence" : ""}">
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(task.outlet)} / ${escapeHtml(technician?.name || "Unassigned")} / ${escapeHtml(taskFrequencyLabel(task))} / ${escapeHtml(windowText)}</span>
+          <div class="task-tags">
+            <span>${escapeHtml(task.status)}</span>
+            <span>${escapeHtml(phase)}</span>
+            ${needsEvidence ? `<span>Photo evidence</span>` : ""}
+            ${task.evidenceComment ? `<span>${escapeHtml(task.evidenceComment)}</span>` : ""}
+          </div>
+        </div>
+        <div class="task-actions">
+          ${task.evidencePhotoUrl ? `<button type="button" class="small-button" data-task-photo="${escapeHtml(task.id)}">Evidence</button>` : ""}
+          ${allowActions && task.status !== "Done" ? `<button type="button" class="small-button success task-done-button" data-task-done="${escapeHtml(task.id)}">Done</button>` : ""}
+          ${allowActions && task.status !== "Done" ? `<button type="button" class="small-button warning" data-task-not-done="${escapeHtml(task.id)}">Not Done</button>` : ""}
+        </div>
+      </article>
+    `;
+  }).join("") : `<div class="empty">No scheduled jobs for today.</div>`;
+}
+
 function chooseEvidencePhoto() {
   const input = document.createElement("input");
   input.type = "file";
@@ -2527,6 +2588,21 @@ function renderManager() {
       `).join("")}
     `
     : `<div class="empty">No active tickets for this outlet.</div>`;
+
+  const managerScheduled = document.querySelector("#managerScheduledJobs");
+  if (managerScheduled) {
+    const tasks = scheduledTasksForScope("manager");
+    const done = tasks.filter((task) => task.status === "Done").length;
+    managerScheduled.innerHTML = `
+      <div class="queue-summary-strip manager-summary">
+        <span>${tasks.length} today</span>
+        <span>${done} done</span>
+        <span>${tasks.filter((task) => task.status === "Pending").length} pending</span>
+        <span>${tasks.filter((task) => task.status === "Not Done").length} not done</span>
+      </div>
+      <div class="technician-task-list">${scheduledTaskRows(tasks)}</div>
+    `;
+  }
 }
 
 function masterEntry({ className = "", editAttr, title, detail, deleteValue }) {
@@ -2767,6 +2843,21 @@ function renderAdmin() {
     }).join("")
     : `<div class="empty">No technicians found.</div>`;
 
+  const adminScheduled = document.querySelector("#adminScheduledJobs");
+  if (adminScheduled) {
+    const tasks = scheduledTasksForScope("admin");
+    const done = tasks.filter((task) => task.status === "Done").length;
+    adminScheduled.innerHTML = `
+      <div class="queue-summary-strip">
+        <span>${tasks.length} today</span>
+        <span>${done} done</span>
+        <span>${tasks.filter((task) => task.status === "Pending").length} pending</span>
+        <span>${tasks.filter((task) => task.status === "Not Done").length} not done</span>
+      </div>
+      <div class="technician-task-list">${scheduledTaskRows(tasks)}</div>
+    `;
+  }
+
   document.querySelector("#adminTickets").innerHTML = openTickets.length
     ? renderAdminTicketQueue(openTickets)
     : `<div class="empty">The admin queue is clear.</div>`;
@@ -2814,8 +2905,7 @@ function renderMaintenanceScheduler() {
   const rules = state.maintenanceRules || [];
   const activeRules = rules.filter((rule) => rule.active !== false);
   const tomorrow = addDaysInputValue(1);
-  const tomorrowIsMonday = new Date(`${tomorrow}T00:00:00`).getDay() === 1;
-  const previewRules = activeRules.filter((rule) => rule.frequency === "daily" || (rule.frequency === "weekly" && tomorrowIsMonday));
+  const previewRules = activeRules.filter((rule) => isMaintenanceRuleDueOn(rule, tomorrow));
 
   document.querySelector("#maintenanceRulesBoard").innerHTML = rules.length
     ? rules.map((rule) => `
@@ -3185,29 +3275,7 @@ function renderTechnician() {
       </div>
       <div class="technician-task-list">
         ${todayTasks.length ? todayTasks.map((task) => {
-          const phase = taskPhase(task.title);
-          const title = String(task.title || "").replace(`${phase}: `, "");
-          const rule = maintenanceRuleForTask(task);
-          const windowText = rule?.allowOutsideWindow ? "All day" : rule ? `${rule.startTime || "?"} - ${rule.endTime || "?"}` : "Scheduled";
-          const needsEvidence = taskRequiresEvidence(task);
-          return `
-            <article class="task-row status-${token(task.status)} ${needsEvidence && task.status !== "Done" ? "requires-evidence" : ""}">
-              <div>
-                <strong>${escapeHtml(title)}</strong>
-                <span>${escapeHtml(task.outlet)} / ${escapeHtml(phase)} / ${escapeHtml(taskFrequencyLabel(task))} / ${escapeHtml(windowText)}</span>
-                <div class="task-tags">
-                  <span>${escapeHtml(task.status)}</span>
-                  ${needsEvidence ? `<span>Photo evidence</span>` : `<span>Photo on close</span>`}
-                  ${task.evidenceComment ? `<span>${escapeHtml(task.evidenceComment)}</span>` : ""}
-                </div>
-              </div>
-              <div class="task-actions">
-                ${task.evidencePhotoUrl ? `<button type="button" class="small-button" data-task-photo="${escapeHtml(task.id)}">Evidence</button>` : ""}
-                ${task.status !== "Done" ? `<button type="button" class="small-button success task-done-button" data-task-done="${escapeHtml(task.id)}">Done</button>` : ""}
-                ${task.status !== "Done" ? `<button type="button" class="small-button warning" data-task-not-done="${escapeHtml(task.id)}">Not Done</button>` : ""}
-              </div>
-            </article>
-          `;
+          return scheduledTaskRows([task], { allowActions: true });
         }).join("") : `<div class="empty">No scheduled jobs for today.</div>`}
       </div>
     </section>
@@ -3239,8 +3307,9 @@ function ticketsByStatuses(statuses) {
 }
 
 function scopedTasks() {
-  if (currentUser?.role === "manager" && currentUser.outlet) {
-    return (state.tasks || []).filter((task) => task.outlet === currentUser.outlet);
+  if (currentUser?.role === "manager") {
+    const outlets = outletAccessForUser(currentUser);
+    return (state.tasks || []).filter((task) => outlets.includes(task.outlet));
   }
   if (currentUser?.role === "technician" && currentUser.technicianId) {
     return (state.tasks || []).filter((task) => task.assignedTo === currentUser.technicianId);
@@ -4337,7 +4406,7 @@ setInterval(updateLiveClock, 30000);
 setInterval(() => {
   if (document.hidden || !currentUser) return;
   loadState().catch((error) => console.warn(error));
-}, 15000);
+}, 300000);
 
 window.addEventListener("resize", () => {
   if (!isMobileNav()) closeMobileNav();

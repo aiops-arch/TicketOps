@@ -15,6 +15,10 @@ const useSupabase = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SER
 const requireSupabaseForProduction = process.env.REQUIRE_SUPABASE === "true";
 const STITCH_API_URL = process.env.STITCH_API_URL || "https://stitch.googleapis.com/mcp";
 const STITCH_API_KEY = process.env.STITCH_API_KEY || "";
+const SUPABASE_DB_CACHE_MS = Number(process.env.SUPABASE_DB_CACHE_MS || 120000);
+const SUPABASE_USERS_CACHE_MS = Number(process.env.SUPABASE_USERS_CACHE_MS || 300000);
+let supabaseDbCache = { expiresAt: 0, value: null };
+let supabaseUsersCache = { expiresAt: 0, value: null };
 const supabase = useSupabase
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false }
@@ -23,6 +27,11 @@ const supabase = useSupabase
 
 if (requireSupabaseForProduction && !useSupabase) {
   throw new Error("REQUIRE_SUPABASE=true but SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing.");
+}
+
+function clearSupabaseCache() {
+  supabaseDbCache = { expiresAt: 0, value: null };
+  supabaseUsersCache = { expiresAt: 0, value: null };
 }
 
 const ACTIVE_STATUSES = ["New", "Assigned", "Acknowledged", "In Progress", "Blocked", "Resolved", "Verification Pending", "Reopened"];
@@ -176,6 +185,12 @@ const DEMO_USERS = [
 app.use(cors());
 app.use(express.json({ limit: "8mb" }));
 app.use(express.static(__dirname));
+app.use((req, res, next) => {
+  res.on("finish", () => {
+    if (useSupabase && req.method !== "GET" && res.statusCode < 500) clearSupabaseCache();
+  });
+  next();
+});
 
 const seed = {
   users: DEMO_USERS,
@@ -662,6 +677,12 @@ function dateKey(value = new Date()) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toISOString().slice(0, 10);
+}
+
+function addDays(days, value = new Date()) {
+  const date = value instanceof Date ? new Date(value) : new Date(value);
+  date.setDate(date.getDate() + Number(days || 0));
+  return date;
 }
 
 function activeAttendancePlan(db, technicianId, day = dateKey()) {
@@ -1234,6 +1255,8 @@ function mapTicket(row, history = []) {
     photoUrl: row.photo_url || "",
     photoUrls: row.photo_urls?.length ? row.photo_urls : (row.photo_url ? [row.photo_url] : []),
     resolutionPhotoUrls: row.resolution_photo_urls || [],
+    photosDeferred: useSupabase && row.photo_url === undefined && row.photo_urls === undefined,
+    resolutionPhotosDeferred: useSupabase && row.resolution_photo_urls === undefined,
     createdBy: row.created_by || "",
     createdAt: row.created_at,
     updatedAt: row.updated_at || row.created_at,
@@ -1267,6 +1290,7 @@ function mapTask(row) {
     completedAt: row.completed_at || "",
     evidenceComment: row.evidence_comment || "",
     evidencePhotoUrl: row.evidence_photo_url || "",
+    evidencePhotoDeferred: useSupabase && row.evidence_photo_url === undefined,
     evidenceAt: row.evidence_at || "",
     notes: row.notes || ""
   };
@@ -1311,10 +1335,10 @@ async function loadSupabaseDb() {
     supabase.from("outlets").select("name,branch,address,latitude,longitude").order("name"),
     supabase.from("categories").select("id,name,description").order("name"),
     supabase.from("assets").select("id,outlet,category,name,code,status,notes,created_at").order("created_at", { ascending: false }),
-    supabase.from("tasks").select("id,title,asset_id,outlet,assigned_to,rule_id,status,task_date,completed_at,evidence_comment,evidence_photo_url,evidence_at,notes").order("task_date", { ascending: false }),
+    supabase.from("tasks").select("id,title,asset_id,outlet,assigned_to,rule_id,status,task_date,completed_at,evidence_comment,evidence_at,notes").gte("task_date", dateKey(addDays(-14))).order("task_date", { ascending: false }),
     supabase.from("technicians").select("id,name,skill,status,quality,service_outlets").order("id"),
-    supabase.from("tickets").select("*").order("created_at", { ascending: false }),
-    supabase.from("ticket_history").select("ticket_id,action,created_at").order("created_at", { ascending: true }),
+    supabase.from("tickets").select("id,outlet,category,asset_id,impact,area,note,priority,status,assigned_to,scheduled_at,latest_detail,created_by,created_at,updated_at").or(`status.neq.Closed,updated_at.gte.${dateKey(addDays(-30))}`).order("created_at", { ascending: false }),
+    supabase.from("ticket_history").select("ticket_id,action,created_at").gte("created_at", dateKey(addDays(-30))).order("created_at", { ascending: true }),
     supabase.from("attendance_plans").select("id,technician_id,status,from_date,to_date,reason,created_by,active,created_at").order("from_date"),
     supabase.from("maintenance_rules").select("id,outlet,category,title,start_time,end_time,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }).then(r => r.error?.message?.includes("does not exist") ? supabase.from("maintenance_rules").select("id,category,title,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }) : r),
     supabase.from("assignment_time_windows").select("id,name,days,start_time,end_time,active,created_at").order("created_at", { ascending: false })
@@ -1379,7 +1403,13 @@ async function addSupabaseHistory(ticketId, action) {
 }
 
 async function loadDb() {
-  if (useSupabase) return loadSupabaseDb();
+  if (useSupabase) {
+    const now = Date.now();
+    if (supabaseDbCache.value && supabaseDbCache.expiresAt > now) return supabaseDbCache.value;
+    const value = await loadSupabaseDb();
+    supabaseDbCache = { value, expiresAt: now + SUPABASE_DB_CACHE_MS };
+    return value;
+  }
   return readJsonDb();
 }
 
@@ -2932,11 +2962,15 @@ function allUsersFromJson() {
 
 async function allUsers() {
   if (useSupabase) {
+    const now = Date.now();
+    if (supabaseUsersCache.value && supabaseUsersCache.expiresAt > now) return supabaseUsersCache.value;
     const result = await supabase
       .from("app_users")
       .select("id,username,display_name,password_hash,post,role,outlet,technician_id,access_all_outlets,allowed_outlets,address,latitude,longitude,default_view,allowed_views")
       .order("username");
-    return (await requireSupabase(result)).map(mapSupabaseUser);
+    const value = (await requireSupabase(result)).map(mapSupabaseUser);
+    supabaseUsersCache = { value, expiresAt: now + SUPABASE_USERS_CACHE_MS };
+    return value;
   }
   return allUsersFromJson();
 }
