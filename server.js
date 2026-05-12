@@ -685,6 +685,15 @@ function addDays(days, value = new Date()) {
   return date;
 }
 
+function monthRange(month = "") {
+  const clean = String(month || dateKey()).slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(clean)) return null;
+  const start = `${clean}-01`;
+  const endDate = new Date(`${start}T00:00:00Z`);
+  endDate.setUTCMonth(endDate.getUTCMonth() + 1);
+  return { month: clean, start, end: dateKey(endDate) };
+}
+
 function activeAttendancePlan(db, technicianId, day = dateKey()) {
   return (db.attendancePlans || [])
     .filter((plan) => plan.technicianId === technicianId && plan.active !== false && plan.from <= day && plan.to >= day)
@@ -1236,6 +1245,93 @@ function exportCsv(db, type) {
   }
 
   return null;
+}
+
+function backupReport(backup) {
+  const tickets = backup.tickets || [];
+  const tasks = backup.tasks || [];
+  const closed = tickets.filter((ticket) => ticket.status === "Closed").length;
+  const open = tickets.filter((ticket) => ticket.status !== "Closed" && ticket.status !== "Cancelled").length;
+  const doneTasks = tasks.filter((task) => task.status === "Done").length;
+  const outletMap = new Map();
+  tickets.forEach((ticket) => {
+    const item = outletMap.get(ticket.outlet) || { outlet: ticket.outlet || "Unknown", tickets: 0, closed: 0, open: 0, tasks: 0, doneTasks: 0 };
+    item.tickets += 1;
+    if (ticket.status === "Closed") item.closed += 1;
+    if (ticket.status !== "Closed" && ticket.status !== "Cancelled") item.open += 1;
+    outletMap.set(item.outlet, item);
+  });
+  tasks.forEach((task) => {
+    const item = outletMap.get(task.outlet) || { outlet: task.outlet || "Unknown", tickets: 0, closed: 0, open: 0, tasks: 0, doneTasks: 0 };
+    item.tasks += 1;
+    if (task.status === "Done") item.doneTasks += 1;
+    outletMap.set(item.outlet, item);
+  });
+  return {
+    month: backup.month,
+    totals: {
+      tickets: tickets.length,
+      openTickets: open,
+      closedTickets: closed,
+      tasks: tasks.length,
+      completedTasks: doneTasks,
+      taskCompletionRate: tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 100
+    },
+    byOutlet: [...outletMap.values()].sort((a, b) => String(a.outlet).localeCompare(String(b.outlet)))
+  };
+}
+
+async function buildMonthlyBackup(month) {
+  const range = monthRange(month);
+  if (!range) return null;
+  if (useSupabase) {
+    const [outlets, categories, assets, technicians, rules, windows, ticketsCreated, ticketsUpdated, tasks, history] = await Promise.all([
+      requireSupabase(await supabase.from("outlets").select("name,branch,address,latitude,longitude").order("name")),
+      requireSupabase(await supabase.from("categories").select("id,name,description").order("name")),
+      requireSupabase(await supabase.from("assets").select("id,outlet,category,name,code,status,notes,created_at").order("created_at", { ascending: false })),
+      requireSupabase(await supabase.from("technicians").select("id,name,skill,status,quality,service_outlets").order("id")),
+      requireSupabase(await supabase.from("maintenance_rules").select("id,outlet,category,title,start_time,end_time,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false })),
+      requireSupabase(await supabase.from("assignment_time_windows").select("id,name,days,start_time,end_time,active,created_at").order("created_at", { ascending: false })),
+      requireSupabase(await supabase.from("tickets").select("id,outlet,category,asset_id,impact,area,note,priority,status,assigned_to,scheduled_at,latest_detail,created_by,created_at,updated_at").gte("created_at", range.start).lt("created_at", range.end)),
+      requireSupabase(await supabase.from("tickets").select("id,outlet,category,asset_id,impact,area,note,priority,status,assigned_to,scheduled_at,latest_detail,created_by,created_at,updated_at").gte("updated_at", range.start).lt("updated_at", range.end)),
+      requireSupabase(await supabase.from("tasks").select("id,title,asset_id,outlet,assigned_to,rule_id,status,task_date,completed_at,evidence_comment,evidence_at,notes").gte("task_date", range.start).lt("task_date", range.end)),
+      requireSupabase(await supabase.from("ticket_history").select("ticket_id,action,created_at").gte("created_at", range.start).lt("created_at", range.end))
+    ]);
+    const ticketRows = [...new Map([...ticketsCreated, ...ticketsUpdated].map((ticket) => [ticket.id, ticket])).values()];
+    const backup = {
+      type: "ticketops-monthly-backup",
+      version: 1,
+      month: range.month,
+      generatedAt: new Date().toISOString(),
+      outlets: outlets.map((outlet) => outlet.name),
+      outletLocations: Object.fromEntries(outlets.map((outlet) => [outlet.name, { address: outlet.address || "", branch: outlet.branch || "", latitude: outlet.latitude, longitude: outlet.longitude }])),
+      categories,
+      assets: assets.map(mapAsset),
+      technicians: technicians.map((tech) => ({ ...tech, serviceOutlets: tech.service_outlets || [], quality: tech.quality || 90 })),
+      maintenanceRules: rules.map(mapMaintenanceRule),
+      assignmentTimeWindows: windows.map(mapAssignmentWindow),
+      tickets: ticketRows.map((ticket) => mapTicket(ticket, history.filter((item) => item.ticket_id === ticket.id).map((item) => ({ at: item.created_at, action: item.action })))),
+      tasks: tasks.map(mapTask)
+    };
+    return { ...backup, report: backupReport(backup) };
+  }
+  const db = readJsonDb();
+  const backup = {
+    type: "ticketops-monthly-backup",
+    version: 1,
+    month: range.month,
+    generatedAt: new Date().toISOString(),
+    outlets: db.outlets || [],
+    outletLocations: db.outletLocations || {},
+    categories: db.categories || [],
+    assets: db.assets || [],
+    technicians: db.technicians || [],
+    maintenanceRules: db.maintenanceRules || [],
+    assignmentTimeWindows: db.assignmentTimeWindows || [],
+    tickets: (db.tickets || []).filter((ticket) => String(ticket.createdAt || "").slice(0, 7) === range.month || String(ticket.updatedAt || "").slice(0, 7) === range.month),
+    tasks: (db.tasks || []).filter((task) => String(task.date || "").slice(0, 7) === range.month)
+  };
+  return { ...backup, report: backupReport(backup) };
 }
 
 function mapTicket(row, history = []) {
@@ -3195,13 +3291,19 @@ app.get(
     const user = await userFromRequest(req);
     if (!user) return res.status(401).json({ error: "Login required" });
     const db = scopedDbForUser(await loadDb(), user);
-    res.json({
+    const body = {
       ...withSuggestions(db, user),
       stitch: {
         configured: Boolean(STITCH_API_KEY),
         endpoint: STITCH_API_URL
       }
-    });
+    };
+    const json = JSON.stringify(body);
+    const etag = `"${crypto.createHash("sha1").update(json).digest("hex")}"`;
+    res.setHeader("Cache-Control", "private, max-age=600");
+    res.setHeader("ETag", etag);
+    if (req.get("If-None-Match") === etag) return res.status(304).end();
+    res.type("application/json").send(json);
   })
 );
 
@@ -3250,6 +3352,35 @@ app.get(
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="${exportFile.filename}"`);
     res.send(exportFile.csv);
+  })
+);
+
+app.get(
+  "/api/backups/monthly/:month",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can download backups" });
+    }
+    const backup = await buildMonthlyBackup(req.params.month);
+    if (!backup) return res.status(400).json({ error: "Use month format YYYY-MM" });
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="ticketops-backup-${backup.month}.json"`);
+    res.send(JSON.stringify(backup));
+  })
+);
+
+app.post(
+  "/api/backups/report",
+  asyncRoute(async (req, res) => {
+    const user = await userFromRequest(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Only admin can generate backup reports" });
+    }
+    if (req.body?.type !== "ticketops-monthly-backup") {
+      return res.status(400).json({ error: "Invalid TicketOps backup file" });
+    }
+    res.json(backupReport(req.body));
   })
 );
 

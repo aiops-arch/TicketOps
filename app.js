@@ -5,6 +5,8 @@ const AUTH_STORAGE_KEY = "ticketops-auth-user-v2";
 const THEME_STORAGE_KEY = "ticketops-theme";
 const DASHBOARD_MODE_STORAGE_KEY = "ticketops-dashboard-mode";
 const LAST_ACTIVITY_STORAGE_KEY = "ticketops-last-activity";
+const BOOTSTRAP_CACHE_KEY = "ticketops-bootstrap-cache-v1";
+const BOOTSTRAP_CACHE_TTL_MS = 10 * 60 * 1000;
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_TICKET_PHOTOS = 5;
 const MAX_IMAGE_EDGE = 1600;
@@ -919,7 +921,61 @@ async function api(path, options = {}) {
     const error = await response.json().catch(() => ({ error: "Request failed" }));
     throw new Error(error.error || "Request failed");
   }
+  if (String(options.method || "GET").toUpperCase() !== "GET") {
+    localStorage.removeItem(bootstrapCacheKey());
+  }
   return response.json();
+}
+
+function bootstrapCacheKey() {
+  return `${BOOTSTRAP_CACHE_KEY}:${currentUser?.id || "guest"}`;
+}
+
+function readBootstrapCache() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(bootstrapCacheKey()) || "null");
+    if (!cached?.state) return null;
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+function writeBootstrapCache(nextState, etag = "") {
+  try {
+    localStorage.setItem(bootstrapCacheKey(), JSON.stringify({
+      at: Date.now(),
+      etag,
+      state: nextState
+    }));
+  } catch {
+    // Ignore storage pressure; the network path still works.
+  }
+}
+
+async function fetchBootstrapState({ preferCache = true } = {}) {
+  const cached = readBootstrapCache();
+  if (preferCache && cached?.state && Date.now() - Number(cached.at || 0) < BOOTSTRAP_CACHE_TTL_MS) {
+    return cached.state;
+  }
+  const response = await fetch(`${API_BASE}/api/bootstrap`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(currentUser ? { "X-TicketOps-User": currentUser.id, "X-TicketOps-Role": currentUser.role } : {}),
+      ...(cached?.etag ? { "If-None-Match": cached.etag } : {})
+    }
+  });
+  if (response.status === 304 && cached?.state) {
+    writeBootstrapCache(cached.state, cached.etag || "");
+    return cached.state;
+  }
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: "Request failed" }));
+    throw new Error(error.error || "Request failed");
+  }
+  const nextState = await response.json();
+  writeBootstrapCache(nextState, response.headers.get("ETag") || "");
+  return nextState;
 }
 
 async function loginWithCredentials(username, password) {
@@ -1004,7 +1060,7 @@ function renderAuthChrome() {
 
 async function loadState() {
   if (!currentUser) return;
-  state = await api("/api/bootstrap");
+  state = await fetchBootstrapState();
   rebuildStateIndex();
   if (currentUser?.role === "admin" && state.stitch?.configured) {
     try {
@@ -1700,6 +1756,69 @@ async function downloadReport(type) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function downloadMonthlyBackup() {
+  const month = document.querySelector("#backupMonth")?.value || todayInputValue().slice(0, 7);
+  const response = await fetch(`${API_BASE}/api/backups/monthly/${encodeURIComponent(month)}`, {
+    headers: currentUser ? { "X-TicketOps-User": currentUser.id, "X-TicketOps-Role": currentUser.role } : {}
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: "Backup failed" }));
+    throw new Error(error.error || "Backup failed");
+  }
+  const blob = await response.blob();
+  downloadBlob(blob, `ticketops-backup-${month}.json`);
+}
+
+async function renderBackupReportFromFile(file) {
+  const text = await file.text();
+  const backup = JSON.parse(text);
+  const report = await api("/api/backups/report", {
+    method: "POST",
+    body: JSON.stringify(backup)
+  });
+  const target = document.querySelector("#backupReportBoard");
+  if (!target) return;
+  target.innerHTML = `
+    <section class="report-table wide">
+      <div class="mini-heading">
+        <span class="section-kicker">Archive ${escapeHtml(report.month || backup.month || "")}</span>
+        <strong>${escapeHtml(report.totals?.taskCompletionRate ?? 0)}% task completion</strong>
+      </div>
+      <div class="report-card-grid">
+        ${[
+          ["Tickets", report.totals?.tickets || 0],
+          ["Open", report.totals?.openTickets || 0],
+          ["Closed", report.totals?.closedTickets || 0],
+          ["Tasks", report.totals?.tasks || 0],
+          ["Done Tasks", report.totals?.completedTasks || 0]
+        ].map(([label, value]) => `<article class="report-card"><div><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div></article>`).join("")}
+      </div>
+      <div class="report-row-list">
+        ${(report.byOutlet || []).map((row) => `
+          <article class="report-row">
+            <strong>${escapeHtml(row.outlet)}</strong>
+            <span>${escapeHtml(row.tickets)} tickets</span>
+            <span>${escapeHtml(row.closed)} closed</span>
+            <span>${escapeHtml(row.tasks)} tasks</span>
+            <span>${escapeHtml(row.doneTasks)} done</span>
+          </article>
+        `).join("") || `<div class="empty mini">No archive rows in this backup.</div>`}
+      </div>
+    </section>
+  `;
 }
 
 function technicianById(id) {
@@ -3409,6 +3528,10 @@ function renderReports() {
   document.querySelector("#reportsTitle").textContent = config.title;
   document.querySelector("#reportsScope").textContent = config.scope;
   document.querySelector("#reportExportActions").innerHTML = currentUser?.role === "admin" ? `
+    <input id="backupMonth" type="month" value="${escapeHtml(todayInputValue().slice(0, 7))}" aria-label="Backup month">
+    <button class="small-button primary" data-monthly-backup>Download Monthly Backup</button>
+    <button class="small-button" data-load-backup-report>Load Backup Report</button>
+    <input id="backupReportFile" class="is-hidden" type="file" accept="application/json,.json">
     <button class="small-button primary" data-export-report="tasks">Export Tasks CSV</button>
     <button class="small-button primary" data-export-report="tickets">Export Tickets CSV</button>
     <button class="small-button primary" data-export-report="technicians">Export Technicians CSV</button>
@@ -3428,6 +3551,7 @@ function renderReports() {
       `).join("")}
     </div>
     ${renderReportTables()}
+    <div id="backupReportBoard" class="report-grid"></div>
     ${renderAlerts()}
   `;
 }
@@ -4209,6 +4333,23 @@ document.addEventListener("click", async (event) => {
     return;
   }
 
+  const monthlyBackupButton = event.target.closest?.("[data-monthly-backup]");
+  if (monthlyBackupButton) {
+    try {
+      await downloadMonthlyBackup();
+      showToast("Monthly backup file generated. Put this JSON in Google Drive.", "success");
+    } catch (error) {
+      showToast(error.message, "error");
+    }
+    return;
+  }
+
+  const loadBackupButton = event.target.closest?.("[data-load-backup-report]");
+  if (loadBackupButton) {
+    document.querySelector("#backupReportFile")?.click();
+    return;
+  }
+
   const taskDoneButton = event.target.closest?.("[data-task-done]");
   if (taskDoneButton) {
     const task = (state.tasks || []).find((item) => item.id === taskDoneButton.dataset.taskDone);
@@ -4363,6 +4504,20 @@ document.addEventListener("submit", async (event) => {
 });
 
 document.addEventListener("change", async (event) => {
+  if (event.target.id === "backupReportFile") {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      await renderBackupReportFromFile(file);
+      showToast("Archive report generated from backup file.", "success");
+    } catch (error) {
+      showToast(error.message || "Could not read backup file.", "error");
+    } finally {
+      event.target.value = "";
+    }
+    return;
+  }
+
   if (event.target.id === "assignmentWindowAllDays") {
     [...document.querySelectorAll('input[name="assignmentWindowDays"]')].forEach((input) => {
       input.checked = event.target.checked;
@@ -4406,7 +4561,7 @@ setInterval(updateLiveClock, 30000);
 setInterval(() => {
   if (document.hidden || !currentUser) return;
   loadState().catch((error) => console.warn(error));
-}, 300000);
+}, 1800000);
 
 window.addEventListener("resize", () => {
   if (!isMobileNav()) closeMobileNav();

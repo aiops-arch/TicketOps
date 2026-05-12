@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v27-egress-control";
+const CACHE_NAME = "ticketops-v28-backup-reports";
 const APP_SHELL = [
   "./",
   "./index.html",
