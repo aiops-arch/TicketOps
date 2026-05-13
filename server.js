@@ -741,21 +741,20 @@ function isChecklistTask(task) {
     || title.startsWith("Daily check");
 }
 
-function rebalanceTodayChecklistTasks(db) {
-  const today = dateKey();
+function rebalanceTodayChecklistTasks(db, day = dateKey()) {
   const technicians = checklistTechnicians(db);
   if (!technicians.length) return false;
 
   const loadMap = new Map(technicians.map((tech) => [tech.id, 0]));
   (db.tasks || [])
-    .filter((task) => task.date === today && task.status === "Done" && isChecklistTask(task))
+    .filter((task) => task.date === day && task.status === "Done" && isChecklistTask(task))
     .forEach((task) => {
       if (loadMap.has(task.assignedTo)) loadMap.set(task.assignedTo, (loadMap.get(task.assignedTo) || 0) + 1);
     });
 
   let changed = false;
   (db.tasks || [])
-    .filter((task) => task.date === today && task.status !== "Done" && isChecklistTask(task))
+    .filter((task) => task.date === day && task.status !== "Done" && isChecklistTask(task))
     .sort((a, b) => String(a.outlet || "").localeCompare(String(b.outlet || "")) || String(a.title || "").localeCompare(String(b.title || "")))
     .forEach((task) => {
       const rule = maintenanceRuleById(db, task.ruleId);
@@ -771,27 +770,26 @@ function rebalanceTodayChecklistTasks(db) {
   return changed;
 }
 
-function generateTodayTasks(db) {
-  const today = dateKey();
+function generateTodayTasks(db, day = dateKey()) {
   const rules = (db.maintenanceRules || defaultMaintenanceRules()).filter((rule) => {
     if (rule.active === false) return false;
-    return isMaintenanceRuleDue(rule, today);
+    return isMaintenanceRuleDue(rule, day);
   });
   const tasks = [];
   const technicians = checklistTechnicians(db);
   const loadMap = new Map(technicians.map((tech) => [
     tech.id,
-    (db.tasks || []).filter((task) => task.date === today && task.assignedTo === tech.id && isChecklistTask(task)).length
+    (db.tasks || []).filter((task) => task.date === day && task.assignedTo === tech.id && isChecklistTask(task)).length
   ]));
   const existingTaskKeys = new Set((db.tasks || []).map((task) => `${task.date}|${task.outlet}|${task.ruleId || task.title}`));
   const existingTaskIds = new Set((db.tasks || []).map((task) => task.id));
-  let sequence = (db.tasks || []).filter((task) => task.date === today).length + 1;
+  let sequence = (db.tasks || []).filter((task) => task.date === day).length + 1;
 
   function nextTaskId() {
-    let id = `TASK-${today.replaceAll("-", "")}-${String(sequence).padStart(3, "0")}`;
+    let id = `TASK-${day.replaceAll("-", "")}-${String(sequence).padStart(3, "0")}`;
     while (existingTaskIds.has(id)) {
       sequence += 1;
-      id = `TASK-${today.replaceAll("-", "")}-${String(sequence).padStart(3, "0")}`;
+      id = `TASK-${day.replaceAll("-", "")}-${String(sequence).padStart(3, "0")}`;
     }
     existingTaskIds.add(id);
     sequence += 1;
@@ -808,7 +806,7 @@ function generateTodayTasks(db) {
 
       if (!asset || !technician) return;
       const title = `${rule.phase || "Checklist"}: ${rule.title}`;
-      const taskKey = `${today}|${outlet}|${rule.id}`;
+      const taskKey = `${day}|${outlet}|${rule.id}`;
       if (existingTaskKeys.has(taskKey)) return;
       existingTaskKeys.add(taskKey);
 
@@ -820,7 +818,7 @@ function generateTodayTasks(db) {
         assignedTo: technician.id,
         ruleId: rule.id,
         status: "Pending",
-        date: today,
+        date: day,
         completedAt: "",
         notes: `${rule.group || "Maintenance"} / ${frequencyLabel(rule.frequency)}${rule.allowOutsideWindow ? " / outside window allowed" : ""}`
       });
@@ -851,17 +849,16 @@ function isMaintenanceRuleDue(rule, day = dateKey()) {
     (frequency === "yearly" && isYearStart);
 }
 
-function refreshTodayMaintenanceTasks(db) {
-  const today = dateKey();
-  let changed = generateTodayTasks(db) > 0;
+function refreshTodayMaintenanceTasks(db, day = dateKey()) {
+  let changed = generateTodayTasks(db, day) > 0;
   const loadMap = new Map(checklistTechnicians(db).map((tech) => [tech.id, 0]));
   const removeTaskIds = new Set();
   (db.tasks || [])
-    .filter((task) => task.date === today && isChecklistTask(task))
+    .filter((task) => task.date === day && isChecklistTask(task))
     .forEach((task) => {
       const rule = maintenanceRuleById(db, task.ruleId);
       if (!rule) return;
-      if (rule.active === false || !isMaintenanceRuleDue(rule, today)) {
+      if (rule.active === false || !isMaintenanceRuleDue(rule, day)) {
         if (task.status === "Pending") removeTaskIds.add(task.id);
         return;
       }
@@ -886,7 +883,7 @@ function refreshTodayMaintenanceTasks(db) {
     db.tasks = (db.tasks || []).filter((task) => !removeTaskIds.has(task.id));
     changed = true;
   }
-  if (rebalanceTodayChecklistTasks(db)) changed = true;
+  if (rebalanceTodayChecklistTasks(db, day)) changed = true;
   return changed;
 }
 
@@ -1456,7 +1453,7 @@ async function requireSupabase(result) {
 
 async function persistSupabaseMaintenanceRefresh(db) {
   const originalTasks = new Map((db.tasks || []).map((task) => [task.id, { ...task }]));
-  const changed = refreshTodayMaintenanceTasks(db);
+  const changed = refreshTodayMaintenanceTasks(db, dateKey(addDays(1)));
   if (!changed) return;
 
   const currentTasks = new Map((db.tasks || []).map((task) => [task.id, task]));
