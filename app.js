@@ -3074,7 +3074,7 @@ function renderMaintenanceScheduler() {
         name: `${rule.category} scheduled checklist`
       };
       const assignedTechnician = rule.assignedTechnicianId
-        ? previewTechnicians.find((tech) => tech.id === rule.assignedTechnicianId && technicianCoversOutlet(tech, outlet))
+        ? previewTechnicians.find((tech) => tech.id === rule.assignedTechnicianId)
         : null;
       const technician = assignedTechnician || pickPreviewTechnician(outlet);
       if (!technician) return;

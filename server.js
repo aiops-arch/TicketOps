@@ -498,13 +498,13 @@ function technicianCoversOutlet(technician, outlet) {
 }
 
 function maintenanceRuleTechnician(db, rule, loadMap = null, fallbackTechnicians = null, outlet = "") {
-  const targetOutlet = outlet || rule?.outlet || "";
-  const technicians = (fallbackTechnicians || checklistTechnicians(db))
-    .filter((technician) => technicianCoversOutlet(technician, targetOutlet));
+  const allTechnicians = fallbackTechnicians || checklistTechnicians(db);
   const assigned = rule?.assignedTechnicianId
-    ? technicians.find((tech) => tech.id === rule.assignedTechnicianId)
+    ? allTechnicians.find((tech) => tech.id === rule.assignedTechnicianId)
     : null;
   if (assigned) return assigned;
+  const targetOutlet = outlet || rule?.outlet || "";
+  const technicians = allTechnicians.filter((technician) => technicianCoversOutlet(technician, targetOutlet));
   if (!loadMap) return balancedChecklistTechnician(technicians, new Map(technicians.map((tech) => [tech.id, 0])));
   return balancedChecklistTechnician(technicians, loadMap);
 }
