@@ -163,6 +163,20 @@ alter table maintenance_rules add constraint maintenance_rules_reminder_days_che
 alter table tasks drop constraint if exists tasks_rule_id_fkey;
 alter table tasks add constraint tasks_rule_id_fkey foreign key (rule_id) references maintenance_rules(id);
 
+create table if not exists maintenance_rule_assignments (
+  id text primary key,
+  rule_id text not null references maintenance_rules(id) on delete cascade,
+  outlet text not null references outlets(name),
+  assigned_technician_id text references technicians(id),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(rule_id, outlet)
+);
+
+create index if not exists idx_maintenance_rule_assignments_rule on maintenance_rule_assignments(rule_id);
+create index if not exists idx_maintenance_rule_assignments_outlet on maintenance_rule_assignments(outlet);
+
 create table if not exists assignment_time_windows (
   id text primary key,
   name text not null,

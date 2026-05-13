@@ -230,6 +230,7 @@ let editingAssetId = "";
 let activeMasterTab = "outlets";
 let editingAssignmentWindowId = "";
 let editingMaintenanceRuleId = "";
+let editingMaintenanceAssignments = [];
 let mobileNavOpen = false;
 let currentTheme = readStoredTheme();
 let currentDashboardMode = readStoredDashboardMode();
@@ -1633,6 +1634,9 @@ async function createMaintenanceRule(event) {
         recurrenceMonths: selectedNumericValues("#ruleMonths"),
         reminderDays: Number(document.querySelector("#ruleReminderDays").value || 0),
         assignedTechnicianId: document.querySelector("#ruleTechnician").value,
+        assignments: editingMaintenanceAssignments.length
+          ? editingMaintenanceAssignments
+          : [{ outlet: document.querySelector("#ruleOutlet").value, assignedTechnicianId: document.querySelector("#ruleTechnician").value }],
         allowOutsideWindow: document.querySelector("#ruleAllowOutsideWindow").checked
       })
     });
@@ -1659,6 +1663,8 @@ function resetMaintenanceRuleForm() {
     option.selected = ["0", "3", "6", "9"].includes(option.value);
   });
   document.querySelector("#ruleSubmit").textContent = "Add Rule";
+  editingMaintenanceAssignments = [];
+  renderRuleAssignmentsBoard();
   updateRuleTimeDisabled();
   updateRuleRecurrenceFields();
 }
@@ -1688,6 +1694,43 @@ function updateRuleRecurrenceFields() {
       option.selected = defaults.includes(option.value);
     });
   }
+}
+
+function assignmentListForRule(rule = {}) {
+  if (Array.isArray(rule.assignments) && rule.assignments.length) return rule.assignments;
+  if (rule.outlet) {
+    return [{ outlet: rule.outlet, assignedTechnicianId: rule.assignedTechnicianId || "", active: true }];
+  }
+  return [];
+}
+
+function renderRuleAssignmentsBoard() {
+  const board = document.querySelector("#ruleAssignmentsBoard");
+  if (!board) return;
+  board.innerHTML = editingMaintenanceAssignments.length
+    ? editingMaintenanceAssignments.map((assignment, index) => {
+      const tech = technicianById(assignment.assignedTechnicianId);
+      return `
+        <div class="assignment-chip">
+          <span>${escapeHtml(assignment.outlet)} / ${escapeHtml(tech?.name || "Balanced")}</span>
+          <button type="button" class="small-button danger" data-remove-rule-assignment="${index}">Remove</button>
+        </div>
+      `;
+    }).join("")
+    : `<div class="empty mini">No outlet assignments added.</div>`;
+}
+
+function syncCurrentRuleAssignment() {
+  const outlet = document.querySelector("#ruleOutlet")?.value || "";
+  const assignedTechnicianId = document.querySelector("#ruleTechnician")?.value || "";
+  if (!outlet) return;
+  const existing = editingMaintenanceAssignments.find((item) => item.outlet === outlet);
+  if (existing) {
+    existing.assignedTechnicianId = assignedTechnicianId;
+  } else {
+    editingMaintenanceAssignments.push({ outlet, assignedTechnicianId, active: true });
+  }
+  renderRuleAssignmentsBoard();
 }
 
 function populateRuleTechnicians(outlet, keepValue) {
@@ -1721,9 +1764,15 @@ function fillMaintenanceRuleForm(ruleId) {
   });
   document.querySelector("#ruleAllowOutsideWindow").checked = Boolean(rule.allowOutsideWindow);
   document.querySelector("#ruleSubmit").textContent = "Update Rule";
+  editingMaintenanceAssignments = assignmentListForRule(rule).map((assignment) => ({
+    outlet: assignment.outlet,
+    assignedTechnicianId: assignment.assignedTechnicianId || "",
+    active: assignment.active !== false
+  }));
   populateRuleTechnicians(rule.outlet || "", rule.assignedTechnicianId || "");
   updateRuleTimeDisabled();
   updateRuleRecurrenceFields();
+  renderRuleAssignmentsBoard();
 }
 
 async function toggleMaintenanceRule(ruleId, active) {
@@ -3128,10 +3177,12 @@ function renderMaintenanceScheduler() {
   state.outlets.forEach((outlet) => {
     const outletAssets = (state.assets || []).filter((asset) => asset.status === "Active" && asset.outlet === outlet);
     previewRules.forEach((rule) => {
-      if (rule.outlet && rule.outlet !== outlet) return;
       const asset = outletAssets.find((item) => item.category === rule.category) || outletAssets[0];
-      const assignedTechnician = rule.assignedTechnicianId
-        ? previewTechnicians.find((tech) => tech.id === rule.assignedTechnicianId)
+      const assignment = assignmentListForRule(rule).find((item) => item.outlet === outlet);
+      if (!assignment) return;
+      const assignedTechnicianId = assignment.assignedTechnicianId || rule.assignedTechnicianId || "";
+      const assignedTechnician = assignedTechnicianId
+        ? previewTechnicians.find((tech) => tech.id === assignedTechnicianId)
         : null;
       const technician = assignedTechnician || pickPreviewTechnician(outlet);
       if (!asset || !technician) return;
@@ -4419,6 +4470,18 @@ document.addEventListener("click", async (event) => {
   const loadBackupButton = event.target.closest?.("[data-load-backup-report]");
   if (loadBackupButton) {
     document.querySelector("#backupReportFile")?.click();
+    return;
+  }
+
+  if (event.target.id === "ruleAddAssignment") {
+    syncCurrentRuleAssignment();
+    return;
+  }
+
+  const removeRuleAssignment = event.target.closest?.("[data-remove-rule-assignment]");
+  if (removeRuleAssignment) {
+    editingMaintenanceAssignments.splice(Number(removeRuleAssignment.dataset.removeRuleAssignment), 1);
+    renderRuleAssignmentsBoard();
     return;
   }
 

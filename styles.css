@@ -2111,6 +2111,30 @@ body.has-session .topbar:focus-within .tabs {
   box-shadow: var(--shadow-soft);
 }
 
+.scheduler-assignment-editor {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.assignment-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.assignment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
 .scheduler-form .primary-button {
   min-height: 40px;
 }
