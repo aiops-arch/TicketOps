@@ -1423,6 +1423,18 @@ function schedulerAssetId(outlet, category) {
   return `SCHED-${crypto.createHash("sha1").update(`${outlet}|${category}`).digest("hex").slice(0, 12)}`;
 }
 
+function isSchedulerSystemAsset(asset) {
+  return String(asset?.id || "").startsWith("SCHED-")
+    || String(asset?.notes || "").includes("System asset used for scheduled checklist jobs");
+}
+
+function hideSchedulerSystemAssets(db) {
+  return {
+    ...db,
+    assets: (db.assets || []).filter((asset) => !isSchedulerSystemAsset(asset))
+  };
+}
+
 async function ensureSupabaseSchedulerAssets(db) {
   const today = dateKey();
   const dueRules = (db.maintenanceRules || [])
@@ -1593,7 +1605,7 @@ async function loadSupabaseDb() {
 
   await ensureSupabaseSchedulerAssets(db);
   await persistSupabaseMaintenanceRefresh(db);
-  return db;
+  return hideSchedulerSystemAssets(db);
 }
 
 async function addSupabaseHistory(ticketId, action) {
