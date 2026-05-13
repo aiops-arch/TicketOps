@@ -552,6 +552,23 @@ function frequencyLabel(value = "") {
   return labels[String(value || "").toLowerCase()] || "Scheduled";
 }
 
+function scheduleLabel(rule = {}) {
+  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const frequency = String(rule.frequency || "daily").toLowerCase();
+  if (frequency === "weekly") return `Weekly ${weekdays[rule.recurrenceDayOfWeek ?? 1] || "Mon"}`;
+  if (frequency === "monthly") return `Monthly day ${rule.recurrenceDayOfMonth || 1}`;
+  if (["quarterly", "half-yearly", "yearly"].includes(frequency)) {
+    const monthText = (rule.recurrenceMonths || []).map((month) => months[month]).filter(Boolean).join(", ");
+    return `${frequencyLabel(frequency)} ${monthText || "scheduled"} day ${rule.recurrenceDayOfMonth || 1}`;
+  }
+  return frequencyLabel(frequency);
+}
+
+function selectedNumericValues(selector) {
+  return [...(document.querySelector(selector)?.selectedOptions || [])].map((option) => Number(option.value));
+}
+
 function taskFrequencyLabel(task) {
   const rule = maintenanceRuleForTask(task);
   if (rule?.frequency) return frequencyLabel(rule.frequency);
@@ -566,13 +583,15 @@ function isMaintenanceRuleDueOn(rule, day) {
   const dayOfMonth = date.getDate();
   const month = date.getMonth();
   const frequency = String(rule?.frequency || "daily").toLowerCase();
-  const isFirstOfMonth = dayOfMonth === 1;
+  const dayTarget = Math.min(Number(rule?.recurrenceDayOfMonth || 1), new Date(date.getFullYear(), month + 1, 0).getDate());
+  const weekTarget = Number(rule?.recurrenceDayOfWeek ?? 1);
+  const monthTargets = Array.isArray(rule?.recurrenceMonths) && rule.recurrenceMonths.length
+    ? rule.recurrenceMonths
+    : ({ quarterly: [0, 3, 6, 9], "half-yearly": [0, 6], yearly: [0] }[frequency] || []);
   return frequency === "daily" ||
-    (frequency === "weekly" && dayOfWeek === 1) ||
-    (frequency === "monthly" && isFirstOfMonth) ||
-    (frequency === "quarterly" && isFirstOfMonth && [0, 3, 6, 9].includes(month)) ||
-    (frequency === "half-yearly" && isFirstOfMonth && [0, 6].includes(month)) ||
-    (frequency === "yearly" && isFirstOfMonth && month === 0);
+    (frequency === "weekly" && dayOfWeek === weekTarget) ||
+    (frequency === "monthly" && dayOfMonth === dayTarget) ||
+    (["quarterly", "half-yearly", "yearly"].includes(frequency) && monthTargets.includes(month) && dayOfMonth === dayTarget);
 }
 
 function scheduledTasksForScope(scope = "admin") {
@@ -1609,6 +1628,10 @@ async function createMaintenanceRule(event) {
         startTime: document.querySelector("#ruleStartTime").value,
         endTime: document.querySelector("#ruleEndTime").value,
         frequency: document.querySelector("#ruleFrequency").value,
+        recurrenceDayOfWeek: Number(document.querySelector("#ruleDayOfWeek").value),
+        recurrenceDayOfMonth: Number(document.querySelector("#ruleDayOfMonth").value),
+        recurrenceMonths: selectedNumericValues("#ruleMonths"),
+        reminderDays: Number(document.querySelector("#ruleReminderDays").value || 0),
         assignedTechnicianId: document.querySelector("#ruleTechnician").value,
         allowOutsideWindow: document.querySelector("#ruleAllowOutsideWindow").checked
       })
@@ -1629,8 +1652,15 @@ function resetMaintenanceRuleForm() {
   document.querySelector("#maintenanceRuleForm")?.reset();
   document.querySelector("#ruleStartTime").value = "09:00";
   document.querySelector("#ruleEndTime").value = "18:00";
+  document.querySelector("#ruleDayOfWeek").value = "1";
+  document.querySelector("#ruleDayOfMonth").value = "1";
+  document.querySelector("#ruleReminderDays").value = "0";
+  [...document.querySelector("#ruleMonths").options].forEach((option) => {
+    option.selected = ["0", "3", "6", "9"].includes(option.value);
+  });
   document.querySelector("#ruleSubmit").textContent = "Add Rule";
   updateRuleTimeDisabled();
+  updateRuleRecurrenceFields();
 }
 
 function updateRuleTimeDisabled() {
@@ -1639,6 +1669,25 @@ function updateRuleTimeDisabled() {
   const to = document.querySelector("#ruleEndTime");
   if (from) from.disabled = allDay;
   if (to) to.disabled = allDay;
+}
+
+function updateRuleRecurrenceFields() {
+  const frequency = document.querySelector("#ruleFrequency")?.value || "daily";
+  document.querySelector(".rule-weekly-field")?.classList.toggle("is-hidden", frequency !== "weekly");
+  document.querySelector(".rule-date-field")?.classList.toggle("is-hidden", !["monthly", "quarterly", "half-yearly", "yearly"].includes(frequency));
+  document.querySelector(".rule-month-field")?.classList.toggle("is-hidden", !["quarterly", "half-yearly", "yearly"].includes(frequency));
+  const monthSelect = document.querySelector("#ruleMonths");
+  if (!monthSelect) return;
+  const defaults = {
+    quarterly: ["0", "3", "6", "9"],
+    "half-yearly": ["0", "6"],
+    yearly: ["0"]
+  }[frequency] || [];
+  if (defaults.length && ![...monthSelect.selectedOptions].length) {
+    [...monthSelect.options].forEach((option) => {
+      option.selected = defaults.includes(option.value);
+    });
+  }
 }
 
 function populateRuleTechnicians(outlet, keepValue) {
@@ -1664,10 +1713,17 @@ function fillMaintenanceRuleForm(ruleId) {
   document.querySelector("#ruleStartTime").value = rule.startTime || "09:00";
   document.querySelector("#ruleEndTime").value = rule.endTime || "18:00";
   document.querySelector("#ruleFrequency").value = rule.frequency || "daily";
+  document.querySelector("#ruleDayOfWeek").value = String(rule.recurrenceDayOfWeek ?? 1);
+  document.querySelector("#ruleDayOfMonth").value = String(rule.recurrenceDayOfMonth || 1);
+  document.querySelector("#ruleReminderDays").value = String(rule.reminderDays || 0);
+  [...document.querySelector("#ruleMonths").options].forEach((option) => {
+    option.selected = (rule.recurrenceMonths || []).map(String).includes(option.value);
+  });
   document.querySelector("#ruleAllowOutsideWindow").checked = Boolean(rule.allowOutsideWindow);
   document.querySelector("#ruleSubmit").textContent = "Update Rule";
   populateRuleTechnicians(rule.outlet || "", rule.assignedTechnicianId || "");
   updateRuleTimeDisabled();
+  updateRuleRecurrenceFields();
 }
 
 async function toggleMaintenanceRule(ruleId, active) {
@@ -3032,11 +3088,14 @@ function renderMaintenanceScheduler() {
   const previewRules = activeRules.filter((rule) => isMaintenanceRuleDueOn(rule, tomorrow));
 
   document.querySelector("#maintenanceRulesBoard").innerHTML = rules.length
-    ? rules.map((rule) => `
+    ? rules.map((rule) => {
+      const timeLabel = rule.allowOutsideWindow ? "All day" : `${escapeHtml(rule.startTime || "?")} - ${escapeHtml(rule.endTime || "?")}`;
+      const reminderLabel = rule.reminderDays ? ` / Reminder ${escapeHtml(rule.reminderDays)} days before` : "";
+      return `
       <article class="rule-row ${rule.active === false ? "is-paused" : ""}">
         <div>
           <strong>${escapeHtml(rule.title)}</strong>
-          <span>${escapeHtml(rule.outlet || "All outlets")} / ${escapeHtml(rule.category)} / ${rule.allowOutsideWindow ? "All day" : `${escapeHtml(rule.startTime || "?")} – ${escapeHtml(rule.endTime || "?")}`} / ${escapeHtml(rule.frequency)} / ${escapeHtml(maintenanceRuleTechnicianLabel(rule))}</span>
+          <span>${escapeHtml(rule.outlet || "All outlets")} / ${escapeHtml(rule.category)} / ${timeLabel} / ${escapeHtml(scheduleLabel(rule))} / ${escapeHtml(maintenanceRuleTechnicianLabel(rule))}${reminderLabel}</span>
         </div>
         <div class="rule-actions">
           <button class="small-button" data-edit-rule="${escapeHtml(rule.id)}">Edit</button>
@@ -3045,8 +3104,8 @@ function renderMaintenanceScheduler() {
           </button>
           <button class="small-button danger" data-delete-rule="${escapeHtml(rule.id)}" data-delete-rule-title="${escapeHtml(rule.title)}">Delete</button>
         </div>
-      </article>
-    `).join("")
+      </article>`;
+    }).join("")
     : `<div class="empty mini">No scheduler rules yet.</div>`;
 
   const preview = [];
@@ -3058,13 +3117,13 @@ function renderMaintenanceScheduler() {
   const pickPreviewTechnician = (outlet) => previewTechnicians
     .filter((tech) => technicianCoversOutlet(tech, outlet))
     .reduce((selected, tech) => {
-    if (!selected) return tech;
-    const selectedLoad = previewLoad.get(selected.id) || 0;
-    const techLoad = previewLoad.get(tech.id) || 0;
-    if (techLoad < selectedLoad) return tech;
-    if (techLoad === selectedLoad && String(tech.name).localeCompare(String(selected.name)) < 0) return tech;
-    return selected;
-  }, null);
+      if (!selected) return tech;
+      const selectedLoad = previewLoad.get(selected.id) || 0;
+      const techLoad = previewLoad.get(tech.id) || 0;
+      if (techLoad < selectedLoad) return tech;
+      if (techLoad === selectedLoad && String(tech.name).localeCompare(String(selected.name)) < 0) return tech;
+      return selected;
+    }, null);
 
   state.outlets.forEach((outlet) => {
     const outletAssets = (state.assets || []).filter((asset) => asset.status === "Active" && asset.outlet === outlet);
@@ -3082,17 +3141,18 @@ function renderMaintenanceScheduler() {
   });
 
   document.querySelector("#maintenancePreviewBoard").innerHTML = preview.length
-    ? preview.slice(0, 12).map((item) => `
+    ? preview.slice(0, 12).map((item) => {
+      const timeLabel = item.rule.allowOutsideWindow ? "All day" : `${item.rule.startTime || "?"} - ${item.rule.endTime || "?"}`;
+      return `
       <article class="rule-row">
         <div>
           <strong>${escapeHtml(item.rule.title)}</strong>
-          <span>${escapeHtml(item.outlet)} / ${escapeHtml(item.asset.name)} / ${escapeHtml(item.technician.name)} / ${item.rule.allowOutsideWindow ? "All day" : `${item.rule.startTime || "?"} – ${item.rule.endTime || "?"}`}</span>
+          <span>${escapeHtml(item.outlet)} / ${escapeHtml(item.asset.name)} / ${escapeHtml(item.technician.name)} / ${timeLabel} / ${escapeHtml(scheduleLabel(item.rule))}</span>
         </div>
-      </article>
-    `).join("") + (preview.length > 12 ? `<div class="empty mini">${preview.length - 12} more tasks will generate.</div>` : "")
+      </article>`;
+    }).join("") + (preview.length > 12 ? `<div class="empty mini">${preview.length - 12} more tasks will generate.</div>` : "")
     : `<div class="empty mini">No task will generate tomorrow from active rules.</div>`;
 }
-
 function closeAssetDetail() {
   document.querySelector("#assetDetailOverlay")?.classList.add("is-hidden");
 }
@@ -4534,6 +4594,11 @@ document.addEventListener("change", async (event) => {
     [...document.querySelectorAll('input[name="assignmentWindowDays"]')].forEach((input) => {
       input.checked = event.target.checked;
     });
+    return;
+  }
+
+  if (event.target.id === "ruleFrequency") {
+    updateRuleRecurrenceFields();
     return;
   }
 

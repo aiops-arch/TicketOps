@@ -134,7 +134,11 @@ create table if not exists maintenance_rules (
   title text not null,
   phase text not null default 'Checklist',
   rule_group text not null default 'Maintenance',
-  frequency text not null check (frequency in ('daily', 'weekly')),
+  frequency text not null check (frequency in ('daily', 'weekly', 'monthly', 'quarterly', 'half-yearly', 'yearly')),
+  recurrence_day_of_week integer,
+  recurrence_day_of_month integer,
+  recurrence_months integer[] not null default '{}',
+  reminder_days integer not null default 0,
   assigned_technician_id text references technicians(id),
   allow_outside_window boolean not null default false,
   active boolean not null default true,
@@ -144,6 +148,18 @@ create table if not exists maintenance_rules (
 
 alter table maintenance_rules add column if not exists assigned_technician_id text references technicians(id);
 alter table maintenance_rules add column if not exists allow_outside_window boolean not null default false;
+alter table maintenance_rules add column if not exists recurrence_day_of_week integer;
+alter table maintenance_rules add column if not exists recurrence_day_of_month integer;
+alter table maintenance_rules add column if not exists recurrence_months integer[] not null default '{}';
+alter table maintenance_rules add column if not exists reminder_days integer not null default 0;
+alter table maintenance_rules drop constraint if exists maintenance_rules_frequency_check;
+alter table maintenance_rules add constraint maintenance_rules_frequency_check check (frequency in ('daily', 'weekly', 'monthly', 'quarterly', 'half-yearly', 'yearly'));
+alter table maintenance_rules drop constraint if exists maintenance_rules_recurrence_day_of_week_check;
+alter table maintenance_rules add constraint maintenance_rules_recurrence_day_of_week_check check (recurrence_day_of_week is null or recurrence_day_of_week between 0 and 6);
+alter table maintenance_rules drop constraint if exists maintenance_rules_recurrence_day_of_month_check;
+alter table maintenance_rules add constraint maintenance_rules_recurrence_day_of_month_check check (recurrence_day_of_month is null or recurrence_day_of_month between 1 and 31);
+alter table maintenance_rules drop constraint if exists maintenance_rules_reminder_days_check;
+alter table maintenance_rules add constraint maintenance_rules_reminder_days_check check (reminder_days between 0 and 60);
 alter table tasks drop constraint if exists tasks_rule_id_fkey;
 alter table tasks add constraint tasks_rule_id_fkey foreign key (rule_id) references maintenance_rules(id);
 

@@ -630,6 +630,53 @@ function frequencyLabel(value = "") {
   return labels[String(value || "").toLowerCase()] || "Scheduled";
 }
 
+function normalizeIntegerInRange(value, min, max, fallback = null) {
+  const number = Number(value);
+  return Number.isInteger(number) && number >= min && number <= max ? number : fallback;
+}
+
+function normalizeMonthList(value, fallback = []) {
+  const source = Array.isArray(value) ? value : String(value || "").split(",");
+  const months = [...new Set(source
+    .map((item) => Number(item))
+    .filter((number) => Number.isInteger(number) && number >= 0 && number <= 11))]
+    .sort((a, b) => a - b);
+  return months.length ? months : fallback;
+}
+
+function normalizeScheduleOptions(payload, frequency, existing = {}) {
+  const defaultMonths = {
+    quarterly: [0, 3, 6, 9],
+    "half-yearly": [0, 6],
+    yearly: [0]
+  }[frequency] || [];
+  return {
+    recurrenceDayOfWeek: frequency === "weekly"
+      ? normalizeIntegerInRange(payload.recurrenceDayOfWeek ?? existing.recurrenceDayOfWeek, 0, 6, 1)
+      : null,
+    recurrenceDayOfMonth: ["monthly", "quarterly", "half-yearly", "yearly"].includes(frequency)
+      ? normalizeIntegerInRange(payload.recurrenceDayOfMonth ?? existing.recurrenceDayOfMonth, 1, 31, 1)
+      : null,
+    recurrenceMonths: ["quarterly", "half-yearly", "yearly"].includes(frequency)
+      ? normalizeMonthList(payload.recurrenceMonths ?? existing.recurrenceMonths, defaultMonths)
+      : [],
+    reminderDays: normalizeIntegerInRange(payload.reminderDays ?? existing.reminderDays, 0, 60, 0)
+  };
+}
+
+function scheduleLabel(rule = {}) {
+  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const frequency = String(rule.frequency || "daily").toLowerCase();
+  if (frequency === "weekly") return `Weekly ${weekdays[rule.recurrenceDayOfWeek ?? 1] || "Mon"}`;
+  if (frequency === "monthly") return `Monthly day ${rule.recurrenceDayOfMonth || 1}`;
+  if (["quarterly", "half-yearly", "yearly"].includes(frequency)) {
+    const monthText = (rule.recurrenceMonths || []).map((month) => months[month]).filter(Boolean).join(", ");
+    return `${frequencyLabel(frequency)} ${monthText || "scheduled"} day ${rule.recurrenceDayOfMonth || 1}`;
+  }
+  return frequencyLabel(frequency);
+}
+
 function allowedViewsForRole(role) {
   if (role === "admin") return ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"];
   if (role === "manager") return ["manager"];
@@ -835,18 +882,19 @@ function isMaintenanceRuleDue(rule, day = dateKey()) {
   const dayOfWeek = date.getDay();
   const dayOfMonth = date.getDate();
   const month = date.getMonth();
-  const isMonday = dayOfWeek === 1;
-  const isFirstOfMonth = dayOfMonth === 1;
-  const isQuarterStart = isFirstOfMonth && [0, 3, 6, 9].includes(month);
-  const isHalfYearStart = isFirstOfMonth && [0, 6].includes(month);
-  const isYearStart = isFirstOfMonth && month === 0;
   const frequency = String(rule?.frequency || "daily").toLowerCase();
+  const targetDayOfWeek = normalizeIntegerInRange(rule?.recurrenceDayOfWeek, 0, 6, 1);
+  const targetDayOfMonth = Math.min(
+    normalizeIntegerInRange(rule?.recurrenceDayOfMonth, 1, 31, 1),
+    new Date(date.getFullYear(), month + 1, 0).getDate()
+  );
+  const targetMonths = Array.isArray(rule?.recurrenceMonths) && rule.recurrenceMonths.length
+    ? rule.recurrenceMonths
+    : ({ quarterly: [0, 3, 6, 9], "half-yearly": [0, 6], yearly: [0] }[frequency] || []);
   return frequency === "daily" ||
-    (frequency === "weekly" && isMonday) ||
-    (frequency === "monthly" && isFirstOfMonth) ||
-    (frequency === "quarterly" && isQuarterStart) ||
-    (frequency === "half-yearly" && isHalfYearStart) ||
-    (frequency === "yearly" && isYearStart);
+    (frequency === "weekly" && dayOfWeek === targetDayOfWeek) ||
+    (frequency === "monthly" && dayOfMonth === targetDayOfMonth) ||
+    (["quarterly", "half-yearly", "yearly"].includes(frequency) && targetMonths.includes(month) && dayOfMonth === targetDayOfMonth);
 }
 
 function refreshTodayMaintenanceTasks(db, day = dateKey()) {
@@ -1427,6 +1475,10 @@ function mapMaintenanceRule(row) {
     endTime: String(row.end_time || "").slice(0, 5),
     group: row.rule_group || "Maintenance",
     frequency: row.frequency,
+    recurrenceDayOfWeek: row.recurrence_day_of_week ?? null,
+    recurrenceDayOfMonth: row.recurrence_day_of_month ?? null,
+    recurrenceMonths: row.recurrence_months || [],
+    reminderDays: Number(row.reminder_days || 0),
     assignedTechnicianId: row.assigned_technician_id || "",
     allowOutsideWindow: row.allow_outside_window === true,
     active: row.active !== false,
@@ -1490,7 +1542,7 @@ async function loadSupabaseDb() {
     supabase.from("tickets").select("id,outlet,category,asset_id,impact,area,note,priority,status,assigned_to,scheduled_at,latest_detail,created_by,created_at,updated_at").or(`status.neq.Closed,updated_at.gte.${dateKey(addDays(-30))}`).order("created_at", { ascending: false }),
     supabase.from("ticket_history").select("ticket_id,action,created_at").gte("created_at", dateKey(addDays(-30))).order("created_at", { ascending: true }),
     supabase.from("attendance_plans").select("id,technician_id,status,from_date,to_date,reason,created_by,active,created_at").order("from_date"),
-    supabase.from("maintenance_rules").select("id,outlet,category,title,phase,start_time,end_time,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }).then(r => r.error?.message?.includes("does not exist") ? supabase.from("maintenance_rules").select("id,category,title,phase,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }) : r),
+    supabase.from("maintenance_rules").select("id,outlet,category,title,phase,start_time,end_time,rule_group,frequency,recurrence_day_of_week,recurrence_day_of_month,recurrence_months,reminder_days,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }).then(r => r.error ? supabase.from("maintenance_rules").select("id,outlet,category,title,phase,start_time,end_time,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }) : r),
     supabase.from("assignment_time_windows").select("id,name,days,start_time,end_time,active,created_at").order("created_at", { ascending: false })
   ]);
 
@@ -2416,6 +2468,7 @@ async function createMaintenanceRule(payload) {
   const startTime = normalizeTimeValue(payload.startTime);
   const endTime = normalizeTimeValue(payload.endTime);
   const frequency = String(payload.frequency || "daily").trim().toLowerCase();
+  const scheduleOptions = normalizeScheduleOptions(payload, frequency);
   const assignedTechnicianId = String(payload.assignedTechnicianId || "").trim();
   const allowOutsideWindow = normalizeMaybeBoolean(payload.allowOutsideWindow, false);
   if (!outlet) return { status: 400, body: { error: "Outlet is required" } };
@@ -2436,6 +2489,7 @@ async function createMaintenanceRule(payload) {
     endTime,
     group: String(payload.group || "Maintenance").trim() || "Maintenance",
     frequency,
+    ...scheduleOptions,
     assignedTechnicianId,
     allowOutsideWindow,
     active: true,
@@ -2443,8 +2497,7 @@ async function createMaintenanceRule(payload) {
   };
 
   if (useSupabase) {
-    await requireSupabase(
-      await supabase.from("maintenance_rules").insert({
+    const row = {
         id: rule.id,
         outlet: rule.outlet || null,
         category: rule.category,
@@ -2453,11 +2506,23 @@ async function createMaintenanceRule(payload) {
         end_time: rule.endTime || null,
         rule_group: rule.group,
         frequency: rule.frequency,
+        recurrence_day_of_week: rule.recurrenceDayOfWeek,
+        recurrence_day_of_month: rule.recurrenceDayOfMonth,
+        recurrence_months: rule.recurrenceMonths,
+        reminder_days: rule.reminderDays,
         assigned_technician_id: rule.assignedTechnicianId || null,
         allow_outside_window: rule.allowOutsideWindow,
         active: rule.active
-      })
-    );
+      };
+    let result = await supabase.from("maintenance_rules").insert(row);
+    if (result.error?.message?.includes("recurrence_") || result.error?.message?.includes("reminder_days")) {
+      delete row.recurrence_day_of_week;
+      delete row.recurrence_day_of_month;
+      delete row.recurrence_months;
+      delete row.reminder_days;
+      result = await supabase.from("maintenance_rules").insert(row);
+    }
+    await requireSupabase(result);
     return { status: 201, body: rule };
   }
 
@@ -2480,6 +2545,7 @@ async function updateMaintenanceRule(ruleId, payload) {
   const startTime = payload.startTime !== undefined ? normalizeTimeValue(payload.startTime) : (rule.startTime || "");
   const endTime = payload.endTime !== undefined ? normalizeTimeValue(payload.endTime) : (rule.endTime || "");
   const frequency = String(payload.frequency || rule.frequency || "daily").trim().toLowerCase();
+  const scheduleOptions = normalizeScheduleOptions(payload, frequency, rule);
   const group = String(payload.group || rule.group || "Maintenance").trim() || "Maintenance";
   if (!category || !title) return { status: 400, body: { error: "Category and task title are required" } };
   if (outlet && !db.outlets.includes(outlet)) return { status: 400, body: { error: "Outlet is invalid" } };
@@ -2497,14 +2563,14 @@ async function updateMaintenanceRule(ruleId, payload) {
     endTime,
     group,
     frequency,
+    ...scheduleOptions,
     assignedTechnicianId,
     allowOutsideWindow,
     active
   };
 
   if (useSupabase) {
-    await requireSupabase(
-      await supabase.from("maintenance_rules").update({
+    const row = {
         outlet: updated.outlet || null,
         category: updated.category,
         title: updated.title,
@@ -2512,12 +2578,24 @@ async function updateMaintenanceRule(ruleId, payload) {
         end_time: updated.endTime || null,
         rule_group: updated.group,
         frequency: updated.frequency,
+        recurrence_day_of_week: updated.recurrenceDayOfWeek,
+        recurrence_day_of_month: updated.recurrenceDayOfMonth,
+        recurrence_months: updated.recurrenceMonths,
+        reminder_days: updated.reminderDays,
         assigned_technician_id: updated.assignedTechnicianId || null,
         allow_outside_window: updated.allowOutsideWindow,
         active: updated.active,
         updated_at: new Date().toISOString()
-      }).eq("id", ruleId)
-    );
+      };
+    let result = await supabase.from("maintenance_rules").update(row).eq("id", ruleId);
+    if (result.error?.message?.includes("recurrence_") || result.error?.message?.includes("reminder_days")) {
+      delete row.recurrence_day_of_week;
+      delete row.recurrence_day_of_month;
+      delete row.recurrence_months;
+      delete row.reminder_days;
+      result = await supabase.from("maintenance_rules").update(row).eq("id", ruleId);
+    }
+    await requireSupabase(result);
     return { status: 200, body: updated };
   }
 
