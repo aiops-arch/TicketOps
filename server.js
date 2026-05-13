@@ -491,8 +491,16 @@ function maintenanceRuleById(db, ruleId) {
   return (db.maintenanceRules || []).find((rule) => rule.id === ruleId) || null;
 }
 
-function maintenanceRuleTechnician(db, rule, loadMap = null, fallbackTechnicians = null) {
-  const technicians = fallbackTechnicians || checklistTechnicians(db);
+function technicianCoversOutlet(technician, outlet) {
+  if (!outlet) return true;
+  const outlets = Array.isArray(technician?.serviceOutlets) ? technician.serviceOutlets : [];
+  return !outlets.length || outlets.includes(outlet);
+}
+
+function maintenanceRuleTechnician(db, rule, loadMap = null, fallbackTechnicians = null, outlet = "") {
+  const targetOutlet = outlet || rule?.outlet || "";
+  const technicians = (fallbackTechnicians || checklistTechnicians(db))
+    .filter((technician) => technicianCoversOutlet(technician, targetOutlet));
   const assigned = rule?.assignedTechnicianId
     ? technicians.find((tech) => tech.id === rule.assignedTechnicianId)
     : null;
@@ -726,6 +734,7 @@ function balancedChecklistTechnician(technicians, loadMap) {
 function isChecklistTask(task) {
   const title = String(task.title || "");
   return title.startsWith("Morning Opening:")
+    || title.startsWith("Checklist:")
     || title.startsWith("Mid-Day:")
     || title.startsWith("Closing:")
     || title.startsWith("Weekly:")
@@ -750,7 +759,7 @@ function rebalanceTodayChecklistTasks(db) {
     .sort((a, b) => String(a.outlet || "").localeCompare(String(b.outlet || "")) || String(a.title || "").localeCompare(String(b.title || "")))
     .forEach((task) => {
       const rule = maintenanceRuleById(db, task.ruleId);
-      const technician = maintenanceRuleTechnician(db, rule, loadMap, technicians);
+      const technician = maintenanceRuleTechnician(db, rule, loadMap, technicians, task.outlet);
       if (!technician) return;
       if (task.assignedTo !== technician.id) {
         task.assignedTo = technician.id;
@@ -795,7 +804,7 @@ function generateTodayTasks(db) {
     rules.forEach((rule) => {
       if (rule.outlet && rule.outlet !== outlet) return;
       const asset = outletAssets.find((item) => item.category === rule.category) || outletAssets[0];
-      const technician = maintenanceRuleTechnician(db, rule, loadMap, technicians);
+      const technician = maintenanceRuleTechnician(db, rule, loadMap, technicians, outlet);
 
       if (!asset || !technician) return;
       const title = `${rule.phase || "Checklist"}: ${rule.title}`;
@@ -866,7 +875,7 @@ function refreshTodayMaintenanceTasks(db) {
         task.notes = notes;
         changed = true;
       }
-      const technician = maintenanceRuleTechnician(db, rule, loadMap);
+      const technician = maintenanceRuleTechnician(db, rule, loadMap, null, task.outlet);
       if (technician && task.assignedTo !== technician.id && task.status !== "Done") {
         task.assignedTo = technician.id;
         changed = true;
@@ -1392,14 +1401,74 @@ function mapTask(row) {
   };
 }
 
+function supabaseTaskRow(task) {
+  return {
+    id: task.id,
+    title: task.title,
+    asset_id: task.assetId,
+    outlet: task.outlet,
+    assigned_to: task.assignedTo,
+    rule_id: task.ruleId || null,
+    status: task.status || "Pending",
+    task_date: task.date,
+    completed_at: task.completedAt || null,
+    evidence_comment: task.evidenceComment || null,
+    evidence_at: task.evidenceAt || null,
+    notes: task.notes || null,
+    updated_at: new Date().toISOString()
+  };
+}
+
+function schedulerAssetId(outlet, category) {
+  return `SCHED-${crypto.createHash("sha1").update(`${outlet}|${category}`).digest("hex").slice(0, 12)}`;
+}
+
+async function ensureSupabaseSchedulerAssets(db) {
+  const today = dateKey();
+  const dueRules = (db.maintenanceRules || [])
+    .filter((rule) => rule.active !== false && isMaintenanceRuleDue(rule, today));
+  if (!dueRules.length) return;
+
+  const existingByOutletCategory = new Set((db.assets || []).map((asset) => `${asset.outlet}|${asset.category}`));
+  const existingIds = new Set((db.assets || []).map((asset) => asset.id));
+  const rows = [];
+
+  (db.outlets || []).forEach((outlet) => {
+    dueRules.forEach((rule) => {
+      if (rule.outlet && rule.outlet !== outlet) return;
+      const key = `${outlet}|${rule.category}`;
+      if (existingByOutletCategory.has(key)) return;
+      existingByOutletCategory.add(key);
+      const id = schedulerAssetId(outlet, rule.category);
+      if (existingIds.has(id)) return;
+      existingIds.add(id);
+      rows.push({
+        id,
+        outlet,
+        category: rule.category,
+        name: `${rule.category} scheduled checklist`,
+        code: null,
+        status: "Active",
+        notes: "System asset used for scheduled checklist jobs.",
+        created_by: "system"
+      });
+    });
+  });
+
+  if (!rows.length) return;
+  await requireSupabase(await supabase.from("assets").upsert(rows, { onConflict: "id" }));
+  db.assets.push(...rows.map((row) => mapAsset({ ...row, created_at: new Date().toISOString() })));
+}
+
 function mapMaintenanceRule(row) {
   return {
     id: row.id,
     outlet: row.outlet || "",
     category: row.category,
     title: row.title,
-    startTime: row.start_time || "",
-    endTime: row.end_time || "",
+    phase: row.phase || "Checklist",
+    startTime: String(row.start_time || "").slice(0, 5),
+    endTime: String(row.end_time || "").slice(0, 5),
     group: row.rule_group || "Maintenance",
     frequency: row.frequency,
     assignedTechnicianId: row.assigned_technician_id || "",
@@ -1426,6 +1495,35 @@ async function requireSupabase(result) {
   return result.data;
 }
 
+async function persistSupabaseMaintenanceRefresh(db) {
+  const originalTasks = new Map((db.tasks || []).map((task) => [task.id, { ...task }]));
+  const changed = refreshTodayMaintenanceTasks(db);
+  if (!changed) return;
+
+  const currentTasks = new Map((db.tasks || []).map((task) => [task.id, task]));
+  const createdTasks = [...currentTasks.values()].filter((task) => !originalTasks.has(task.id));
+  const removedTaskIds = [...originalTasks.keys()].filter((id) => !currentTasks.has(id));
+  const updatedTasks = [...currentTasks.values()].filter((task) => {
+    const original = originalTasks.get(task.id);
+    if (!original) return false;
+    return ["title", "assetId", "outlet", "assignedTo", "ruleId", "status", "date", "completedAt", "notes"].some((key) => original[key] !== task[key]);
+  });
+
+  if (createdTasks.length) {
+    await requireSupabase(await supabase.from("tasks").upsert(createdTasks.map(supabaseTaskRow), { onConflict: "id" }));
+  }
+
+  if (updatedTasks.length) {
+    await Promise.all(updatedTasks.map((task) =>
+      supabase.from("tasks").update(supabaseTaskRow(task)).eq("id", task.id).then(requireSupabase)
+    ));
+  }
+
+  if (removedTaskIds.length) {
+    await requireSupabase(await supabase.from("tasks").delete().in("id", removedTaskIds));
+  }
+}
+
 async function loadSupabaseDb() {
   const [outletsResult, categoriesResult, assetsResult, tasksResult, techniciansResult, ticketsResult, historyResult, attendancePlansResult, maintenanceRulesResult, assignmentWindowsResult] = await Promise.all([
     supabase.from("outlets").select("name,branch,address,latitude,longitude").order("name"),
@@ -1436,7 +1534,7 @@ async function loadSupabaseDb() {
     supabase.from("tickets").select("id,outlet,category,asset_id,impact,area,note,priority,status,assigned_to,scheduled_at,latest_detail,created_by,created_at,updated_at").or(`status.neq.Closed,updated_at.gte.${dateKey(addDays(-30))}`).order("created_at", { ascending: false }),
     supabase.from("ticket_history").select("ticket_id,action,created_at").gte("created_at", dateKey(addDays(-30))).order("created_at", { ascending: true }),
     supabase.from("attendance_plans").select("id,technician_id,status,from_date,to_date,reason,created_by,active,created_at").order("from_date"),
-    supabase.from("maintenance_rules").select("id,outlet,category,title,start_time,end_time,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }).then(r => r.error?.message?.includes("does not exist") ? supabase.from("maintenance_rules").select("id,category,title,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }) : r),
+    supabase.from("maintenance_rules").select("id,outlet,category,title,phase,start_time,end_time,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }).then(r => r.error?.message?.includes("does not exist") ? supabase.from("maintenance_rules").select("id,category,title,phase,rule_group,frequency,assigned_technician_id,allow_outside_window,active,created_at").order("created_at", { ascending: false }) : r),
     supabase.from("assignment_time_windows").select("id,name,days,start_time,end_time,active,created_at").order("created_at", { ascending: false })
   ]);
 
@@ -1451,7 +1549,7 @@ async function loadSupabaseDb() {
   const maintenanceRules = await requireSupabase(maintenanceRulesResult);
   const assignmentTimeWindows = await requireSupabase(assignmentWindowsResult);
 
-  return {
+  const db = {
     outlets: outlets.map((outlet) => outlet.name),
     outletLocations: Object.fromEntries(outlets.map((outlet) => [
       outlet.name,
@@ -1492,6 +1590,10 @@ async function loadSupabaseDb() {
       )
     )
   };
+
+  await ensureSupabaseSchedulerAssets(db);
+  await persistSupabaseMaintenanceRefresh(db);
+  return db;
 }
 
 async function addSupabaseHistory(ticketId, action) {
