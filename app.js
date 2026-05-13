@@ -713,6 +713,11 @@ function maintenanceRuleTechnicianLabel(rule) {
   return technicianById(rule.assignedTechnicianId)?.name || "Assigned technician";
 }
 
+function technicianCoversOutlet(tech, outlet) {
+  const outlets = Array.isArray(tech?.serviceOutlets) ? tech.serviceOutlets : [];
+  return !outlets.length || !outlet || outlets.includes(outlet);
+}
+
 function maintenanceRuleForTask(task) {
   if (!task?.ruleId) return null;
   return stateIndex.maintenanceRulesById.get(task.ruleId) || null;
@@ -3045,9 +3050,14 @@ function renderMaintenanceScheduler() {
     : `<div class="empty mini">No scheduler rules yet.</div>`;
 
   const preview = [];
-  const previewLoad = new Map((state.technicians || []).map((tech) => [tech.id, 0]));
+  const previewLoad = new Map((state.technicians || []).map((tech) => [
+    tech.id,
+    (state.tasks || []).filter((task) => task.date === tomorrow && task.assignedTo === tech.id).length
+  ]));
   const previewTechnicians = [...(state.technicians || [])].sort((a, b) => String(a.name).localeCompare(String(b.name)));
-  const pickPreviewTechnician = () => previewTechnicians.reduce((selected, tech) => {
+  const pickPreviewTechnician = (outlet) => previewTechnicians
+    .filter((tech) => technicianCoversOutlet(tech, outlet))
+    .reduce((selected, tech) => {
     if (!selected) return tech;
     const selectedLoad = previewLoad.get(selected.id) || 0;
     const techLoad = previewLoad.get(tech.id) || 0;
@@ -3059,11 +3069,15 @@ function renderMaintenanceScheduler() {
   state.outlets.forEach((outlet) => {
     const outletAssets = (state.assets || []).filter((asset) => asset.status === "Active" && asset.outlet === outlet);
     previewRules.forEach((rule) => {
-      const asset = outletAssets.find((item) => item.category === rule.category) || outletAssets[0];
-      const technician = rule.assignedTechnicianId
-        ? previewTechnicians.find((tech) => tech.id === rule.assignedTechnicianId) || pickPreviewTechnician()
-        : pickPreviewTechnician();
-      if (!asset || !technician) return;
+      if (rule.outlet && rule.outlet !== outlet) return;
+      const asset = outletAssets.find((item) => item.category === rule.category) || outletAssets[0] || {
+        name: `${rule.category} scheduled checklist`
+      };
+      const assignedTechnician = rule.assignedTechnicianId
+        ? previewTechnicians.find((tech) => tech.id === rule.assignedTechnicianId && technicianCoversOutlet(tech, outlet))
+        : null;
+      const technician = assignedTechnician || pickPreviewTechnician(outlet);
+      if (!technician) return;
       preview.push({ rule, outlet, asset, technician });
       previewLoad.set(technician.id, (previewLoad.get(technician.id) || 0) + 1);
     });
