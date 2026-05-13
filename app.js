@@ -3070,14 +3070,12 @@ function renderMaintenanceScheduler() {
     const outletAssets = (state.assets || []).filter((asset) => asset.status === "Active" && asset.outlet === outlet);
     previewRules.forEach((rule) => {
       if (rule.outlet && rule.outlet !== outlet) return;
-      const asset = outletAssets.find((item) => item.category === rule.category) || outletAssets[0] || {
-        name: `${rule.category} scheduled checklist`
-      };
+      const asset = outletAssets.find((item) => item.category === rule.category) || outletAssets[0];
       const assignedTechnician = rule.assignedTechnicianId
         ? previewTechnicians.find((tech) => tech.id === rule.assignedTechnicianId)
         : null;
       const technician = assignedTechnician || pickPreviewTechnician(outlet);
-      if (!technician) return;
+      if (!asset || !technician) return;
       preview.push({ rule, outlet, asset, technician });
       previewLoad.set(technician.id, (previewLoad.get(technician.id) || 0) + 1);
     });

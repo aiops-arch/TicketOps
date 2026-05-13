@@ -1419,59 +1419,6 @@ function supabaseTaskRow(task) {
   };
 }
 
-function schedulerAssetId(outlet, category) {
-  return `SCHED-${crypto.createHash("sha1").update(`${outlet}|${category}`).digest("hex").slice(0, 12)}`;
-}
-
-function isSchedulerSystemAsset(asset) {
-  return String(asset?.id || "").startsWith("SCHED-")
-    || String(asset?.notes || "").includes("System asset used for scheduled checklist jobs");
-}
-
-function hideSchedulerSystemAssets(db) {
-  return {
-    ...db,
-    assets: (db.assets || []).filter((asset) => !isSchedulerSystemAsset(asset))
-  };
-}
-
-async function ensureSupabaseSchedulerAssets(db) {
-  const today = dateKey();
-  const dueRules = (db.maintenanceRules || [])
-    .filter((rule) => rule.active !== false && isMaintenanceRuleDue(rule, today));
-  if (!dueRules.length) return;
-
-  const existingByOutletCategory = new Set((db.assets || []).map((asset) => `${asset.outlet}|${asset.category}`));
-  const existingIds = new Set((db.assets || []).map((asset) => asset.id));
-  const rows = [];
-
-  (db.outlets || []).forEach((outlet) => {
-    dueRules.forEach((rule) => {
-      if (rule.outlet && rule.outlet !== outlet) return;
-      const key = `${outlet}|${rule.category}`;
-      if (existingByOutletCategory.has(key)) return;
-      existingByOutletCategory.add(key);
-      const id = schedulerAssetId(outlet, rule.category);
-      if (existingIds.has(id)) return;
-      existingIds.add(id);
-      rows.push({
-        id,
-        outlet,
-        category: rule.category,
-        name: `${rule.category} scheduled checklist`,
-        code: null,
-        status: "Active",
-        notes: "System asset used for scheduled checklist jobs.",
-        created_by: "system"
-      });
-    });
-  });
-
-  if (!rows.length) return;
-  await requireSupabase(await supabase.from("assets").upsert(rows, { onConflict: "id" }));
-  db.assets.push(...rows.map((row) => mapAsset({ ...row, created_at: new Date().toISOString() })));
-}
-
 function mapMaintenanceRule(row) {
   return {
     id: row.id,
@@ -1603,9 +1550,8 @@ async function loadSupabaseDb() {
     )
   };
 
-  await ensureSupabaseSchedulerAssets(db);
   await persistSupabaseMaintenanceRefresh(db);
-  return hideSchedulerSystemAssets(db);
+  return db;
 }
 
 async function addSupabaseHistory(ticketId, action) {
