@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v29-google-sheets-api";
+const CACHE_NAME = "ticketops-v30-clear-stale-api";
 const APP_SHELL = [
   "./",
   "./index.html",
