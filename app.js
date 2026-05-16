@@ -2,12 +2,13 @@ const NATIVE_DEFAULT_API = location.protocol === "capacitor:" ? "http://10.0.2.2
 const CONFIG_API_BASE = window.TICKETOPS_CONFIG?.apiBase || window.TICKETOPS_API_BASE || "";
 const STORED_API_BASE = localStorage.getItem("ticketops-api-base") || "";
 const STALE_API_BASE_PATTERN = /(ticketops-api\.onrender\.com|supabase\.co|ksfbnsdqbaccuebrrhvu)/i;
-if (STALE_API_BASE_PATTERN.test(STORED_API_BASE)) {
+if (STALE_API_BASE_PATTERN.test(CONFIG_API_BASE) || STALE_API_BASE_PATTERN.test(STORED_API_BASE)) {
   localStorage.removeItem("ticketops-api-base");
   localStorage.removeItem("ticketops-bootstrap-cache-v1");
 }
+const SAFE_CONFIG_API_BASE = STALE_API_BASE_PATTERN.test(CONFIG_API_BASE) ? "" : CONFIG_API_BASE;
 const SAFE_STORED_API_BASE = STALE_API_BASE_PATTERN.test(STORED_API_BASE) ? "" : STORED_API_BASE;
-const API_BASE = CONFIG_API_BASE || SAFE_STORED_API_BASE || NATIVE_DEFAULT_API;
+const API_BASE = SAFE_CONFIG_API_BASE || SAFE_STORED_API_BASE || NATIVE_DEFAULT_API;
 const USE_APPS_SCRIPT_API = /script\.google\.com\/macros\/s\/.+\/exec/i.test(API_BASE);
 const AUTH_STORAGE_KEY = "ticketops-auth-user-v2";
 const THEME_STORAGE_KEY = "ticketops-theme";
