@@ -28,7 +28,8 @@ for (const file of files) {
 
 fs.cpSync(path.join(root, "assets"), path.join(out, "assets"), { recursive: true });
 
-const configuredApiBase = process.env.TICKETOPS_GOOGLE_APPS_SCRIPT_URL || process.env.TICKETOPS_API_BASE || "";
+const DEFAULT_GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzFg_7RGPt0HQIX_4oxmr_G8Br-UYT8GllmHKD3jf15cZvaods4bI4rFc8-sdmrgCEO/exec";
+const configuredApiBase = process.env.TICKETOPS_GOOGLE_APPS_SCRIPT_URL || DEFAULT_GOOGLE_APPS_SCRIPT_URL || process.env.TICKETOPS_API_BASE || "";
 const staleApiBasePattern = /(ticketops-api\.onrender\.com|supabase\.co|ksfbnsdqbaccuebrrhvu)/i;
 const apiBase = staleApiBasePattern.test(configuredApiBase) ? "" : configuredApiBase;
 const config = JSON.stringify({ apiBase });
