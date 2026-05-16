@@ -4,11 +4,18 @@ const DEFAULT_PASSWORDS = {
   aiops: "AIops",
   "chintan.patel": "chintan123",
   "meet.patel": "meet123",
+  demo: "demo123",
+  manish: "manish123",
   "pratik.patel": "pratik123",
   "hussain.sheikh": "hussain123",
+  "rahil.shah": "rahil123",
+  "umang.naidu": "umang123",
+  "viren.barapatre": "viren123",
   vicky: "vicky123",
   "rahul.patil": "rahul123",
-  abrar: "abrar123"
+  abrar: "abrar123",
+  uday: "uday123",
+  hiten: "hiten123"
 };
 
 const DEFAULT_DB = {

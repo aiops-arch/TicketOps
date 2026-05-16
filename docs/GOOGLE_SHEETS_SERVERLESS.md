@@ -24,6 +24,8 @@ importTicketOpsJson(`PASTE_DATA_DB_JSON_HERE`);
 
 Replace `PASTE_DATA_DB_JSON_HERE` with the contents of [data/db.json](../data/db.json).
 
+For the current migrated production seed, use [data/google-sheets-seed.json](../data/google-sheets-seed.json). This contains the migrated users, outlets, technicians, tickets, scheduler rules, generated tasks, and assignment window.
+
 For a fresh demo database instead, run:
 
 ```js
@@ -46,7 +48,9 @@ https://script.google.com/macros/s/DEPLOYMENT_ID/exec
 
 Option A, permanent static config:
 
-Edit [frontend-config.js](../frontend-config.js):
+Set the Vercel environment variable `TICKETOPS_GOOGLE_APPS_SCRIPT_URL` to the Web App URL and redeploy. The build writes this value into `www/frontend-config.js`.
+
+For a local/static manual config, edit [frontend-config.js](../frontend-config.js):
 
 ```js
 window.TICKETOPS_CONFIG = {
