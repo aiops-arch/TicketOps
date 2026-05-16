@@ -28,7 +28,9 @@ for (const file of files) {
 
 fs.cpSync(path.join(root, "assets"), path.join(out, "assets"), { recursive: true });
 
-const apiBase = process.env.TICKETOPS_API_BASE || "";
+const configuredApiBase = process.env.TICKETOPS_API_BASE || "";
+const staleApiBasePattern = /(ticketops-api\.onrender\.com|supabase\.co|ksfbnsdqbaccuebrrhvu)/i;
+const apiBase = staleApiBasePattern.test(configuredApiBase) ? "" : configuredApiBase;
 const config = JSON.stringify({ apiBase });
 fs.writeFileSync(path.join(out, "frontend-config.js"), `window.TICKETOPS_CONFIG = ${config};\n`);
 
