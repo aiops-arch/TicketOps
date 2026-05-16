@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v34-full-migrated-seed";
+const CACHE_NAME = "ticketops-v35-scheduler-seed";
 const APP_SHELL = [
   "./",
   "./index.html",

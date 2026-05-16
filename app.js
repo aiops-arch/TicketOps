@@ -15,8 +15,8 @@ const AUTH_STORAGE_KEY = "ticketops-auth-user-v2";
 const THEME_STORAGE_KEY = "ticketops-theme";
 const DASHBOARD_MODE_STORAGE_KEY = "ticketops-dashboard-mode";
 const LAST_ACTIVITY_STORAGE_KEY = "ticketops-last-activity";
-const BOOTSTRAP_CACHE_KEY = "ticketops-bootstrap-cache-v2";
-const BROWSER_DB_STORAGE_KEY = "ticketops-browser-db-v2";
+const BOOTSTRAP_CACHE_KEY = "ticketops-bootstrap-cache-v3";
+const BROWSER_DB_STORAGE_KEY = "ticketops-browser-db-v3";
 const BOOTSTRAP_CACHE_TTL_MS = 10 * 60 * 1000;
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_TICKET_PHOTOS = 5;
@@ -111,6 +111,63 @@ const BROWSER_FALLBACK_PASSWORDS = {
   hiten: "hiten123"
 };
 
+const MIGRATED_SCHEDULER_RULES = [
+  { id: "MR-10", outlet: "Aiko PAL", category: "Plumbing", title: "Water Lavel, Leakage , Toilet Flush,All TAP", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T3", allowOutsideWindow: false, active: true, createdAt: "2026-05-09T16:31:28.903657+00:00" },
+  { id: "MR-11", outlet: "Aiko PAL", category: "RO PLANT", title: "FILTER, TDS Lavel(75 to 85)", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T3", allowOutsideWindow: false, active: true, createdAt: "2026-05-09T17:13:23.126687+00:00" },
+  { id: "MR-12", outlet: "Capiche Piplod", category: "AC", title: "Temperature and Filter", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T2", allowOutsideWindow: false, active: false, createdAt: "2026-05-09T17:22:22.814226+00:00" },
+  { id: "MR-13", outlet: "Capiche Piplod", category: "AIR CORTAIN", title: "Check Sensor", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T2", allowOutsideWindow: false, active: true, createdAt: "2026-05-09T17:22:50.567095+00:00" },
+  { id: "MR-14", outlet: "Capiche Piplod", category: "Electrical", title: "Lights and power plugs", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T2", allowOutsideWindow: false, active: true, createdAt: "2026-05-09T17:23:57.419492+00:00" },
+  { id: "MR-15", outlet: "Capiche Piplod", category: "ICE MAKER", title: "Check Size and Thickness", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T2", allowOutsideWindow: false, active: true, createdAt: "2026-05-09T17:24:45.927256+00:00" },
+  { id: "MR-16", outlet: "Capiche Piplod", category: "IT", title: "WIFI , KOT - POS", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T2", allowOutsideWindow: false, active: true, createdAt: "2026-05-09T17:25:11.003804+00:00" },
+  { id: "MR-17", outlet: "Capiche Piplod", category: "Kitchen Equipment", title: "Induction, Ovan,Etc", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T2", allowOutsideWindow: false, active: true, createdAt: "2026-05-09T17:25:50.855732+00:00" },
+  { id: "MR-18", outlet: "Capiche Piplod", category: "Plumbing", title: "Water Lavel, Leakage , Toilet Flush,All TAP", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T2", allowOutsideWindow: false, active: true, createdAt: "2026-05-09T17:26:24.922933+00:00" },
+  { id: "MR-19", outlet: "Capiche Piplod", category: "Refrigeration", title: "Temperature", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T2", allowOutsideWindow: false, active: true, createdAt: "2026-05-09T17:27:36.962725+00:00" },
+  { id: "MR-20", outlet: "Capiche Piplod", category: "RO PLANT", title: "FILTER, TDS Lavel(75 to 85)", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T2", allowOutsideWindow: false, active: true, createdAt: "2026-05-09T17:28:54.128231+00:00" },
+  { id: "MR-5", outlet: "Aiko PAL", category: "AC", title: "Temperature and Filter", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T3", allowOutsideWindow: false, active: true, createdAt: "2026-05-07T08:52:51.898527+00:00" },
+  { id: "MR-6", outlet: "Aiko PAL", category: "AIR CORTAIN", title: "Check Sensor", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T3", allowOutsideWindow: false, active: true, createdAt: "2026-05-09T16:27:26.122798+00:00" },
+  { id: "MR-7", outlet: "Aiko PAL", category: "Electrical", title: "Check All Lights And Power Plugs", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T3", allowOutsideWindow: false, active: true, createdAt: "2026-05-09T16:28:35.42351+00:00" },
+  { id: "MR-8", outlet: "Aiko PAL", category: "IT", title: "WIFI , KOT - POS", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T3", allowOutsideWindow: false, active: true, createdAt: "2026-05-09T16:29:22.220617+00:00" },
+  { id: "MR-9", outlet: "Aiko PAL", category: "Kitchen Equipment", title: "Induction, Ovan,Etc", phase: "Checklist", startTime: "10:00", endTime: "11:30", group: "Maintenance", frequency: "daily", assignedTechnicianId: "T3", allowOutsideWindow: false, active: true, createdAt: "2026-05-09T16:30:20.513207+00:00" },
+  { id: "MR-D-002", outlet: "Aiko PAL", category: "Refrigeration", title: "Freezer working , Temperature", phase: "Morning Opening", startTime: "10:00", endTime: "11:30", group: "Equipment Check", frequency: "daily", assignedTechnicianId: "T3", allowOutsideWindow: false, active: true, createdAt: "2026-05-01T08:53:53.499433+00:00" }
+].map((rule) => ({ recurrenceDayOfWeek: null, recurrenceDayOfMonth: null, recurrenceMonths: [], reminderDays: 0, ...rule }));
+
+const MIGRATED_SCHEDULER_TASK_DATES = ["2026-05-16", "2026-05-15", "2026-05-14"];
+const MIGRATED_SCHEDULER_TASK_ITEMS = [
+  { seq: "016", title: "Checklist: Check Sensor", assetId: "ASSET-OTHER-d7f0a7903d", outlet: "Capiche Piplod", assignedTo: "T2", ruleId: "MR-13" },
+  { seq: "015", title: "Checklist: Lights and power plugs", assetId: "ASSET-OTHER-d7f0a7903d", outlet: "Capiche Piplod", assignedTo: "T2", ruleId: "MR-14" },
+  { seq: "014", title: "Checklist: Check Size and Thickness", assetId: "ASSET-OTHER-d7f0a7903d", outlet: "Capiche Piplod", assignedTo: "T2", ruleId: "MR-15" },
+  { seq: "013", title: "Checklist: WIFI , KOT - POS", assetId: "ASSET-OTHER-d7f0a7903d", outlet: "Capiche Piplod", assignedTo: "T2", ruleId: "MR-16" },
+  { seq: "012", title: "Checklist: Induction, Ovan,Etc", assetId: "ASSET-OTHER-d7f0a7903d", outlet: "Capiche Piplod", assignedTo: "T2", ruleId: "MR-17" },
+  { seq: "011", title: "Checklist: Water Lavel, Leakage , Toilet Flush,All TAP", assetId: "ASSET-OTHER-d7f0a7903d", outlet: "Capiche Piplod", assignedTo: "T2", ruleId: "MR-18" },
+  { seq: "010", title: "Checklist: Temperature", assetId: "ASSET-OTHER-d7f0a7903d", outlet: "Capiche Piplod", assignedTo: "T2", ruleId: "MR-19" },
+  { seq: "009", title: "Checklist: FILTER, TDS Lavel(75 to 85)", assetId: "ASSET-OTHER-d7f0a7903d", outlet: "Capiche Piplod", assignedTo: "T2", ruleId: "MR-20" },
+  { seq: "008", title: "Morning Opening: Freezer working , Temperature", assetId: "ASSET-OTHER-cf382a821b", outlet: "Aiko PAL", assignedTo: "T3", ruleId: "MR-D-002" },
+  { seq: "007", title: "Checklist: Temperature and Filter", assetId: "ASSET-OTHER-cf382a821b", outlet: "Aiko PAL", assignedTo: "T3", ruleId: "MR-5" },
+  { seq: "006", title: "Checklist: Check Sensor", assetId: "ASSET-OTHER-cf382a821b", outlet: "Aiko PAL", assignedTo: "T3", ruleId: "MR-6" },
+  { seq: "005", title: "Checklist: Check All Lights And Power Plugs", assetId: "ASSET-OTHER-cf382a821b", outlet: "Aiko PAL", assignedTo: "T3", ruleId: "MR-7" },
+  { seq: "004", title: "Checklist: WIFI , KOT - POS", assetId: "ASSET-OTHER-cf382a821b", outlet: "Aiko PAL", assignedTo: "T3", ruleId: "MR-8" },
+  { seq: "003", title: "Checklist: Induction, Ovan,Etc", assetId: "ASSET-OTHER-cf382a821b", outlet: "Aiko PAL", assignedTo: "T3", ruleId: "MR-9" },
+  { seq: "002", title: "Checklist: Water Lavel, Leakage , Toilet Flush,All TAP", assetId: "ASSET-OTHER-cf382a821b", outlet: "Aiko PAL", assignedTo: "T3", ruleId: "MR-10" },
+  { seq: "001", title: "Checklist: FILTER, TDS Lavel(75 to 85)", assetId: "ASSET-OTHER-cf382a821b", outlet: "Aiko PAL", assignedTo: "T3", ruleId: "MR-11" }
+];
+const MIGRATED_SCHEDULER_TASKS = MIGRATED_SCHEDULER_TASK_DATES.flatMap((date) =>
+  MIGRATED_SCHEDULER_TASK_ITEMS.map((task) => ({
+    id: `TASK-${date.replaceAll("-", "")}-${task.seq}`,
+    title: task.title,
+    assetId: task.assetId,
+    outlet: task.outlet,
+    assignedTo: task.assignedTo,
+    ruleId: task.ruleId,
+    status: "Pending",
+    date,
+    completedAt: "",
+    evidenceComment: "",
+    evidencePhotoUrl: "",
+    evidenceAt: "",
+    notes: task.ruleId === "MR-D-002" ? "Equipment Check / Daily" : "Maintenance / Daily"
+  }))
+);
+
 const BROWSER_FALLBACK_DB = {
   users: [
     { id: "U-ADMIN-AIOPS", username: "aiops", name: "AIops", post: "Admin Control Panel Operator", role: "admin", accessAllOutlets: true, allowedOutlets: [], defaultView: "dashboard", allowedViews: ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"] },
@@ -182,9 +239,11 @@ const BROWSER_FALLBACK_DB = {
     { id: "TK-1002", outlet: "Capiche Piplod", category: "AC", impact: "Service stopped", area: "Demo", note: "DEMO", priority: "P1", status: "Closed", assignedTo: "T3", latestDetail: "Manager approved resolution", createdBy: "U-MGR-A492A2AF", createdAt: "2026-05-02T06:41:34.410576+00:00", updatedAt: "2026-05-02T06:51:37.1+00:00", photoUrls: [] },
     { id: "TK-1001", outlet: "Aiko PAL", category: "AIR CORTAIN", impact: "Service stopped", area: "DOOR", note: "NO Power", priority: "P1", status: "Closed", assignedTo: "T2", latestDetail: "Manager approved resolution", createdBy: "U-MGR-99DB0C23", createdAt: "2026-05-01T11:44:19.073908+00:00", updatedAt: "2026-05-02T04:22:14.786+00:00", photoUrls: [] }
   ],
-  tasks: [],
-  maintenanceRules: [],
-  assignmentTimeWindows: [],
+  tasks: MIGRATED_SCHEDULER_TASKS,
+  maintenanceRules: MIGRATED_SCHEDULER_RULES,
+  assignmentTimeWindows: [
+    { id: "AW-1", name: "Evening Time", days: [0, 1, 2, 3, 4, 5, 6], startTime: "12:00", endTime: "18:00", active: true, createdAt: "2026-05-01T08:49:18.902447+00:00" }
+  ],
   attendancePlans: []
 };
 
