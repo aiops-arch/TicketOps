@@ -8,9 +8,5 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: REQUIRE_SUPABASE
-        value: "true"
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
+      - key: TICKETOPS_API_BASE
         sync: false

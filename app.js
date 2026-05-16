@@ -1,6 +1,8 @@
 const NATIVE_DEFAULT_API = location.protocol === "capacitor:" ? "http://10.0.2.2:3000" : "";
 const CONFIG_API_BASE = window.TICKETOPS_CONFIG?.apiBase || window.TICKETOPS_API_BASE || "";
-const API_BASE = localStorage.getItem("ticketops-api-base") || CONFIG_API_BASE || NATIVE_DEFAULT_API;
+const STORED_API_BASE = localStorage.getItem("ticketops-api-base") || "";
+const API_BASE = CONFIG_API_BASE || STORED_API_BASE || NATIVE_DEFAULT_API;
+const USE_APPS_SCRIPT_API = /script\.google\.com\/macros\/s\/.+\/exec/i.test(API_BASE);
 const AUTH_STORAGE_KEY = "ticketops-auth-user-v2";
 const THEME_STORAGE_KEY = "ticketops-theme";
 const DASHBOARD_MODE_STORAGE_KEY = "ticketops-dashboard-mode";
@@ -934,6 +936,14 @@ function userOutletLabel(user) {
 }
 
 async function api(path, options = {}) {
+  if (USE_APPS_SCRIPT_API) {
+    const result = await appsScriptApi(path, options);
+    if (String(options.method || "GET").toUpperCase() !== "GET") {
+      localStorage.removeItem(bootstrapCacheKey());
+    }
+    return result;
+  }
+
   const response = await fetch(`${API_BASE}${path}`, {
     headers: {
       "Content-Type": "application/json",
@@ -950,6 +960,29 @@ async function api(path, options = {}) {
     localStorage.removeItem(bootstrapCacheKey());
   }
   return response.json();
+}
+
+async function appsScriptApi(path, options = {}) {
+  const method = String(options.method || "GET").toUpperCase();
+  const headers = {
+    ...(currentUser ? { "X-TicketOps-User": currentUser.id, "X-TicketOps-Role": currentUser.role } : {}),
+    ...(options.headers || {})
+  };
+  const response = await fetch(API_BASE, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      path,
+      method,
+      headers,
+      body: options.body ? JSON.parse(options.body) : null
+    })
+  });
+  const payload = await response.json().catch(() => ({ error: "Request failed" }));
+  if (!response.ok || payload.ok === false) {
+    throw new Error(payload.error || payload.body?.error || "Request failed");
+  }
+  return payload.body;
 }
 
 function bootstrapCacheKey() {
@@ -982,6 +1015,14 @@ async function fetchBootstrapState({ preferCache = true } = {}) {
   const cached = readBootstrapCache();
   if (preferCache && cached?.state && Date.now() - Number(cached.at || 0) < BOOTSTRAP_CACHE_TTL_MS) {
     return cached.state;
+  }
+  if (USE_APPS_SCRIPT_API) {
+    const nextState = await appsScriptApi("/api/bootstrap", {
+      method: "GET",
+      headers: cached?.etag ? { "If-None-Match": cached.etag } : {}
+    });
+    writeBootstrapCache(nextState, "");
+    return nextState;
   }
   const response = await fetch(`${API_BASE}/api/bootstrap`, {
     headers: {
@@ -1847,6 +1888,11 @@ async function deleteTask(taskId) {
 }
 
 async function downloadReport(type) {
+  if (USE_APPS_SCRIPT_API) {
+    const exportFile = await appsScriptApi(`/api/reports/export/${type}`, { method: "GET" });
+    downloadBlob(new Blob([exportFile.csv || ""], { type: "text/csv;charset=utf-8" }), exportFile.filename || `ticketops-${type}.csv`);
+    return;
+  }
   const response = await fetch(`${API_BASE}/api/reports/export/${type}`, {
     headers: currentUser ? { "X-TicketOps-User": currentUser.id, "X-TicketOps-Role": currentUser.role } : {}
   });
@@ -1881,6 +1927,11 @@ function downloadBlob(blob, filename) {
 
 async function downloadMonthlyBackup() {
   const month = document.querySelector("#backupMonth")?.value || todayInputValue().slice(0, 7);
+  if (USE_APPS_SCRIPT_API) {
+    const backup = await appsScriptApi(`/api/backups/monthly/${encodeURIComponent(month)}`, { method: "GET" });
+    downloadBlob(new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" }), `ticketops-backup-${month}.json`);
+    return;
+  }
   const response = await fetch(`${API_BASE}/api/backups/monthly/${encodeURIComponent(month)}`, {
     headers: currentUser ? { "X-TicketOps-User": currentUser.id, "X-TicketOps-Role": currentUser.role } : {}
   });
@@ -3904,12 +3955,12 @@ function renderSystem() {
     <article class="system-card">
       <span>Storage</span>
       <strong>${escapeHtml(state.storage === "supabase" ? "Supabase" : "Local JSON")}</strong>
-      <p>${state.storage === "supabase" ? "Persistent cloud database active." : "Local fallback active for desktop testing."}</p>
+      <p>${state.storage === "supabase" ? "Persistent cloud database active." : state.storage === "google-sheets" ? "Google Sheets backend active." : "Local JSON backend active."}</p>
     </article>
     <article class="system-card">
       <span>Render Ready</span>
-      <strong>${state.storage === "supabase" ? "Yes" : "Needs Supabase env"}</strong>
-      <p>Production should run with REQUIRE_SUPABASE=true.</p>
+      <strong>${state.storage === "google-sheets" ? "Yes" : state.storage === "supabase" ? "Legacy" : "Local only"}</strong>
+      <p>Production should use the Google Apps Script API URL.</p>
     </article>
     <article class="system-card">
       <span>App URL</span>
@@ -4047,7 +4098,7 @@ function updateLiveIntel() {
     ? "Resolved tickets are waiting for manager approval."
     : "No resolved tickets are waiting for review.";
 
-  document.querySelector("#storageMode").textContent = state.storage === "supabase" ? "Supabase live store" : "Local demo store";
+  document.querySelector("#storageMode").textContent = state.storage === "google-sheets" ? "Google Sheets store" : state.storage === "supabase" ? "Supabase live store" : "Local JSON store";
   document.querySelector("#syncStatus").textContent = `Synced ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }
 

@@ -11,6 +11,7 @@ The product replaces WhatsApp-based maintenance communication with a structured 
 - `docs/WORKFLOW.md` explains how the maintenance problem starts and how the system handles it end to end.
 - `docs/API.md` contains REST API rules.
 - `docs/SUPABASE.md` contains the Supabase storage model.
+- `docs/GOOGLE_SHEETS_SERVERLESS.md` contains the zero-cost Google Sheets + Apps Script backend.
 - `index.html`, `styles.css`, and `app.js` contain the mobile-first frontend.
 - `server.js` contains the REST API backend.
 
