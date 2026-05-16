@@ -15,8 +15,8 @@ const AUTH_STORAGE_KEY = "ticketops-auth-user-v2";
 const THEME_STORAGE_KEY = "ticketops-theme";
 const DASHBOARD_MODE_STORAGE_KEY = "ticketops-dashboard-mode";
 const LAST_ACTIVITY_STORAGE_KEY = "ticketops-last-activity";
-const BOOTSTRAP_CACHE_KEY = "ticketops-bootstrap-cache-v1";
-const BROWSER_DB_STORAGE_KEY = "ticketops-browser-db-v1";
+const BOOTSTRAP_CACHE_KEY = "ticketops-bootstrap-cache-v2";
+const BROWSER_DB_STORAGE_KEY = "ticketops-browser-db-v2";
 const BOOTSTRAP_CACHE_TTL_MS = 10 * 60 * 1000;
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_TICKET_PHOTOS = 5;
@@ -99,9 +99,16 @@ const BROWSER_FALLBACK_PASSWORDS = {
   "meet.patel": "meet123",
   "pratik.patel": "pratik123",
   "hussain.sheikh": "hussain123",
+  demo: "demo123",
+  manish: "manish123",
+  "rahil.shah": "rahil123",
+  "umang.naidu": "umang123",
+  "viren.barapatre": "viren123",
   vicky: "vicky123",
   "rahul.patil": "rahul123",
-  abrar: "abrar123"
+  abrar: "abrar123",
+  uday: "uday123",
+  hiten: "hiten123"
 };
 
 const BROWSER_FALLBACK_DB = {
@@ -109,32 +116,71 @@ const BROWSER_FALLBACK_DB = {
     { id: "U-ADMIN-AIOPS", username: "aiops", name: "AIops", post: "Admin Control Panel Operator", role: "admin", accessAllOutlets: true, allowedOutlets: [], defaultView: "dashboard", allowedViews: ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"] },
     { id: "U-ADMIN-CHINTAN", username: "chintan.patel", name: "Chintan Patel", post: "Admin Control Panel Operator", role: "admin", accessAllOutlets: true, allowedOutlets: [], defaultView: "dashboard", allowedViews: ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"] },
     { id: "U-ADMIN-MEET", username: "meet.patel", name: "Meet Patel", post: "Admin Control Panel Operator", role: "admin", accessAllOutlets: true, allowedOutlets: [], defaultView: "dashboard", allowedViews: ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"] },
-    { id: "U-MGR-PRATIK", username: "pratik.patel", name: "Pratik Patel", post: "Outlet Manager", role: "manager", outlet: "aiko surat", accessAllOutlets: true, allowedOutlets: [], defaultView: "manager", allowedViews: ["manager"] },
-    { id: "U-MGR-HUSSAIN", username: "hussain.sheikh", name: "Hussain Sheikh", post: "Outlet Manager", role: "manager", outlet: "Capiche", accessAllOutlets: true, allowedOutlets: [], defaultView: "manager", allowedViews: ["manager"] },
-    { id: "U-TECH-VICKY", username: "vicky", name: "Vicky", post: "Technician", role: "technician", technicianId: "T1", accessAllOutlets: false, allowedOutlets: ["aiko surat", "Capiche"], defaultView: "technician", allowedViews: ["technician"] },
-    { id: "U-TECH-RAHUL", username: "rahul.patil", name: "Rahul Patil", post: "Technician", role: "technician", technicianId: "T2", accessAllOutlets: false, allowedOutlets: ["aiko surat"], defaultView: "technician", allowedViews: ["technician"] },
-    { id: "U-TECH-ABRAR", username: "abrar", name: "Abrar", post: "Technician", role: "technician", technicianId: "T3", accessAllOutlets: false, allowedOutlets: ["Capiche"], defaultView: "technician", allowedViews: ["technician"] }
+    { id: "U-MGR-BA24B337", username: "demo", name: "DEMO", post: "Outlet Manager", role: "manager", accessAllOutlets: true, allowedOutlets: [], defaultView: "manager", allowedViews: ["manager"] },
+    { id: "U-MGR-HUSSAIN", username: "hussain.sheikh", name: "Hussain Sheikh", post: "Outlet Manager", role: "manager", outlet: "Capiche Piplod", accessAllOutlets: true, allowedOutlets: [], defaultView: "dashboard", allowedViews: ["dashboard", "manager", "reports"] },
+    { id: "U-MGR-A492A2AF", username: "manish", name: "Manish", post: "Head Chef", role: "manager", outlet: "Capiche Piplod", accessAllOutlets: false, allowedOutlets: ["Capiche Piplod"], defaultView: "manager", allowedViews: ["manager"] },
+    { id: "U-MGR-PRATIK", username: "pratik.patel", name: "Pratik Patel", post: "Outlet Manager", role: "manager", outlet: "Aiko PAL", accessAllOutlets: true, allowedOutlets: [], defaultView: "dashboard", allowedViews: ["dashboard", "manager", "reports"] },
+    { id: "U-MGR-BFB2795A", username: "rahil.shah", name: "Rahil Shah", post: "Outlet Manager", role: "manager", outlet: "Capiche Piplod", accessAllOutlets: false, allowedOutlets: ["Capiche Piplod"], defaultView: "manager", allowedViews: ["manager"] },
+    { id: "U-MGR-E538FE14", username: "umang.naidu", name: "Umang Naidu", post: "Outlet Manager", role: "manager", outlet: "Capiche Vesu", accessAllOutlets: false, allowedOutlets: ["Capiche Vesu"], defaultView: "manager", allowedViews: ["manager"] },
+    { id: "U-MGR-99DB0C23", username: "viren.barapatre", name: "Viren Barapatre", post: "Manager", role: "manager", outlet: "Aiko PAL", accessAllOutlets: false, allowedOutlets: ["Aiko PAL"], defaultView: "dashboard", allowedViews: ["dashboard", "manager", "reports"] },
+    { id: "U-TECH-VICKY", username: "vicky", name: "Vicky", post: "Technician", role: "technician", outlet: "Prep KItchen AMD", technicianId: "T1", accessAllOutlets: false, allowedOutlets: ["Prep KItchen AMD"], defaultView: "dashboard", allowedViews: ["dashboard", "technician", "reports"] },
+    { id: "U-TECH-RAHUL", username: "rahul.patil", name: "Rahul Patil", post: "Technician", role: "technician", outlet: "Capiche Piplod", technicianId: "T2", accessAllOutlets: false, allowedOutlets: ["Capiche Piplod", "Capiche Vesu"], defaultView: "technician", allowedViews: ["technician"] },
+    { id: "U-TECH-A278005E", username: "abrar", name: "Abrar", post: "Technician", role: "technician", outlet: "Aiko Ambli", technicianId: "T3", accessAllOutlets: false, allowedOutlets: ["Aiko Ambli", "Aiko PAL", "Capiche Piplod", "Capiche Vesu", "Prep Kitchen KG"], defaultView: "technician", allowedViews: ["technician"] },
+    { id: "U-TECH-T4", username: "uday", name: "Uday", post: "Technician", role: "technician", outlet: "Aiko Ambli", technicianId: "T4", accessAllOutlets: false, allowedOutlets: ["Aiko Ambli", "Capiche Ambli"], defaultView: "technician", allowedViews: ["technician"] },
+    { id: "U-TECH-T5", username: "hiten", name: "Hiten", post: "Technician", role: "technician", outlet: "Capiche-Uni", technicianId: "T5", accessAllOutlets: false, allowedOutlets: ["Capiche-Uni"], defaultView: "technician", allowedViews: ["technician"] }
   ],
-  outlets: ["aiko surat", "Capiche"],
-  outletLocations: { "aiko surat": { address: "Surat", latitude: null, longitude: null }, Capiche: { address: "Surat", latitude: null, longitude: null } },
+  outlets: ["Aiko Ambli", "Aiko PAL", "Capiche Ambli", "Capiche Piplod", "Capiche Vesu", "Capiche-Uni", "Prep KItchen AMD", "Prep Kitchen KG"],
+  outletLocations: {
+    "Aiko Ambli": { address: "Ahmedabad", latitude: null, longitude: null },
+    "Aiko PAL": { address: "Surat", latitude: null, longitude: null },
+    "Capiche Ambli": { address: "Ahmedabad", latitude: null, longitude: null },
+    "Capiche Piplod": { address: "Surat", latitude: null, longitude: null },
+    "Capiche Vesu": { address: "Surat", latitude: null, longitude: null },
+    "Capiche-Uni": { address: "Ahmedabad", latitude: null, longitude: null },
+    "Prep KItchen AMD": { address: "Ahmedabad", latitude: null, longitude: null },
+    "Prep Kitchen KG": { address: "GHB", latitude: null, longitude: null }
+  },
   categories: [
     { id: "C-AC", name: "AC", description: "Air conditioning and ventilation" },
-    { id: "C-REF", name: "Refrigeration", description: "Freezers, chillers, cold rooms" },
-    { id: "C-ELEC", name: "Electrical", description: "Power, panels, lighting" },
+    { id: "C-AIR-CORTAIN", name: "AIR CORTAIN", description: "" },
+    { id: "C-RO", name: "CIVIL", description: "" },
+    { id: "C-ELEC", name: "Electrical", description: "Power, Panels, lighting, Plug, Meter Readings" },
+    { id: "C-ICE-MAKER", name: "ICE MAKER", description: "" },
+    { id: "C-IT", name: "IT", description: "WIFI , CAMERA" },
+    { id: "C-KITCHEN", name: "Kitchen Equipment", description: "Ovens, fryers, burners, dishwashers" },
+    { id: "C-KOT-POS", name: "KOT-POS", description: "WIFI Connection , Print" },
     { id: "C-PLUMB", name: "Plumbing", description: "Water supply, drains, dishwash area" },
-    { id: "C-KITCHEN", name: "Kitchen Equipment", description: "Ovens, fryers, burners, dishwashers" }
+    { id: "C-REF", name: "Refrigeration", description: "Freezers, chillers, cold rooms" },
+    { id: "C-RO-PLANT", name: "RO PLANT", description: "" }
   ],
   assets: [
-    { id: "A-1001", outlet: "aiko surat", category: "Refrigeration", name: "Walk-in Freezer", code: "AIKO-REF-01", status: "Active", notes: "Primary cold storage" },
-    { id: "A-1002", outlet: "Capiche", category: "Plumbing", name: "Dishwash Drain Line", code: "CAP-PLUMB-01", status: "Active", notes: "Back-of-house wash area" }
+    { id: "ASSET-OTHER-0ecb12d37a", outlet: "Prep KItchen AMD", category: "Other", name: "Other asset", code: "", status: "Active", notes: "Visible general asset used for scheduled work when no specific asset is selected." },
+    { id: "ASSET-OTHER-56139c3138", outlet: "Capiche Vesu", category: "Other", name: "Other asset", code: "", status: "Active", notes: "Visible general asset used for scheduled work when no specific asset is selected." },
+    { id: "ASSET-OTHER-8a723047e4", outlet: "Capiche Ambli", category: "Other", name: "Other asset", code: "", status: "Active", notes: "Visible general asset used for scheduled work when no specific asset is selected." },
+    { id: "ASSET-OTHER-c77a47f576", outlet: "Aiko Ambli", category: "Other", name: "Other asset", code: "", status: "Active", notes: "Visible general asset used for scheduled work when no specific asset is selected." },
+    { id: "ASSET-OTHER-cf382a821b", outlet: "Aiko PAL", category: "Other", name: "Other asset", code: "", status: "Active", notes: "Visible general asset used for scheduled work when no specific asset is selected." },
+    { id: "ASSET-OTHER-d7f0a7903d", outlet: "Capiche Piplod", category: "Other", name: "Other asset", code: "", status: "Active", notes: "Visible general asset used for scheduled work when no specific asset is selected." },
+    { id: "ASSET-OTHER-e903f588b4", outlet: "Prep Kitchen KG", category: "Other", name: "Other asset", code: "", status: "Active", notes: "Visible general asset used for scheduled work when no specific asset is selected." },
+    { id: "ASSET-OTHER-f243e30c91", outlet: "Capiche-Uni", category: "Other", name: "Other asset", code: "", status: "Active", notes: "Visible general asset used for scheduled work when no specific asset is selected." }
   ],
   technicians: [
-    { id: "T1", name: "Vicky", skill: "AC", status: "Present", workload: 0, quality: 92, serviceOutlets: ["aiko surat", "Capiche"] },
-    { id: "T2", name: "Rahul Patil", skill: "Refrigeration", status: "Present", workload: 0, quality: 95, serviceOutlets: ["aiko surat"] },
-    { id: "T3", name: "Abrar", skill: "Plumbing", status: "Break", workload: 0, quality: 89, serviceOutlets: ["Capiche"] }
+    { id: "T1", name: "Vicky", skill: "AC", status: "Present", workload: 0, quality: 92, serviceOutlets: ["Prep KItchen AMD"] },
+    { id: "T2", name: "Rahul Patil", skill: "Refrigeration", status: "Present", workload: 0, quality: 95, serviceOutlets: ["Capiche Piplod", "Capiche Vesu"] },
+    { id: "T3", name: "Abrar", skill: "Electrical", status: "Present", workload: 0, quality: 90, serviceOutlets: ["Aiko Ambli", "Aiko PAL", "Capiche Piplod", "Capiche Vesu", "Prep Kitchen KG"] },
+    { id: "T4", name: "Uday", skill: "AC", status: "Present", workload: 0, quality: 90, serviceOutlets: ["Aiko Ambli", "Capiche Ambli"] },
+    { id: "T5", name: "Hiten", skill: "AC", status: "Present", workload: 0, quality: 90, serviceOutlets: ["Capiche-Uni"] }
   ],
   tickets: [
-    { id: "TK-1002", outlet: "Capiche", category: "Plumbing", impact: "Normal repair", note: "Dishwash area drain slow", priority: "P3", status: "Assigned", assignedTo: "T3", latestDetail: "", createdBy: "U-MGR-HUSSAIN", createdAt: "2026-04-25T00:00:00.000Z", updatedAt: "2026-04-25T00:00:00.000Z", history: [{ at: "2026-04-25T00:00:00.000Z", action: "Ticket created" }, { at: "2026-04-25T00:00:00.000Z", action: "Assigned to Abrar" }] }
+    { id: "TK-1010", outlet: "Capiche Vesu", category: "CIVIL", impact: "Customer visible", area: "washroom", note: "wall is break.", priority: "P2", status: "Acknowledged", assignedTo: "T2", latestDetail: "Rahul Patil accepted the job", createdBy: "U-MGR-E538FE14", createdAt: "2026-05-12T08:39:02.772702+00:00", updatedAt: "2026-05-12T09:16:02.252+00:00", photoUrls: [] },
+    { id: "TK-1009", outlet: "Aiko Ambli", category: "IT", impact: "Normal repair", area: "chair repairing", note: "chair repairing pls", priority: "P3", status: "New", assignedTo: "", latestDetail: "", createdBy: "U-ADMIN-CHINTAN", createdAt: "2026-05-10T10:12:14.381392+00:00", updatedAt: "2026-05-11T12:20:28.71+00:00", photoUrls: [] },
+    { id: "TK-1008", outlet: "Aiko Ambli", category: "Electrical", impact: "Customer visible", area: "flore", note: "aroma spray nhi thatu", priority: "P2", status: "New", assignedTo: "", latestDetail: "", createdBy: "U-ADMIN-CHINTAN", createdAt: "2026-05-10T08:22:24.759888+00:00", updatedAt: "2026-05-11T12:20:29.223+00:00", photoUrls: [] },
+    { id: "TK-1007", outlet: "Aiko PAL", category: "Electrical", impact: "Customer visible", area: "flore", note: "vara ghadi sound ma khar-khar aavaj aave", priority: "P2", status: "Closed", assignedTo: "", latestDetail: "Admin verified completion and closed the ticket", createdBy: "U-ADMIN-CHINTAN", createdAt: "2026-05-10T08:18:54.854258+00:00", updatedAt: "2026-05-13T06:13:24.011+00:00", photoUrls: [] },
+    { id: "TK-1006", outlet: "Aiko Ambli", category: "Electrical", impact: "Customer visible", area: "flore", note: "washroom use nhi kari shakiya", priority: "P2", status: "Closed", assignedTo: "", latestDetail: "Admin verified completion and closed the ticket", createdBy: "U-ADMIN-CHINTAN", createdAt: "2026-05-10T08:17:00.731339+00:00", updatedAt: "2026-05-13T06:00:15.283+00:00", photoUrls: [] },
+    { id: "TK-1005", outlet: "Aiko Ambli", category: "Kitchen Equipment", impact: "Service stopped", area: "Kitchen", note: "Induction Not Working", priority: "P1", status: "Closed", assignedTo: "T3", latestDetail: "Admin closed ticket", createdBy: "U-MGR-BA24B337", createdAt: "2026-05-09T16:56:29.419112+00:00", updatedAt: "2026-05-11T06:03:45.387+00:00", photoUrls: [] },
+    { id: "TK-1004", outlet: "Aiko Ambli", category: "Kitchen Equipment", impact: "Normal repair", area: "kitchen equepment", note: "not working properly", priority: "P3", status: "Closed", assignedTo: "T3", latestDetail: "Manager approved resolution", createdBy: "U-ADMIN-CHINTAN", createdAt: "2026-05-08T10:31:58.250535+00:00", updatedAt: "2026-05-09T16:24:50.931+00:00", photoUrls: [] },
+    { id: "TK-1003", outlet: "Aiko Ambli", category: "AC", impact: "Service stopped", area: "ac barabar work nhi kartu", note: "not cooling proper", priority: "P1", status: "Closed", assignedTo: "T3", latestDetail: "Manager approved resolution", createdBy: "U-ADMIN-CHINTAN", createdAt: "2026-05-08T10:26:58.333853+00:00", updatedAt: "2026-05-09T16:24:45.128+00:00", photoUrls: [] },
+    { id: "TK-1002", outlet: "Capiche Piplod", category: "AC", impact: "Service stopped", area: "Demo", note: "DEMO", priority: "P1", status: "Closed", assignedTo: "T3", latestDetail: "Manager approved resolution", createdBy: "U-MGR-A492A2AF", createdAt: "2026-05-02T06:41:34.410576+00:00", updatedAt: "2026-05-02T06:51:37.1+00:00", photoUrls: [] },
+    { id: "TK-1001", outlet: "Aiko PAL", category: "AIR CORTAIN", impact: "Service stopped", area: "DOOR", note: "NO Power", priority: "P1", status: "Closed", assignedTo: "T2", latestDetail: "Manager approved resolution", createdBy: "U-MGR-99DB0C23", createdAt: "2026-05-01T11:44:19.073908+00:00", updatedAt: "2026-05-02T04:22:14.786+00:00", photoUrls: [] }
   ],
   tasks: [],
   maintenanceRules: [],
