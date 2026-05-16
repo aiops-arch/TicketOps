@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v31-ignore-stale-config-api";
+const CACHE_NAME = "ticketops-v32-browser-fallback-api";
 const APP_SHELL = [
   "./",
   "./index.html",

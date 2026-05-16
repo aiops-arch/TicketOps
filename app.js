@@ -10,11 +10,13 @@ const SAFE_CONFIG_API_BASE = STALE_API_BASE_PATTERN.test(CONFIG_API_BASE) ? "" :
 const SAFE_STORED_API_BASE = STALE_API_BASE_PATTERN.test(STORED_API_BASE) ? "" : STORED_API_BASE;
 const API_BASE = SAFE_CONFIG_API_BASE || SAFE_STORED_API_BASE || NATIVE_DEFAULT_API;
 const USE_APPS_SCRIPT_API = /script\.google\.com\/macros\/s\/.+\/exec/i.test(API_BASE);
+const USE_BROWSER_FALLBACK_API = !API_BASE;
 const AUTH_STORAGE_KEY = "ticketops-auth-user-v2";
 const THEME_STORAGE_KEY = "ticketops-theme";
 const DASHBOARD_MODE_STORAGE_KEY = "ticketops-dashboard-mode";
 const LAST_ACTIVITY_STORAGE_KEY = "ticketops-last-activity";
 const BOOTSTRAP_CACHE_KEY = "ticketops-bootstrap-cache-v1";
+const BROWSER_DB_STORAGE_KEY = "ticketops-browser-db-v1";
 const BOOTSTRAP_CACHE_TTL_MS = 10 * 60 * 1000;
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_TICKET_PHOTOS = 5;
@@ -89,6 +91,55 @@ let state = {
   tickets: [],
   assignmentTimeWindows: [],
   reports: {}
+};
+
+const BROWSER_FALLBACK_PASSWORDS = {
+  aiops: "AIops",
+  "chintan.patel": "chintan123",
+  "meet.patel": "meet123",
+  "pratik.patel": "pratik123",
+  "hussain.sheikh": "hussain123",
+  vicky: "vicky123",
+  "rahul.patil": "rahul123",
+  abrar: "abrar123"
+};
+
+const BROWSER_FALLBACK_DB = {
+  users: [
+    { id: "U-ADMIN-AIOPS", username: "aiops", name: "AIops", post: "Admin Control Panel Operator", role: "admin", accessAllOutlets: true, allowedOutlets: [], defaultView: "dashboard", allowedViews: ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"] },
+    { id: "U-ADMIN-CHINTAN", username: "chintan.patel", name: "Chintan Patel", post: "Admin Control Panel Operator", role: "admin", accessAllOutlets: true, allowedOutlets: [], defaultView: "dashboard", allowedViews: ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"] },
+    { id: "U-ADMIN-MEET", username: "meet.patel", name: "Meet Patel", post: "Admin Control Panel Operator", role: "admin", accessAllOutlets: true, allowedOutlets: [], defaultView: "dashboard", allowedViews: ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"] },
+    { id: "U-MGR-PRATIK", username: "pratik.patel", name: "Pratik Patel", post: "Outlet Manager", role: "manager", outlet: "aiko surat", accessAllOutlets: true, allowedOutlets: [], defaultView: "manager", allowedViews: ["manager"] },
+    { id: "U-MGR-HUSSAIN", username: "hussain.sheikh", name: "Hussain Sheikh", post: "Outlet Manager", role: "manager", outlet: "Capiche", accessAllOutlets: true, allowedOutlets: [], defaultView: "manager", allowedViews: ["manager"] },
+    { id: "U-TECH-VICKY", username: "vicky", name: "Vicky", post: "Technician", role: "technician", technicianId: "T1", accessAllOutlets: false, allowedOutlets: ["aiko surat", "Capiche"], defaultView: "technician", allowedViews: ["technician"] },
+    { id: "U-TECH-RAHUL", username: "rahul.patil", name: "Rahul Patil", post: "Technician", role: "technician", technicianId: "T2", accessAllOutlets: false, allowedOutlets: ["aiko surat"], defaultView: "technician", allowedViews: ["technician"] },
+    { id: "U-TECH-ABRAR", username: "abrar", name: "Abrar", post: "Technician", role: "technician", technicianId: "T3", accessAllOutlets: false, allowedOutlets: ["Capiche"], defaultView: "technician", allowedViews: ["technician"] }
+  ],
+  outlets: ["aiko surat", "Capiche"],
+  outletLocations: { "aiko surat": { address: "Surat", latitude: null, longitude: null }, Capiche: { address: "Surat", latitude: null, longitude: null } },
+  categories: [
+    { id: "C-AC", name: "AC", description: "Air conditioning and ventilation" },
+    { id: "C-REF", name: "Refrigeration", description: "Freezers, chillers, cold rooms" },
+    { id: "C-ELEC", name: "Electrical", description: "Power, panels, lighting" },
+    { id: "C-PLUMB", name: "Plumbing", description: "Water supply, drains, dishwash area" },
+    { id: "C-KITCHEN", name: "Kitchen Equipment", description: "Ovens, fryers, burners, dishwashers" }
+  ],
+  assets: [
+    { id: "A-1001", outlet: "aiko surat", category: "Refrigeration", name: "Walk-in Freezer", code: "AIKO-REF-01", status: "Active", notes: "Primary cold storage" },
+    { id: "A-1002", outlet: "Capiche", category: "Plumbing", name: "Dishwash Drain Line", code: "CAP-PLUMB-01", status: "Active", notes: "Back-of-house wash area" }
+  ],
+  technicians: [
+    { id: "T1", name: "Vicky", skill: "AC", status: "Present", workload: 0, quality: 92, serviceOutlets: ["aiko surat", "Capiche"] },
+    { id: "T2", name: "Rahul Patil", skill: "Refrigeration", status: "Present", workload: 0, quality: 95, serviceOutlets: ["aiko surat"] },
+    { id: "T3", name: "Abrar", skill: "Plumbing", status: "Break", workload: 0, quality: 89, serviceOutlets: ["Capiche"] }
+  ],
+  tickets: [
+    { id: "TK-1002", outlet: "Capiche", category: "Plumbing", impact: "Normal repair", note: "Dishwash area drain slow", priority: "P3", status: "Assigned", assignedTo: "T3", latestDetail: "", createdBy: "U-MGR-HUSSAIN", createdAt: "2026-04-25T00:00:00.000Z", updatedAt: "2026-04-25T00:00:00.000Z", history: [{ at: "2026-04-25T00:00:00.000Z", action: "Ticket created" }, { at: "2026-04-25T00:00:00.000Z", action: "Assigned to Abrar" }] }
+  ],
+  tasks: [],
+  maintenanceRules: [],
+  assignmentTimeWindows: [],
+  attendancePlans: []
 };
 
 let stateIndex = {
@@ -943,6 +994,14 @@ function userOutletLabel(user) {
 }
 
 async function api(path, options = {}) {
+  if (USE_BROWSER_FALLBACK_API) {
+    const result = await browserFallbackApi(path, options);
+    if (String(options.method || "GET").toUpperCase() !== "GET") {
+      localStorage.removeItem(bootstrapCacheKey());
+    }
+    return result;
+  }
+
   if (USE_APPS_SCRIPT_API) {
     const result = await appsScriptApi(path, options);
     if (String(options.method || "GET").toUpperCase() !== "GET") {
@@ -967,6 +1026,205 @@ async function api(path, options = {}) {
     localStorage.removeItem(bootstrapCacheKey());
   }
   return response.json();
+}
+
+function browserReadDb() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(BROWSER_DB_STORAGE_KEY) || "null");
+    if (stored && typeof stored === "object") return browserNormalizeDb(stored);
+  } catch {
+    // Fall through to seed.
+  }
+  const seeded = browserNormalizeDb(JSON.parse(JSON.stringify(BROWSER_FALLBACK_DB)));
+  localStorage.setItem(BROWSER_DB_STORAGE_KEY, JSON.stringify(seeded));
+  return seeded;
+}
+
+function browserWriteDb(db) {
+  localStorage.setItem(BROWSER_DB_STORAGE_KEY, JSON.stringify(browserNormalizeDb(db)));
+}
+
+function browserNormalizeDb(db) {
+  const next = db || {};
+  ["users", "outlets", "categories", "assets", "technicians", "tickets", "tasks", "assignmentTimeWindows", "maintenanceRules", "attendancePlans"].forEach((key) => {
+    if (!Array.isArray(next[key])) next[key] = [];
+  });
+  if (!next.outletLocations || typeof next.outletLocations !== "object") next.outletLocations = {};
+  return next;
+}
+
+function browserPublicUser(user) {
+  const { password, passwordPlain, passwordHash, ...safeUser } = user || {};
+  return normalizeSessionUser(safeUser);
+}
+
+function browserRequestUser(db, options = {}) {
+  const userId = options.headers?.["X-TicketOps-User"] || options.headers?.["x-ticketops-user"] || currentUser?.id || "";
+  return (db.users || []).find((user) => user.id === userId) || null;
+}
+
+function browserRequireUser(user) {
+  if (!user) throw new Error("Login required");
+}
+
+function browserRequireAdmin(user) {
+  browserRequireUser(user);
+  if (user.role !== "admin") throw new Error("Only admin can perform this action");
+}
+
+function browserScopedDb(db, user) {
+  const scoped = JSON.parse(JSON.stringify(db));
+  if (!user) return scoped;
+  if (user.role === "manager") {
+    const outlets = user.accessAllOutlets ? scoped.outlets : user.allowedOutlets?.length ? user.allowedOutlets : user.outlet ? [user.outlet] : [];
+    scoped.assets = scoped.assets.filter((asset) => outlets.includes(asset.outlet));
+    scoped.tasks = scoped.tasks.filter((task) => outlets.includes(task.outlet));
+    scoped.tickets = scoped.tickets.filter((ticket) => outlets.includes(ticket.outlet));
+  }
+  if (user.role === "technician" && user.technicianId) {
+    scoped.technicians = scoped.technicians.filter((tech) => tech.id === user.technicianId);
+    scoped.tasks = scoped.tasks.filter((task) => task.assignedTo === user.technicianId);
+    scoped.tickets = scoped.tickets.filter((ticket) => ticket.assignedTo === user.technicianId || ticket.createdBy === user.id);
+  }
+  scoped.users = scoped.users.map(browserPublicUser);
+  scoped.reports = browserReports(scoped);
+  scoped.storage = "browser";
+  scoped.stitch = { configured: false, endpoint: "" };
+  return scoped;
+}
+
+function browserReports(db) {
+  const tickets = db.tickets || [];
+  const tasks = db.tasks || [];
+  const doneTasks = tasks.filter((task) => task.status === "Done").length;
+  return {
+    total: tickets.length,
+    open: tickets.filter((ticket) => !["Closed", "Cancelled"].includes(ticket.status)).length,
+    closed: tickets.filter((ticket) => ticket.status === "Closed").length,
+    taskCompletionRate: tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0,
+    technicianCount: (db.technicians || []).length,
+    byOutlet: (db.outlets || []).map((outlet) => ({
+      outlet,
+      count: tickets.filter((ticket) => ticket.outlet === outlet).length,
+      open: tickets.filter((ticket) => ticket.outlet === outlet && !["Closed", "Cancelled"].includes(ticket.status)).length,
+      closed: tickets.filter((ticket) => ticket.outlet === outlet && ticket.status === "Closed").length
+    }))
+  };
+}
+
+function browserNextId(items, prefix) {
+  return `${prefix}${String((items || []).length + 1001)}-${Date.now().toString(36).toUpperCase()}`;
+}
+
+async function browserFallbackApi(path, options = {}) {
+  const method = String(options.method || "GET").toUpperCase();
+  const body = options.body ? JSON.parse(options.body) : {};
+  const db = browserReadDb();
+  const user = browserRequestUser(db, options);
+
+  if (method === "POST" && path === "/api/auth/login") {
+    const username = String(body.username || "").trim().toLowerCase();
+    const password = String(body.password || "");
+    const found = (db.users || []).find((item) => item.username === username);
+    if (!found || ![BROWSER_FALLBACK_PASSWORDS[username], found.passwordPlain, found.password].filter(Boolean).includes(password)) {
+      throw new Error("Invalid username or password");
+    }
+    return { user: browserPublicUser(found) };
+  }
+
+  if (method === "GET" && path === "/api/auth/demo-users") return { users: db.users.map(browserPublicUser) };
+  if (method === "GET" && path === "/api/bootstrap") {
+    browserRequireUser(user);
+    return browserScopedDb(db, user);
+  }
+  if (method === "GET" && path === "/api/categories") {
+    browserRequireAdmin(user);
+    return db.categories || [];
+  }
+  if (method === "POST" && path === "/api/reset") {
+    browserRequireAdmin(user);
+    browserWriteDb(JSON.parse(JSON.stringify(BROWSER_FALLBACK_DB)));
+    return { ok: true };
+  }
+  if (method === "POST" && path === "/api/tickets") {
+    browserRequireUser(user);
+    const ticket = {
+      id: browserNextId(db.tickets, "TK-"),
+      outlet: body.outlet,
+      category: body.category,
+      assetId: body.assetId || "",
+      impact: body.impact,
+      area: body.area || "",
+      note: body.note || "",
+      priority: priorityForImpact(body.impact),
+      status: body.assignedTo ? "Assigned" : "New",
+      assignedTo: body.assignedTo || "",
+      scheduledAt: body.scheduledAt || "",
+      photoUrl: body.photoUrl || "",
+      photoUrls: body.photoUrls || [],
+      latestDetail: body.note || "Created",
+      createdBy: user.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      history: [{ at: new Date().toISOString(), action: "Ticket created" }]
+    };
+    db.tickets.unshift(ticket);
+    browserWriteDb(db);
+    return ticket;
+  }
+  if (method === "PATCH" && /^\/api\/tickets\/[^/]+\/status$/.test(path)) {
+    browserRequireUser(user);
+    const ticket = db.tickets.find((item) => item.id === decodeURIComponent(path.split("/")[3]));
+    if (!ticket) throw new Error("Ticket not found");
+    ticket.status = body.status || ticket.status;
+    ticket.latestDetail = body.detail || ticket.status;
+    ticket.updatedAt = new Date().toISOString();
+    browserWriteDb(db);
+    return { ticket, reports: browserReports(db) };
+  }
+  if (method === "PATCH" && /^\/api\/tickets\/[^/]+\/assign$/.test(path)) {
+    browserRequireAdmin(user);
+    const ticket = db.tickets.find((item) => item.id === decodeURIComponent(path.split("/")[3]));
+    if (!ticket) throw new Error("Ticket not found");
+    ticket.assignedTo = body.technicianId || "";
+    ticket.status = ticket.assignedTo ? "Assigned" : "New";
+    ticket.scheduledAt = body.scheduledAt || "";
+    ticket.updatedAt = new Date().toISOString();
+    browserWriteDb(db);
+    return { ticket, reports: browserReports(db) };
+  }
+  if (method === "POST" && /^\/api\/tickets\/[^/]+\/accept$/.test(path)) {
+    browserRequireUser(user);
+    const ticket = db.tickets.find((item) => item.id === decodeURIComponent(path.split("/")[3]));
+    if (!ticket) throw new Error("Ticket not found");
+    ticket.status = "Acknowledged";
+    ticket.updatedAt = new Date().toISOString();
+    browserWriteDb(db);
+    return { ticket, reports: browserReports(db) };
+  }
+  if (method === "POST" && /^\/api\/tickets\/[^/]+\/reject$/.test(path)) {
+    browserRequireUser(user);
+    const ticket = db.tickets.find((item) => item.id === decodeURIComponent(path.split("/")[3]));
+    if (!ticket) throw new Error("Ticket not found");
+    ticket.status = "New";
+    ticket.assignedTo = "";
+    ticket.latestDetail = body.reason || "Rejected";
+    ticket.updatedAt = new Date().toISOString();
+    browserWriteDb(db);
+    return { ticket, reports: browserReports(db) };
+  }
+  if (method === "POST" && /^\/api\/technicians\/[^/]+\/attendance$/.test(path)) {
+    browserRequireUser(user);
+    const technicianId = decodeURIComponent(path.split("/")[3]);
+    const tech = db.technicians.find((item) => item.id === technicianId);
+    if (!tech) throw new Error("Technician not found");
+    tech.status = body.status || tech.status;
+    db.attendancePlans.push({ id: browserNextId(db.attendancePlans, "ATT-"), technicianId, ...body, createdAt: new Date().toISOString() });
+    browserWriteDb(db);
+    return { plan: db.attendancePlans.at(-1), reports: browserReports(db) };
+  }
+
+  throw new Error("This static fallback needs the Google Apps Script URL for that action.");
 }
 
 async function appsScriptApi(path, options = {}) {
@@ -3961,12 +4219,12 @@ function renderSystem() {
     </article>
     <article class="system-card">
       <span>Storage</span>
-      <strong>${escapeHtml(state.storage === "supabase" ? "Supabase" : "Local JSON")}</strong>
-      <p>${state.storage === "supabase" ? "Persistent cloud database active." : state.storage === "google-sheets" ? "Google Sheets backend active." : "Local JSON backend active."}</p>
+      <strong>${escapeHtml(state.storage === "google-sheets" ? "Google Sheets" : state.storage === "browser" ? "Browser" : state.storage === "supabase" ? "Supabase" : "Local JSON")}</strong>
+      <p>${state.storage === "supabase" ? "Persistent cloud database active." : state.storage === "google-sheets" ? "Google Sheets backend active." : state.storage === "browser" ? "Browser fallback active until Apps Script is configured." : "Local JSON backend active."}</p>
     </article>
     <article class="system-card">
       <span>Render Ready</span>
-      <strong>${state.storage === "google-sheets" ? "Yes" : state.storage === "supabase" ? "Legacy" : "Local only"}</strong>
+      <strong>${state.storage === "google-sheets" ? "Yes" : state.storage === "browser" ? "Fallback" : state.storage === "supabase" ? "Legacy" : "Local only"}</strong>
       <p>Production should use the Google Apps Script API URL.</p>
     </article>
     <article class="system-card">
@@ -4105,7 +4363,7 @@ function updateLiveIntel() {
     ? "Resolved tickets are waiting for manager approval."
     : "No resolved tickets are waiting for review.";
 
-  document.querySelector("#storageMode").textContent = state.storage === "google-sheets" ? "Google Sheets store" : state.storage === "supabase" ? "Supabase live store" : "Local JSON store";
+  document.querySelector("#storageMode").textContent = state.storage === "google-sheets" ? "Google Sheets store" : state.storage === "browser" ? "Browser fallback store" : state.storage === "supabase" ? "Supabase live store" : "Local JSON store";
   document.querySelector("#syncStatus").textContent = `Synced ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }
 
