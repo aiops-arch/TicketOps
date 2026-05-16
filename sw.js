@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v32-browser-fallback-api";
+const CACHE_NAME = "ticketops-v33-static-bootstrap-fix";
 const APP_SHELL = [
   "./",
   "./index.html",

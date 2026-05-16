@@ -1281,6 +1281,14 @@ async function fetchBootstrapState({ preferCache = true } = {}) {
   if (preferCache && cached?.state && Date.now() - Number(cached.at || 0) < BOOTSTRAP_CACHE_TTL_MS) {
     return cached.state;
   }
+  if (USE_BROWSER_FALLBACK_API) {
+    const nextState = await browserFallbackApi("/api/bootstrap", {
+      method: "GET",
+      headers: cached?.etag ? { "If-None-Match": cached.etag } : {}
+    });
+    writeBootstrapCache(nextState, "");
+    return nextState;
+  }
   if (USE_APPS_SCRIPT_API) {
     const nextState = await appsScriptApi("/api/bootstrap", {
       method: "GET",
