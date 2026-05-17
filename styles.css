@@ -13393,40 +13393,14 @@ body[data-theme="dark"] .outlet-stats small { color: rgba(255,255,255,0.5) !impo
   height: auto !important;
 }
 
-/* ── Desktop ≥1401px: 4 equal donut cols + 1 wider trend col ── */
-@media (min-width: 1401px) {
+/* ── Desktop ≥1181px: all 5 cards in one row — 4 equal donuts + 1 wider trend ── */
+@media (min-width: 1181px) {
   .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.9fr) !important;
-  }
-}
-
-/* ── Mid-desktop 1181-1400px: all 4 donuts in one row, trend full-width below ── */
-@media (min-width: 1181px) and (max-width: 1400px) {
-  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 2fr) !important;
   }
   .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card {
-    grid-column: 1 / -1 !important;
-    flex-direction: row !important;
-    align-items: stretch !important;
-    gap: 20px !important;
-    min-height: 90px !important;
-  }
-  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card .trend-head {
+    grid-column: auto !important;
     flex-direction: column !important;
-    justify-content: flex-start !important;
-    align-items: flex-start !important;
-    min-width: 100px !important;
-    flex-shrink: 0 !important;
-  }
-  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card .trend-legend {
-    flex-direction: column !important;
-  }
-  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card .dashboard-trend {
-    flex: 1 !important;
-    min-width: 0 !important;
-    height: auto !important;
-    align-self: stretch !important;
   }
 }
 
@@ -13592,7 +13566,10 @@ body[data-theme="dark"] .outlet-stats small { color: rgba(255,255,255,0.5) !impo
 }
 
 .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card .trend-bars i {
-  width: 10px !important;
+  flex: 1 !important;
+  width: auto !important;
+  min-width: 6px !important;
+  max-width: 20px !important;
 }
 
 /* (c) Account dock: position fixed at the bottom within drawer width */
