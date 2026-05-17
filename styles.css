@@ -13343,3 +13343,210 @@ body[data-theme="dark"] .outlet-stats small { color: rgba(255,255,255,0.5) !impo
 
   .outlet-card-main > strong { font-size: 13px !important; }
 }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   12. PROFESSIONAL LAYOUT — DESKTOP CHART FIX + MOBILE 2-COL
+   Trend card is forced into donut's 60px|1fr grid layout by the
+   higher-specificity #dashboard .ops-chart rule. Fix with a
+   compound selector that wins. Also replaces the full mobile
+   1-col collapse with intentional 2-col professional layouts.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* ── Fix: trend card must be flex-column, not donut grid ── */
+.ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card {
+  display: flex !important;
+  flex-direction: column !important;
+  grid-template-columns: unset !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  min-height: 110px !important;
+}
+
+/* Trend head: title + legend side by side on wider cards */
+.ops-portal[data-view="dashboard"] .trend-head {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.ops-portal[data-view="dashboard"] .trend-head > span {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.07em !important;
+  color: #64748b !important;
+}
+
+/* Legend items in a row */
+.ops-portal[data-view="dashboard"] .trend-legend {
+  flex-direction: row !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+}
+
+/* Trend bars fill available height */
+.ops-portal[data-view="dashboard"] .dashboard-trend {
+  flex: 1 !important;
+  min-height: 56px !important;
+  height: auto !important;
+}
+
+/* ── Desktop ≥1401px: 4 equal donut cols + 1 wider trend col ── */
+@media (min-width: 1401px) {
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.9fr) !important;
+  }
+}
+
+/* ── Mid-desktop 1181-1400px: all 4 donuts in one row, trend full-width below ── */
+@media (min-width: 1181px) and (max-width: 1400px) {
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card {
+    grid-column: 1 / -1 !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 20px !important;
+    min-height: 90px !important;
+  }
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card .trend-head {
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+    min-width: 100px !important;
+    flex-shrink: 0 !important;
+  }
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card .trend-legend {
+    flex-direction: column !important;
+  }
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card .dashboard-trend {
+    flex: 1 !important;
+    min-width: 0 !important;
+    height: auto !important;
+    align-self: stretch !important;
+  }
+}
+
+/* ── Tablet 601-900px: 2-col donuts, trend full width ── */
+@media (min-width: 601px) and (max-width: 900px) {
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card {
+    grid-column: 1 / -1 !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 20px !important;
+    min-height: 90px !important;
+  }
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card .trend-head {
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+    min-width: 90px !important;
+    flex-shrink: 0 !important;
+  }
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card .trend-legend {
+    flex-direction: column !important;
+  }
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card .dashboard-trend {
+    flex: 1 !important;
+    min-width: 0 !important;
+    height: auto !important;
+    align-self: stretch !important;
+  }
+}
+
+/* ── Mobile ≤760px: KPI 2-col, charts 2-col, trend full-width ── */
+@media (max-width: 760px) {
+  .ops-portal[data-view="dashboard"] .dashboard-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card {
+    grid-column: 1 / -1 !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    min-height: 80px !important;
+  }
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card .trend-head {
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+    min-width: 72px !important;
+    flex-shrink: 0 !important;
+  }
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card .trend-legend {
+    flex-direction: column !important;
+  }
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart.trend-card .dashboard-trend {
+    flex: 1 !important;
+    min-width: 0 !important;
+    height: auto !important;
+    align-self: stretch !important;
+  }
+  .ops-portal[data-view="dashboard"] .summary-signal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  /* Hero metrics: 3 cols (never stack to 1) */
+  .ops-portal[data-view="dashboard"] .hero-metrics {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    flex-direction: unset !important;
+  }
+}
+
+/* ── All views ≤767px: professional 2-col for section grids ── */
+@media (max-width: 767px) {
+  .outlet-health-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .report-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .technician-command-grid,
+  .admin-tech-dashboard {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  /* Summary grid panels: 1-col is fine (they're large panels) */
+  /* Ticket list, closed history: full-width is correct */
+}
+
+/* ── Very small phones ≤430px: maintain 2-col, shrink text ── */
+@media (max-width: 430px) {
+  .ops-portal[data-view="dashboard"] .dashboard-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+  .ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+  .ops-portal[data-view="dashboard"] .hero-metrics {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    flex-direction: unset !important;
+    gap: 6px !important;
+  }
+  .outlet-health-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .report-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  /* KPI card: tighter text on tiny screens */
+  .ops-portal[data-view="dashboard"] .dashboard-kpi strong {
+    font-size: 18px !important;
+  }
+  .ops-portal[data-view="dashboard"] .dashboard-kpi small {
+    font-size: 10px !important;
+  }
+}
