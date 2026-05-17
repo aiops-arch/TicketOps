@@ -3084,6 +3084,66 @@ function dashboardSummarySnapshot(tickets, reports, actions, completedToday, com
   `;
 }
 
+// ─── KPI DRILL PANEL ──────────────────────────────────────────────────────
+function openKpiDrill(title, tickets, tasks) {
+  const overlay = document.getElementById("kpiDrillOverlay");
+  const body = document.getElementById("kpiDrillBody");
+  const titleEl = document.getElementById("kpiDrillTitle");
+  const countEl = document.getElementById("kpiDrillCount");
+  if (!overlay || !body) return;
+
+  titleEl.textContent = title;
+
+  if (tasks && tasks.length) {
+    countEl.textContent = tasks.length;
+    body.innerHTML = tasks.length
+      ? tasks.map((task) => `
+          <div class="kpi-drill-task-item">
+            <strong>${escapeHtml(task.title || "Task")}</strong>
+            <span>${escapeHtml(task.outlet || "")} · ${escapeHtml(task.status || "")} · ${escapeHtml(task.date || "")}</span>
+          </div>
+        `).join("")
+      : `<div class="kpi-drill-empty">No tasks found.</div>`;
+  } else {
+    countEl.textContent = (tickets || []).length;
+    body.innerHTML = (tickets && tickets.length)
+      ? tickets.map((ticket) => {
+          const tech = technicianById(ticket.assignedTo);
+          const age = ticket.createdAt ? formatAge(ticket.createdAt) : "";
+          return `
+            <article class="ticket-card priority-${token(ticket.priority || "p4")}"
+              style="cursor:default;">
+              <div class="ticket-id-row">
+                <span class="ticket-id">${escapeHtml(ticket.id)}</span>
+                <span class="priority-badge priority-${token(ticket.priority)}">${escapeHtml(ticket.priority || "")}</span>
+                <span class="status-badge">${escapeHtml(ticket.status || "")}</span>
+              </div>
+              <div class="ticket-main">
+                <strong>${escapeHtml(ticket.note || ticket.latestDetail || "")}</strong>
+                <span>${escapeHtml(ticket.outlet || "")} · ${escapeHtml(ticket.category || "")}${ticket.area ? " · " + ticket.area : ""}</span>
+              </div>
+              <div class="ticket-meta">
+                <span>${tech ? escapeHtml(tech.name) : "Unassigned"}</span>
+                <span>${age}</span>
+              </div>
+            </article>
+          `;
+        }).join("")
+      : `<div class="kpi-drill-empty">Nothing here right now.</div>`;
+  }
+
+  overlay.classList.add("is-open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeKpiDrill() {
+  const overlay = document.getElementById("kpiDrillOverlay");
+  if (!overlay) return;
+  overlay.classList.remove("is-open");
+  document.body.style.overflow = "";
+}
+// ─── END KPI DRILL ────────────────────────────────────────────────────────
+
 function renderDashboard() {
   const reports = state.reports || {};
   const allScopedTickets = ticketsForCurrentUser(state.tickets);
@@ -3124,25 +3184,54 @@ function renderDashboard() {
   document.querySelector("#dashCritical").textContent = reports.critical || 0;
   document.querySelector("#dashReady").textContent = `${readyTechs}/${state.technicians.length || 0}`;
   document.querySelector("#dashboardKpiGrid").innerHTML = [
-    ["Active", scopedTickets.length, "All open tickets", "blue", Math.min(100, scopedTickets.length * 12), "Now"],
-    ["Going On", goingOn, "Assigned / running / blocked", "purple", Math.min(100, goingOn * 15), "Field"],
-    ["Completed Today", completedToday, "Approved closures", "green", Math.min(100, completedToday * 20), "Today"],
-    ["This Week", completedWeek, "Closed in 7 days", "teal", Math.min(100, completedWeek * 10), "7D"],
-    ["This Month", completedMonth, "Closed in 30 days", "gold", Math.min(100, completedMonth * 4), "30D"],
-    ["Close Value", formatClosePrice(closePriceTotal), "All priced closures", "gold", Math.min(100, closePriceTotal / 1000), "Rs"],
-    ["30D Value", formatClosePrice(closePriceMonth), "Priced closures in 30 days", "teal", Math.min(100, closePriceMonth / 1000), "30D"],
-    ["Checklist", todayTasks.length ? `${doneTasks}/${todayTasks.length}` : "0/0", "Daily PM completion", "coral", taskPercent, "PM"]
-  ].map(([label, value, detail, tone, meter, badge]) => `
-    <article class="dashboard-kpi ${tone}">
+    ["Active", scopedTickets.length, "All open tickets", "blue", Math.min(100, scopedTickets.length * 12), "Now", "active"],
+    ["Going On", goingOn, "Assigned / running / blocked", "purple", Math.min(100, goingOn * 15), "Field", "going-on"],
+    ["Completed Today", completedToday, "Approved closures", "green", Math.min(100, completedToday * 20), "Today", "completed-today"],
+    ["This Week", completedWeek, "Closed in 7 days", "teal", Math.min(100, completedWeek * 10), "7D", "week"],
+    ["This Month", completedMonth, "Closed in 30 days", "gold", Math.min(100, completedMonth * 4), "30D", "month"],
+    ["Close Value", formatClosePrice(closePriceTotal), "All priced closures", "gold", Math.min(100, closePriceTotal / 1000), "Rs", "close-value"],
+    ["30D Value", formatClosePrice(closePriceMonth), "Priced closures in 30 days", "teal", Math.min(100, closePriceMonth / 1000), "30D", "30d-value"],
+    ["Checklist", todayTasks.length ? `${doneTasks}/${todayTasks.length}` : "0/0", "Daily PM completion", "coral", taskPercent, "PM", "checklist"]
+  ].map(([label, value, detail, tone, meter, badge, kpiKey]) => `
+    <article class="dashboard-kpi ${tone}" data-kpi-key="${escapeHtml(kpiKey || label)}" role="button" tabindex="0" aria-label="View ${escapeHtml(label)} details">
       <div class="dashboard-kpi-head">
         <span>${escapeHtml(label)}</span>
         <b>${escapeHtml(badge)}</b>
       </div>
-      <strong>${escapeHtml(value)}</strong>
+      <strong>${escapeHtml(String(value))}</strong>
       <small>${escapeHtml(detail)}</small>
       <i class="dashboard-kpi-meter" aria-hidden="true"><em style="width: ${Math.max(4, Math.min(100, Number(meter) || 0))}%"></em></i>
     </article>
   `).join("");
+  // Wire KPI card click handlers
+  document.querySelector("#dashboardKpiGrid").onclick = (e) => {
+    const card = e.target.closest("[data-kpi-key]");
+    if (!card) return;
+    const key = card.dataset.kpiKey;
+    const allTickets = ticketsForCurrentUser(state.tickets);
+    const open = allTickets.filter((t) => !["Closed", "Cancelled"].includes(t.status));
+    const today = todayInputValue();
+    const drillMap = {
+      "active": { title: "Active Tickets", tickets: open },
+      "going-on": { title: "In-Progress Tickets", tickets: open.filter((t) => ["Assigned","Acknowledged","In Progress","Blocked","Reopened"].includes(t.status)) },
+      "completed-today": { title: "Closed Today", tickets: allTickets.filter((t) => { const d = closedAt(t); return d && d.startsWith(today); }) },
+      "week": { title: "Closed This Week (7D)", tickets: allTickets.filter((t) => { const d = closedAt(t); if (!d) return false; return Date.now() - new Date(d).getTime() <= 7*24*60*60*1000; }) },
+      "month": { title: "Closed This Month (30D)", tickets: allTickets.filter((t) => { const d = closedAt(t); if (!d) return false; return Date.now() - new Date(d).getTime() <= 30*24*60*60*1000; }) },
+      "close-value": { title: "Tickets with Close Price", tickets: allTickets.filter((t) => Number(t.closePrice || 0) > 0) },
+      "30d-value": { title: "30D Priced Closures", tickets: allTickets.filter((t) => { const d = closedAt(t); if (!d) return false; return Number(t.closePrice || 0) > 0 && Date.now() - new Date(d).getTime() <= 30*24*60*60*1000; }) },
+      "checklist": { title: "Today's Checklist Tasks", tasks: (state.tasks || []).filter((t) => t.date === today) }
+    };
+    const drill = drillMap[key];
+    if (!drill) return;
+    openKpiDrill(drill.title, drill.tickets, drill.tasks);
+  };
+  document.querySelector("#dashboardKpiGrid").onkeydown = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      e.target.closest("[data-kpi-key]")?.click();
+    }
+  };
+
   // Calculate status breakdown for utilization metric
   const utilization = state.technicians.length > 0
     ? Math.round((assigned / state.technicians.length) * 100)
@@ -4686,6 +4775,9 @@ document.querySelectorAll(".tab[data-view]").forEach((button) => {
 });
 document.querySelector(".topbar")?.addEventListener("click", releasePointerFocus);
 
+document.getElementById("kpiDrillClose")?.addEventListener("click", closeKpiDrill);
+document.getElementById("kpiDrillOverlay")?.addEventListener("click", (e) => { if (e.target === e.currentTarget) closeKpiDrill(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeKpiDrill(); });
 document.querySelector("#ticketForm").addEventListener("submit", createTicket);
 document.querySelector("#ticketPhoto").addEventListener("change", updateTicketPhotoHint);
 document.querySelector("#ticketImpact").addEventListener("change", updateTicketPriorityPreview);

@@ -889,6 +889,18 @@
       </section>
     </div>
 
+    <div id="kpiDrillOverlay" class="kpi-drill-overlay" role="dialog" aria-modal="true" aria-label="Detail view">
+      <div class="kpi-drill-panel">
+        <div class="kpi-drill-header">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <h3 id="kpiDrillTitle">Detail</h3>
+            <span id="kpiDrillCount" class="kpi-drill-count">0</span>
+          </div>
+          <button class="kpi-drill-close" id="kpiDrillClose" aria-label="Close">✕</button>
+        </div>
+        <div class="kpi-drill-body" id="kpiDrillBody"></div>
+      </div>
+    </div>
     <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="false"></div>
     <div id="modalOverlay" class="modal-overlay is-hidden" role="dialog" aria-modal="true">
       <div class="modal-dialog">
