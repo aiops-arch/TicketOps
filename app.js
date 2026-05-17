@@ -2871,10 +2871,10 @@ function outletHealthCards(limit = 6) {
         </div>
         ${expanded ? `
           <div class="outlet-stats">
-            <span>${outletTickets.length}<small>open</small></span>
-            <span>${critical}<small>critical</small></span>
-            <span>${blocked}<small>blocked</small></span>
-            <span>${unassigned}<small>unassigned</small></span>
+            <span>${outletTickets.length}<small> open</small></span>
+            <span>${critical}<small> crit</small></span>
+            <span>${blocked}<small> blkd</small></span>
+            <span>${unassigned}<small> queue</small></span>
           </div>
         ` : ""}
       </article>

@@ -13033,3 +13033,313 @@ body[data-theme="dark"] .bar-value {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   COMPREHENSIVE COMPONENT FIX LAYER — Deep overflow & layout audit
+   Every card, row, list, and grid hardened for any panel/screen width.
+   Rules placed last to win the cascade without fighting specificity.
+   ════════════════════════════════════════════════════════════ */
+
+/* ━━━ 1. OUTLET STATS ━━━
+   Problem: 4-column stacked-number/label grid overflows in narrow panels.
+   Fix: flex pills that wrap gracefully at any card width.           */
+
+.outlet-stats,
+.ops-portal .outlet-stats,
+.ops-portal[data-view="dashboard"] .outlet-stats {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 5px !important;
+  grid-template-columns: none !important;
+  min-width: 0 !important;
+}
+
+.outlet-stats span,
+.ops-portal .outlet-stats span,
+.ops-portal[data-view="dashboard"] .outlet-stats span {
+  display: inline-flex !important;
+  align-items: baseline !important;
+  gap: 0 !important;
+  min-height: auto !important;
+  padding: 3px 9px !important;
+  border-radius: 999px !important;
+  background: rgba(43, 122, 115, 0.1) !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: var(--ink, #1a2420) !important;
+  white-space: nowrap !important;
+  text-align: left !important;
+}
+
+.outlet-stats small,
+.ops-portal .outlet-stats small {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  color: var(--muted, #697772) !important;
+}
+
+.outlet-card.status-critical .outlet-stats span  { background: rgba(217, 48,  37, 0.09) !important; }
+.outlet-card.status-dispatch  .outlet-stats span,
+.outlet-card.status-blocked   .outlet-stats span  { background: rgba(218, 119, 6, 0.08)  !important; }
+.outlet-card.status-healthy   .outlet-stats span  { background: rgba(10, 159, 114, 0.09) !important; }
+
+body[data-theme="dark"] .outlet-stats span { background: rgba(255,255,255,0.1) !important; color: rgba(255,255,255,0.85) !important; }
+body[data-theme="dark"] .outlet-stats small { color: rgba(255,255,255,0.5) !important; }
+
+/* Outlet grid: auto-fill so cards never crunch below ~260px */
+.outlet-health-grid,
+.ops-portal .outlet-health-grid,
+.ops-portal[data-view="dashboard"] .outlet-health-grid,
+.ops-portal[data-view="dashboard"] #dashboard .outlet-health-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)) !important;
+}
+
+/* ━━━ 2. TICKET CARD ━━━
+   Problem: min-width columns (260+180+260) enforce 700px minimum.
+   Fix: 1→2→3 columns as viewport grows. No fixed-px minimums.     */
+
+.ticket-card,
+#adminTickets .ticket-card,
+.ops-portal .ticket-card,
+.ops-portal #managerTickets .ticket-card,
+.ops-portal #technician .ticket-card {
+  grid-template-columns: minmax(0, 1fr) !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+@media (min-width: 640px) {
+  .ticket-card,
+  #adminTickets .ticket-card,
+  .ops-portal .ticket-card,
+  .ops-portal #managerTickets .ticket-card,
+  .ops-portal #technician .ticket-card {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ticket-card,
+  #adminTickets .ticket-card,
+  .ops-portal .ticket-card,
+  .ops-portal #managerTickets .ticket-card {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.85fr) minmax(0, 1fr) !important;
+  }
+}
+
+/* ━━━ 3. CLOSED HISTORY ━━━
+   Problem: summary row enforces 600px min; facts always 4 cols.
+   Fix: responsive grid; facts hidden on narrow, revealed at 700px. */
+
+.closed-history-summary,
+.ops-portal #history .closed-history-summary {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  min-width: 0 !important;
+  gap: 10px !important;
+  min-height: auto !important;
+}
+
+.closed-history-facts {
+  display: none !important;
+}
+
+@media (min-width: 700px) {
+  .closed-history-summary,
+  .ops-portal #history .closed-history-summary {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto !important;
+    gap: 12px !important;
+  }
+
+  .closed-history-facts {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+}
+
+@media (min-width: 1000px) {
+  .closed-history-facts {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Ticket inside closed detail: same responsive rules */
+.closed-history-detail .ticket-card,
+.ops-portal #history .closed-history-detail .ticket-card {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+@media (min-width: 700px) {
+  .closed-history-detail .ticket-card,
+  .ops-portal #history .closed-history-detail .ticket-card {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .closed-history-detail .ticket-card,
+  .ops-portal #history .closed-history-detail .ticket-card {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.85fr) minmax(0, 1fr) !important;
+    align-items: start !important;
+  }
+}
+
+/* ━━━ 4. DISPATCH CARD ━━━
+   Problem: 3 fixed-width columns crunch at narrow panel widths.
+   Fix: single fluid column by default; split at ≥500px.           */
+
+.dispatch-card,
+.ops-portal .dispatch-card,
+.ops-portal[data-view="dashboard"] .dispatch-card {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+@media (min-width: 500px) {
+  .dispatch-card,
+  .ops-portal .dispatch-card,
+  .ops-portal[data-view="dashboard"] .dispatch-card {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.5fr) !important;
+  }
+}
+
+.dispatch-card .dispatch-score,
+.ops-portal .dispatch-card .dispatch-score {
+  justify-content: flex-start !important;
+}
+
+.dispatch-card .tech-load-bar,
+.ops-portal .dispatch-card .tech-load-bar {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+}
+
+/* ━━━ 5. ACTION ITEMS ━━━
+   Problem: fixed 60px min-height clips 2-line clamp on small text.
+   Fix: auto height; span allows up to 3 lines.                    */
+
+.action-item {
+  min-height: auto !important;
+  align-items: flex-start !important;
+  padding: 10px 12px 10px 14px !important;
+}
+
+.action-item strong {
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+.action-item > span {
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+  -webkit-line-clamp: 3 !important;
+  margin-top: 2px !important;
+}
+
+/* ━━━ 6. SUMMARY SIGNAL GRID ━━━
+   Problem: always 4 cols, no mobile breakpoint.
+   Fix: 2 cols at narrow viewports.                               */
+
+@media (max-width: 480px) {
+  .summary-signal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* ━━━ 7. ADMIN TECH STATS ━━━
+   Problem: 5 columns with 7px gaps — too cramped on narrow panels.
+   Fix: 3 cols base, 5 at wider screens.                          */
+
+.admin-tech-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+@media (min-width: 700px) {
+  .admin-tech-stats {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+}
+
+/* ━━━ 8. REPAIR ROW ━━━
+   Problem: bar column collapses in very narrow panels.
+   Fix: hide bar <480px, show name + count only.                   */
+
+@media (max-width: 480px) {
+  .repair-row,
+  .ops-portal[data-view="dashboard"] .repair-row {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    padding: 7px 8px !important;
+  }
+
+  .repair-bar { display: none !important; }
+  .repair-row::after { display: none !important; }
+}
+
+/* ━━━ 9. BADGE ROW ━━━ */
+
+.badge-row {
+  flex-wrap: wrap !important;
+  gap: 5px !important;
+  row-gap: 5px !important;
+}
+
+/* ━━━ 10. UNIVERSAL OVERFLOW PREVENTION ━━━
+   Every card-level container gets min-width: 0 and box-sizing.
+   Stops child content from blowing out parent panels.             */
+
+.ticket-card,
+.outlet-card,
+.dispatch-card,
+.action-item,
+.repair-row,
+.closed-history-summary,
+.closed-history-card,
+.tech-card,
+.admin-tech-card,
+.activity-item,
+.report-card,
+.report-row,
+.analytics-panel,
+.kpi-drill-body > *,
+.task-row,
+.queue-group-heading,
+.queue-summary-strip {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Text in any card: never overflow container */
+.ticket-card *,
+.outlet-card *,
+.dispatch-card *,
+.closed-history-summary *,
+.report-card *,
+.report-row * {
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* ━━━ 11. COMPACT MOBILE ADJUSTMENTS ━━━ */
+
+@media (max-width: 600px) {
+  .closed-history-toggle {
+    min-width: 52px !important;
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+  }
+
+  .outlet-card     { padding: 8px 10px !important; }
+  .outlet-stats span { font-size: 11px !important; padding: 2px 7px !important; }
+  .dispatch-card   { padding: 7px 10px !important; }
+  .action-item     { padding: 8px 10px 8px 12px !important; }
+  .repair-row      { padding: 7px 8px !important; }
+  .tech-card       { padding: 10px !important; }
+  .admin-tech-card { padding: 10px !important; }
+
+  .outlet-card-main > strong { font-size: 13px !important; }
+}
