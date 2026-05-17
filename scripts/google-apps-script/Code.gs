@@ -1,5 +1,7 @@
 const DB_SHEET_NAME = "ticketops_db";
+const SNAPSHOT_SHEET_NAME = "compiled_snapshot";
 const DB_KEY = "db";
+const DB_CHUNK_SIZE = 45000;
 const DEFAULT_PASSWORDS = {
   aiops: "AIops",
   "chintan.patel": "chintan123",
@@ -108,7 +110,15 @@ function handleRequest(envelope) {
   if (method === "POST" && /^\/api\/tickets\/[^/]+\/reject$/.test(path)) return requireRole(user, "technician", () => updateTicket(db, segment(path, 2), { status: "New", assignedTo: "", latestDetail: body.reason || "Rejected" }));
   if (method === "DELETE" && /^\/api\/tickets\/[^/]+\/assignment$/.test(path)) return requireAdmin(user, () => updateTicket(db, segment(path, 2), { status: "New", assignedTo: "", scheduledAt: "" }));
   if (method === "DELETE" && /^\/api\/tickets\/[^/]+$/.test(path)) return requireLoggedIn(user, () => deleteById(db, "tickets", segment(path, 2)));
-  if (method === "PATCH" && /^\/api\/tickets\/[^/]+\/status$/.test(path)) return requireLoggedIn(user, () => updateTicket(db, segment(path, 2), { status: body.status, latestDetail: body.detail || body.status, evidencePhotoUrl: body.evidencePhotoUrl || "" }));
+  if (method === "PATCH" && /^\/api\/tickets\/[^/]+\/status$/.test(path)) return requireLoggedIn(user, () => {
+    var fields = { status: body.status, latestDetail: body.detail || body.status, evidencePhotoUrl: body.evidencePhotoUrl || "" };
+    if (body.status === "Closed" && Number(body.closePrice || 0) > 0) {
+      fields.closePrice = Number(body.closePrice);
+      fields.closePriceBy = body.closePriceBy || user.id;
+      fields.closePriceAt = body.closePriceAt || new Date().toISOString();
+    }
+    return updateTicket(db, segment(path, 2), fields);
+  });
   if (method === "PATCH" && /^\/api\/technicians\/[^/]+\/status$/.test(path)) return requireAdmin(user, () => updateTechnician(db, segment(path, 2), { status: body.status }));
   if (method === "POST" && /^\/api\/technicians\/[^/]+\/attendance$/.test(path)) return requireLoggedIn(user, () => createAttendancePlan(db, segment(path, 2), body, user));
   if (method === "POST" && path === "/api/reset") return requireAdmin(user, () => { saveDb(DEFAULT_DB); return ok({ ok: true }); });
@@ -138,6 +148,8 @@ function crudRoute(path, method, body, user, db) {
 }
 
 function loadDb() {
+  const chunked = loadChunkedDb();
+  if (chunked) return chunked;
   const sheet = dbSheet();
   const finder = sheet.createTextFinder(DB_KEY).matchEntireCell(true).findNext();
   if (!finder) {
@@ -152,9 +164,10 @@ function loadDb() {
 
 function saveDb(db) {
   const normalized = normalizeDb(db);
+  saveChunkedDb(normalized);
   const sheet = dbSheet();
   sheet.getRange(1, 1, 1, 3).setValues([["key", "json", "updated_at"]]);
-  sheet.getRange(2, 1, 1, 3).setValues([[DB_KEY, JSON.stringify(normalized), new Date().toISOString()]]);
+  sheet.getRange(2, 1, 1, 3).setValues([[DB_KEY, JSON.stringify({ storage: "compiled_snapshot", updatedAt: new Date().toISOString() }), new Date().toISOString()]]);
 }
 
 function dbSheet() {
@@ -162,6 +175,41 @@ function dbSheet() {
   let sheet = ss.getSheetByName(DB_SHEET_NAME);
   if (!sheet) sheet = ss.insertSheet(DB_SHEET_NAME);
   return sheet;
+}
+
+function snapshotSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SNAPSHOT_SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(SNAPSHOT_SHEET_NAME);
+  return sheet;
+}
+
+function loadChunkedDb() {
+  const sheet = snapshotSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null;
+  const rows = sheet.getRange(2, 1, lastRow - 1, 4).getValues()
+    .filter((row) => String(row[1] || "").indexOf("ticketops_db_") === 0)
+    .sort((a, b) => Number(a[0]) - Number(b[0]));
+  if (!rows.length) return null;
+  const text = rows.map((row) => String(row[2] || "")).join("");
+  if (!text) return null;
+  return normalizeDb(JSON.parse(text));
+}
+
+function saveChunkedDb(db) {
+  const sheet = snapshotSheet();
+  const text = JSON.stringify(normalizeDb(db));
+  const chunks = [];
+  for (let index = 0; index < text.length; index += DB_CHUNK_SIZE) {
+    chunks.push(text.slice(index, index + DB_CHUNK_SIZE));
+  }
+  sheet.clearContents();
+  sheet.getRange(1, 1, 1, 4).setValues([["chunk_index", "chunk_key", "json_chunk", "updated_at"]]);
+  if (chunks.length) {
+    const now = new Date().toISOString();
+    sheet.getRange(2, 1, chunks.length, 4).setValues(chunks.map((chunk, index) => [index, `ticketops_db_${index}`, chunk, now]));
+  }
 }
 
 function normalizeDb(db) {
@@ -306,19 +354,23 @@ function withReports(db, user) {
 function reports(db) {
   const tickets = db.tickets || [];
   const tasks = db.tasks || [];
-  const closed = tickets.filter((ticket) => ticket.status === "Closed").length;
+  const closedTickets = tickets.filter((ticket) => ticket.status === "Closed");
   const doneTasks = tasks.filter((task) => task.status === "Done").length;
+  const closePriceTotal = closedTickets.reduce((sum, ticket) => sum + Number(ticket.closePrice || 0), 0);
   return {
     open: tickets.filter((ticket) => ["Closed", "Cancelled"].indexOf(ticket.status) === -1).length,
-    closed,
+    closed: closedTickets.length,
     total: tickets.length,
+    closePriceTotal,
+    closePriceCount: closedTickets.filter((ticket) => Number(ticket.closePrice || 0) > 0).length,
     taskCompletionRate: tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0,
     technicianCount: (db.technicians || []).length,
     byOutlet: (db.outlets || []).map((outlet) => ({
       outlet,
       count: tickets.filter((ticket) => ticket.outlet === outlet).length,
       open: tickets.filter((ticket) => ticket.outlet === outlet && ["Closed", "Cancelled"].indexOf(ticket.status) === -1).length,
-      closed: tickets.filter((ticket) => ticket.outlet === outlet && ticket.status === "Closed").length
+      closed: tickets.filter((ticket) => ticket.outlet === outlet && ticket.status === "Closed").length,
+      closePriceTotal: tickets.filter((ticket) => ticket.outlet === outlet && ticket.status === "Closed").reduce((sum, ticket) => sum + Number(ticket.closePrice || 0), 0)
     }))
   };
 }

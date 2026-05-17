@@ -20,8 +20,11 @@ const BROWSER_DB_STORAGE_KEY = "ticketops-browser-db-v3";
 const BOOTSTRAP_CACHE_TTL_MS = 10 * 60 * 1000;
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_TICKET_PHOTOS = 5;
+const GOOGLE_SHEETS_MAX_TICKET_PHOTOS = 2;
 const MAX_IMAGE_EDGE = 1600;
+const GOOGLE_SHEETS_IMAGE_EDGE = 420;
 const IMAGE_QUALITY = 0.72;
+const GOOGLE_SHEETS_IMAGE_QUALITY = 0.42;
 const ASSIGNMENT_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const STATUS_STEPS = {
@@ -578,6 +581,8 @@ async function compressImageFile(file) {
   if (!file) return "";
   if (!file.type.startsWith("image/")) throw new Error("Attach an image file only.");
 
+  const maxEdge = USE_APPS_SCRIPT_API ? GOOGLE_SHEETS_IMAGE_EDGE : MAX_IMAGE_EDGE;
+  const imageQuality = USE_APPS_SCRIPT_API ? GOOGLE_SHEETS_IMAGE_QUALITY : IMAGE_QUALITY;
   const sourceUrl = URL.createObjectURL(file);
   try {
     const image = await new Promise((resolve, reject) => {
@@ -586,7 +591,7 @@ async function compressImageFile(file) {
       img.addEventListener("error", () => reject(new Error("Photo could not be read.")), { once: true });
       img.src = sourceUrl;
     });
-    const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
+    const scale = Math.min(1, maxEdge / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
     const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
     const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
     const canvas = document.createElement("canvas");
@@ -596,18 +601,23 @@ async function compressImageFile(file) {
     context.fillStyle = "#fff";
     context.fillRect(0, 0, width, height);
     context.drawImage(image, 0, 0, width, height);
-    return canvas.toDataURL("image/jpeg", IMAGE_QUALITY);
+    return canvas.toDataURL("image/jpeg", imageQuality);
   } finally {
     URL.revokeObjectURL(sourceUrl);
   }
+}
+
+function maxTicketPhotosForStorage() {
+  return USE_APPS_SCRIPT_API ? GOOGLE_SHEETS_MAX_TICKET_PHOTOS : MAX_TICKET_PHOTOS;
 }
 
 async function readTicketPhotos() {
   const input = document.querySelector("#ticketPhoto");
   const files = [...(input?.files || [])];
   if (!files.length) return [];
-  if (files.length > MAX_TICKET_PHOTOS) {
-    throw new Error(`Attach up to ${MAX_TICKET_PHOTOS} images only.`);
+  const maxPhotos = maxTicketPhotosForStorage();
+  if (files.length > maxPhotos) {
+    throw new Error(`Attach up to ${maxPhotos} images only.`);
   }
   return Promise.all(files.map(compressImageFile));
 }
@@ -618,8 +628,26 @@ function readTicketPhoto() {
 
 async function readPhotosFromInput(input) {
   const files = [...(input?.files || [])];
-  if (files.length > MAX_TICKET_PHOTOS) throw new Error(`Attach up to ${MAX_TICKET_PHOTOS} images only.`);
+  const maxPhotos = maxTicketPhotosForStorage();
+  if (files.length > maxPhotos) throw new Error(`Attach up to ${maxPhotos} images only.`);
   return Promise.all(files.map(compressImageFile));
+}
+
+function updateTicketPhotoHint() {
+  const input = document.querySelector("#ticketPhoto");
+  const hint = document.querySelector("#ticketCreateResult");
+  if (!input || !hint) return;
+  const files = [...(input.files || [])];
+  if (!files.length) {
+    hint.textContent = "";
+    return;
+  }
+  const maxPhotos = maxTicketPhotosForStorage();
+  const overLimit = files.length > maxPhotos;
+  hint.textContent = overLimit
+    ? `Only ${maxPhotos} photo(s) can be attached. Please remove ${files.length - maxPhotos}.`
+    : `${files.length} photo(s) selected. Photos will be compressed before upload.`;
+  hint.classList.toggle("form-error", overLimit);
 }
 
 function readImageFile(file) {
@@ -669,6 +697,19 @@ function formatAge(value) {
 
   const days = Math.floor(hours / 24);
   return `${days}d open`;
+}
+
+function parseClosePrice(value) {
+  const cleaned = String(value || "").replace(/[^0-9.]/g, "");
+  if (!cleaned) return 0;
+  const amount = Number(cleaned);
+  return Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) / 100 : 0;
+}
+
+function formatClosePrice(value) {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount) || amount <= 0) return "No price";
+  return `Rs. ${amount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 }
 
 function todayInputValue() {
@@ -1202,17 +1243,22 @@ function browserReports(db) {
   const tickets = db.tickets || [];
   const tasks = db.tasks || [];
   const doneTasks = tasks.filter((task) => task.status === "Done").length;
+  const closedTickets = tickets.filter((ticket) => ticket.status === "Closed");
+  const closePriceTotal = closedTickets.reduce((sum, ticket) => sum + Number(ticket.closePrice || 0), 0);
   return {
     total: tickets.length,
     open: tickets.filter((ticket) => !["Closed", "Cancelled"].includes(ticket.status)).length,
-    closed: tickets.filter((ticket) => ticket.status === "Closed").length,
+    closed: closedTickets.length,
+    closePriceTotal,
+    closePriceCount: closedTickets.filter((ticket) => Number(ticket.closePrice || 0) > 0).length,
     taskCompletionRate: tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0,
     technicianCount: (db.technicians || []).length,
     byOutlet: (db.outlets || []).map((outlet) => ({
       outlet,
       count: tickets.filter((ticket) => ticket.outlet === outlet).length,
       open: tickets.filter((ticket) => ticket.outlet === outlet && !["Closed", "Cancelled"].includes(ticket.status)).length,
-      closed: tickets.filter((ticket) => ticket.outlet === outlet && ticket.status === "Closed").length
+      closed: tickets.filter((ticket) => ticket.outlet === outlet && ticket.status === "Closed").length,
+      closePriceTotal: tickets.filter((ticket) => ticket.outlet === outlet && ticket.status === "Closed").reduce((sum, ticket) => sum + Number(ticket.closePrice || 0), 0)
     }))
   };
 }
@@ -1283,6 +1329,14 @@ async function browserFallbackApi(path, options = {}) {
     if (!ticket) throw new Error("Ticket not found");
     ticket.status = body.status || ticket.status;
     ticket.latestDetail = body.detail || ticket.status;
+    if (ticket.status === "Closed" && Number(body.closePrice || 0) > 0) {
+      ticket.closePrice = Number(body.closePrice || 0);
+      ticket.closePriceBy = body.closePriceBy || user.id;
+      ticket.closePriceAt = body.closePriceAt || new Date().toISOString();
+    }
+    if (body.evidencePhotoUrl) {
+      ticket.resolutionPhotoUrls = body.evidencePhotoUrls || [body.evidencePhotoUrl];
+    }
     ticket.updatedAt = new Date().toISOString();
     browserWriteDb(db);
     return { ticket, reports: browserReports(db) };
@@ -1568,6 +1622,7 @@ async function createTicket(event) {
     document.querySelector("#ticketNote").value = "";
     document.querySelector("#ticketArea").value = "";
     document.querySelector("#ticketPhoto").value = "";
+    updateTicketPhotoHint();
     updateTicketPriorityPreview();
     const suggestion = created.suggestedTechnician?.name
       ? ` Suggestion: ${created.suggestedTechnician.name}.`
@@ -1648,6 +1703,15 @@ async function setTicketStatus(ticketId, status, detail = "") {
         payload.evidencePhotoUrls = [photoUrl];
         payload.evidencePhotoUrl = photoUrl;
       }
+    }
+  }
+  if (status === "Closed") {
+    const priceInput = await showPromptModal("Closing price (optional)", "");
+    const closePrice = parseClosePrice(priceInput);
+    if (closePrice > 0) {
+      payload.closePrice = closePrice;
+      payload.closePriceBy = currentUser?.id || "";
+      payload.closePriceAt = new Date().toISOString();
     }
   }
   await api(`/api/tickets/${ticketId}/status`, {
@@ -3038,6 +3102,15 @@ function renderDashboard() {
   const completedToday = calendarDayCount(closedTicketList, closedAt);
   const completedWeek = dateBucketCount(closedTicketList, closedAt, 7);
   const completedMonth = dateBucketCount(closedTicketList, closedAt, 30);
+  const closePriceTotal = Number(reports.closePriceTotal || closedTicketList.reduce((sum, ticket) => sum + Number(ticket.closePrice || 0), 0));
+  const closePriceMonth = closedTicketList
+    .filter((ticket) => {
+      const value = closedAt(ticket);
+      if (!value) return false;
+      const time = new Date(value).getTime();
+      return Number.isFinite(time) && Date.now() - time <= 30 * 24 * 60 * 60 * 1000;
+    })
+    .reduce((sum, ticket) => sum + Number(ticket.closePrice || 0), 0);
   const todayTasks = (state.tasks || []).filter((task) => task.date === todayInputValue());
   const doneTasks = todayTasks.filter((task) => task.status === "Done").length;
   const totalForCharts = Math.max(scopedTickets.length, 1);
@@ -3056,6 +3129,8 @@ function renderDashboard() {
     ["Completed Today", completedToday, "Approved closures", "green", Math.min(100, completedToday * 20), "Today"],
     ["This Week", completedWeek, "Closed in 7 days", "teal", Math.min(100, completedWeek * 10), "7D"],
     ["This Month", completedMonth, "Closed in 30 days", "gold", Math.min(100, completedMonth * 4), "30D"],
+    ["Close Value", formatClosePrice(closePriceTotal), "All priced closures", "gold", Math.min(100, closePriceTotal / 1000), "Rs"],
+    ["30D Value", formatClosePrice(closePriceMonth), "Priced closures in 30 days", "teal", Math.min(100, closePriceMonth / 1000), "30D"],
     ["Checklist", todayTasks.length ? `${doneTasks}/${todayTasks.length}` : "0/0", "Daily PM completion", "coral", taskPercent, "PM"]
   ].map(([label, value, detail, tone, meter, badge]) => `
     <article class="dashboard-kpi ${tone}">
@@ -3930,7 +4005,7 @@ function renderTechnician() {
         </label>
         <label class="photo-upload">
           Issue photos
-          <input id="technicianTicketPhotos" type="file" accept="image/*" capture="environment" multiple>
+          <input id="technicianTicketPhotos" type="file" accept="image/*" multiple>
         </label>
         <button type="submit" class="primary-button">Create Ticket</button>
         <p id="technicianTicketResult" class="form-hint" aria-live="polite"></p>
@@ -4612,6 +4687,7 @@ document.querySelectorAll(".tab[data-view]").forEach((button) => {
 document.querySelector(".topbar")?.addEventListener("click", releasePointerFocus);
 
 document.querySelector("#ticketForm").addEventListener("submit", createTicket);
+document.querySelector("#ticketPhoto").addEventListener("change", updateTicketPhotoHint);
 document.querySelector("#ticketImpact").addEventListener("change", updateTicketPriorityPreview);
 document.querySelector("#ticketCategory").addEventListener("change", updateTicketPriorityPreview);
 document.querySelector("#ticketNote").addEventListener("input", updateTicketPriorityPreview);
