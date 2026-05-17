@@ -12943,3 +12943,93 @@ body[data-theme="dark"] .bar-value {
     width: 100%;
   }
 }
+
+/* ════════════════════════════════════════════════════════
+   DASHBOARD HARDENING — Fluid grid, no card-count fragility
+   This block WINS over all prior dashboard layout rules.
+   Fixes: 8-card KPI overflow, clipped summary, non-scrollable
+   layout, static column counts that break on card changes.
+   ════════════════════════════════════════════════════════ */
+
+/* ── KPI grid: 4 balanced cols, rows auto-size with content ── */
+.ops-portal[data-view="dashboard"] .dashboard-kpi-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-auto-rows: auto !important;
+  gap: 12px !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* ── KPI card: consistent height at any grid size ── */
+.ops-portal[data-view="dashboard"] .dashboard-kpi {
+  min-height: 100px !important;
+  height: auto !important;
+}
+
+/* ── Chart grid: auto-fill so any number of charts fits ── */
+.ops-portal[data-view="dashboard"] #dashboard .ops-chart-grid {
+  grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)) !important;
+  grid-auto-rows: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* ── Dashboard rows: auto heights — row size tracks content ── */
+.ops-portal[data-view="dashboard"] #dashboard.view.is-active {
+  grid-template-rows: auto auto auto minmax(0, 1fr) !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* ── Summary mode large screen: scrollable, not clipped ──
+   Previous code used overflow:hidden and a fixed calc() height,
+   which invisibly cut off the summary panels whenever KPI cards
+   wrapped to a second row. overflow:auto keeps the "one-screen"
+   feel when content fits and reveals overflow when it doesn't.  */
+@media (min-width: 1401px) {
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .app-shell,
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"]:has(.topbar:hover) .app-shell,
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"]:has(.topbar:focus-within) .app-shell {
+    overflow: auto !important;
+  }
+
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] #dashboard.view.is-active {
+    height: auto !important;
+    overflow: visible !important;
+    grid-template-rows: auto auto auto minmax(0, 1fr) !important;
+  }
+}
+
+/* ── Responsive: keep 4 cols down to 700px, 2 cols below ── */
+@media (max-width: 700px) {
+  .ops-portal[data-view="dashboard"] .dashboard-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .ops-portal[data-view="dashboard"] .dashboard-kpi-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* ── Intel strip: 4-col on wide, 2-col on medium, scroll on mobile ── */
+@media (min-width: 701px) {
+  .ops-portal[data-view="dashboard"] .intel-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+/* ── Summary panels: 3 cols on large, 1 col on medium ── */
+@media (min-width: 1100px) {
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .dashboard-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1099px) {
+  body[data-dashboard-mode="summary"].ops-portal[data-view="dashboard"] .dashboard-summary-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
