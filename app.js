@@ -4239,6 +4239,208 @@ function roleReportConfig() {
   };
 }
 
+function renderAnalyticsContent(period) {
+  const msMap = { "7d": 7 * 86400000, "30d": 30 * 86400000, "90d": 90 * 86400000 };
+  const cutoff = msMap[period] ? Date.now() - msMap[period] : 0;
+
+  const allTickets = ticketsForCurrentUser(state.tickets);
+  const filtered = cutoff
+    ? allTickets.filter((t) => new Date(t.createdAt || 0).getTime() >= cutoff)
+    : allTickets;
+  const closed = filtered.filter((t) => t.status === "Closed");
+
+  const totalCount = filtered.length;
+  const closedCount = closed.length;
+  const pctClosed = totalCount > 0 ? Math.round((closedCount / totalCount) * 100) : 0;
+
+  const periodLabel = { "7d": "Last 7 Days", "30d": "Last 30 Days", "90d": "Last 90 Days", "all": "All Time" }[period] || period;
+
+  const outletNames = [...new Set(allTickets.map((t) => t.outlet))].filter(Boolean).sort();
+  const outletRows = outletNames.map((name) => {
+    const total = filtered.filter((t) => t.outlet === name).length;
+    const outletClosed = closed.filter((t) => t.outlet === name).length;
+    const price = closed
+      .filter((t) => t.outlet === name && Number(t.closePrice || 0) > 0)
+      .reduce((s, t) => s + Number(t.closePrice || 0), 0);
+    return { name, total, closed: outletClosed, price };
+  }).filter((o) => o.total > 0).sort((a, b) => b.total - a.total);
+  const maxOutlet = Math.max(...outletRows.map((o) => o.total), 1);
+
+  const priorityRows = [
+    { key: "P1", label: "Critical", color: "red" },
+    { key: "P2", label: "High", color: "orange" },
+    { key: "P3", label: "Standard", color: "teal" },
+    { key: "P4", label: "Low", color: "muted" }
+  ].map((p) => ({ ...p, count: filtered.filter((t) => t.priority === p.key).length }))
+   .filter((p) => p.count > 0);
+  const maxPri = Math.max(...priorityRows.map((p) => p.count), 1);
+
+  const techRows = (state.technicians || []).map((tech) => {
+    const active = filtered.filter((t) => t.assignedTo === tech.id && t.status !== "Closed").length;
+    const done = closed.filter((t) => t.assignedTo === tech.id).length;
+    return { name: tech.name, active, done, total: active + done };
+  }).filter((t) => t.total > 0).sort((a, b) => b.total - a.total).slice(0, 8);
+  const maxTech = Math.max(...techRows.map((t) => t.total), 1);
+
+  const catMap = {};
+  filtered.forEach((t) => { if (t.category) catMap[t.category] = (catMap[t.category] || 0) + 1; });
+  const catRows = Object.entries(catMap).map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count).slice(0, 8);
+  const maxCat = Math.max(...catRows.map((c) => c.count), 1);
+
+  const sparkDays = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const dayLabel = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
+    const count = allTickets.filter((t) => (t.createdAt || "").startsWith(key)).length;
+    sparkDays.push({ key, label: dayLabel, count });
+  }
+  const maxSpark = Math.max(...sparkDays.map((d) => d.count), 1);
+
+  const totalPrice = closed.reduce((s, t) => s + Number(t.closePrice || 0), 0);
+  const priceOutlets = outletRows.filter((o) => o.price > 0).sort((a, b) => b.price - a.price);
+  const maxPrice = Math.max(...priceOutlets.map((o) => o.price), 1);
+
+  return `
+    <div class="analytics-section">
+      <div class="analytics-filter-bar">
+        <span class="section-kicker">Analytics Period</span>
+        ${["7d", "30d", "90d", "all"].map((p) => `
+          <button class="analytics-period-btn${period === p ? " is-active" : ""}" data-analytics-period="${p}">
+            ${p === "7d" ? "7 Days" : p === "30d" ? "30 Days" : p === "90d" ? "90 Days" : "All Time"}
+          </button>
+        `).join("")}
+        <span class="analytics-tally">${totalCount} tickets &bull; ${pctClosed}% closed</span>
+      </div>
+
+      <div class="analytics-grid">
+
+        <section class="analytics-panel analytics-panel--wide">
+          <div class="analytics-panel-head">
+            <span class="section-kicker">Activity</span>
+            <strong>Tickets Opened — Last 7 Days</strong>
+          </div>
+          <div class="spark-row">
+            ${sparkDays.map((d) => `
+              <div class="spark-col">
+                <div class="spark-track">
+                  <div class="spark-bar" style="height:${Math.round((d.count / maxSpark) * 100)}%"></div>
+                </div>
+                <span class="spark-label">${escapeHtml(d.label)}</span>
+                ${d.count > 0 ? `<span class="spark-value">${d.count}</span>` : ""}
+              </div>
+            `).join("")}
+          </div>
+        </section>
+
+        ${outletRows.length ? `
+        <section class="analytics-panel analytics-panel--wide">
+          <div class="analytics-panel-head">
+            <span class="section-kicker">Outlets</span>
+            <strong>Ticket Volume by Outlet — ${escapeHtml(periodLabel)}</strong>
+          </div>
+          <div class="bar-chart">
+            ${outletRows.map((o) => `
+              <div class="bar-row">
+                <span class="bar-label">${escapeHtml(o.name)}</span>
+                <div class="bar-track">
+                  <div class="bar-fill bar-fill--teal" style="width:${Math.round((o.total / maxOutlet) * 100)}%"></div>
+                </div>
+                <span class="bar-value">${o.total} <small>${o.closed} closed</small></span>
+              </div>
+            `).join("")}
+          </div>
+        </section>
+        ` : ""}
+
+        ${priorityRows.length ? `
+        <section class="analytics-panel">
+          <div class="analytics-panel-head">
+            <span class="section-kicker">Risk</span>
+            <strong>Priority Distribution</strong>
+          </div>
+          <div class="bar-chart">
+            ${priorityRows.map((p) => `
+              <div class="bar-row">
+                <span class="bar-label">${escapeHtml(p.label)}</span>
+                <div class="bar-track">
+                  <div class="bar-fill bar-fill--${p.color}" style="width:${Math.round((p.count / maxPri) * 100)}%"></div>
+                </div>
+                <span class="bar-value">${p.count}</span>
+              </div>
+            `).join("")}
+          </div>
+        </section>
+        ` : ""}
+
+        ${techRows.length ? `
+        <section class="analytics-panel">
+          <div class="analytics-panel-head">
+            <span class="section-kicker">Team</span>
+            <strong>Technician Workload</strong>
+          </div>
+          <div class="bar-chart">
+            ${techRows.map((t) => `
+              <div class="bar-row">
+                <span class="bar-label">${escapeHtml(t.name.split(" ")[0])}</span>
+                <div class="bar-track">
+                  <div class="bar-fill bar-fill--orange" style="width:${Math.round((t.total / maxTech) * 100)}%"></div>
+                </div>
+                <span class="bar-value">${t.active} active, ${t.done} closed</span>
+              </div>
+            `).join("")}
+          </div>
+        </section>
+        ` : ""}
+
+        ${catRows.length ? `
+        <section class="analytics-panel">
+          <div class="analytics-panel-head">
+            <span class="section-kicker">Issues</span>
+            <strong>Top Issue Categories</strong>
+          </div>
+          <div class="bar-chart">
+            ${catRows.map((c) => `
+              <div class="bar-row">
+                <span class="bar-label" title="${escapeHtml(c.name)}">${escapeHtml(c.name.length > 18 ? c.name.slice(0, 16) + "…" : c.name)}</span>
+                <div class="bar-track">
+                  <div class="bar-fill bar-fill--teal" style="width:${Math.round((c.count / maxCat) * 100)}%"></div>
+                </div>
+                <span class="bar-value">${c.count}</span>
+              </div>
+            `).join("")}
+          </div>
+        </section>
+        ` : ""}
+
+        ${priceOutlets.length ? `
+        <section class="analytics-panel">
+          <div class="analytics-panel-head">
+            <span class="section-kicker">Revenue</span>
+            <strong>Close Value by Outlet</strong>
+            <span class="analytics-total">${escapeHtml(formatClosePrice(totalPrice))} total</span>
+          </div>
+          <div class="bar-chart">
+            ${priceOutlets.map((o) => `
+              <div class="bar-row">
+                <span class="bar-label">${escapeHtml(o.name)}</span>
+                <div class="bar-track">
+                  <div class="bar-fill bar-fill--purple" style="width:${Math.round((o.price / maxPrice) * 100)}%"></div>
+                </div>
+                <span class="bar-value">${escapeHtml(formatClosePrice(o.price))}</span>
+              </div>
+            `).join("")}
+          </div>
+        </section>
+        ` : ""}
+
+      </div>
+    </div>
+  `;
+}
+
 function renderReports() {
   const config = roleReportConfig();
   document.querySelector("#reportsTitle").textContent = config.title;
@@ -4269,6 +4471,7 @@ function renderReports() {
     ${renderReportTables()}
     <div id="backupReportBoard" class="report-grid"></div>
     ${renderAlerts()}
+    <div id="analyticsSection">${renderAnalyticsContent("30d")}</div>
   `;
 }
 
@@ -5067,6 +5270,14 @@ document.addEventListener("click", async (event) => {
   const loadBackupButton = event.target.closest?.("[data-load-backup-report]");
   if (loadBackupButton) {
     document.querySelector("#backupReportFile")?.click();
+    return;
+  }
+
+  const analyticsPeriodBtn = event.target.closest?.("[data-analytics-period]");
+  if (analyticsPeriodBtn) {
+    const period = analyticsPeriodBtn.dataset.analyticsPeriod;
+    const analyticsSection = document.querySelector("#analyticsSection");
+    if (analyticsSection) analyticsSection.innerHTML = renderAnalyticsContent(period);
     return;
   }
 
