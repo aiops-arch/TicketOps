@@ -13684,30 +13684,52 @@ body[data-theme="dark"] .outlet-stats small { color: rgba(255,255,255,0.5) !impo
 }
 
 /* ━━━ MANAGER DESK: parallel panels ━━━
-   The Review Gate occupied one giant grid row, so Scheduled Work (Technician
-   Jobs) only began after the entire verification queue ended — leaving the
-   left column empty for thousands of pixels. Now the Review Gate spans the
-   right column while Create Ticket + a sticky, internally-scrolling Scheduled
-   Work rail share the left column. */
+   The Review Gate used to occupy/span giant grid rows, and grid distributes a
+   spanning item's height across all spanned rows — which either pushed
+   Scheduled Work below the whole verification queue or opened a huge gap
+   under Create Ticket. app.js groups Create Ticket + Scheduled Work into a
+   .manager-side-rail wrapper (one grid item), so no row spanning is needed:
+   the rail and the Review Gate simply share one row. */
+
+.ops-portal #manager .manager-side-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+@media (max-width: 899.98px) {
+  /* Keep the original mobile order: Create Ticket -> Review Gate -> Scheduled */
+  .ops-portal #manager .manager-side-rail {
+    display: contents;
+  }
+
+  .ops-portal #manager .manager-scheduled-panel {
+    order: 5;
+  }
+}
 
 @media (min-width: 900px) {
-  .ops-portal #manager .intake-panel {
+  .ops-portal #manager .manager-side-rail {
     grid-row: 2 !important;
     grid-column: 1 !important;
+    align-self: stretch !important;
+    min-height: 0;
+  }
+
+  .ops-portal #manager .manager-side-rail .intake-panel {
     position: static !important;
-    align-self: start;
+    flex: 0 0 auto;
   }
 
   .ops-portal #manager .admin-access-panel {
-    grid-row: 2 / span 2 !important;
+    grid-row: 2 !important;
     grid-column: 2 !important;
     align-self: start;
   }
 
-  .ops-portal #manager .manager-scheduled-panel {
-    grid-row: 3 !important;
-    grid-column: 1 !important;
-    align-self: start;
+  .ops-portal #manager .manager-side-rail .manager-scheduled-panel {
+    flex: 0 0 auto;
     position: sticky !important;
     top: 16px;
     max-height: calc(100vh - 30px);
@@ -13716,7 +13738,7 @@ body[data-theme="dark"] .outlet-stats small { color: rgba(255,255,255,0.5) !impo
     overflow: hidden;
   }
 
-  .ops-portal.single-role-workspace #manager .manager-scheduled-panel {
+  .ops-portal.single-role-workspace #manager .manager-side-rail .manager-scheduled-panel {
     top: 92px;
     max-height: calc(100vh - 106px);
   }
@@ -13730,7 +13752,7 @@ body[data-theme="dark"] .outlet-stats small { color: rgba(255,255,255,0.5) !impo
 
 /* ━━━ COLLAPSIBLE PANELS (Manager Desk / Admin Control) ━━━ */
 
-#manager > .panel > .panel-heading,
+#manager .panel > .panel-heading,
 #admin > .panel > .panel-heading {
   cursor: pointer;
   user-select: none;

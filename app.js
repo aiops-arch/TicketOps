@@ -5130,9 +5130,23 @@ function togglePanelCollapse(panel) {
   }
 }
 
+function initManagerSideRail() {
+  // Group Create Ticket + Scheduled Work into one grid item so the Review Gate
+  // never inflates their rows (grid distributes a spanning item's height across
+  // all spanned rows, which opened a huge gap under the intake panel).
+  const view = document.querySelector("#manager");
+  const intake = view?.querySelector(".intake-panel");
+  const scheduled = view?.querySelector(".manager-scheduled-panel");
+  if (!view || !intake || !scheduled || view.querySelector(".manager-side-rail")) return;
+  const rail = document.createElement("div");
+  rail.className = "manager-side-rail";
+  intake.before(rail);
+  rail.append(intake, scheduled);
+}
+
 function initCollapsiblePanels() {
   const stored = readCollapsedPanels();
-  document.querySelectorAll("#manager > .panel, #admin > .panel").forEach((panel) => {
+  document.querySelectorAll("#manager .panel, #admin > .panel").forEach((panel) => {
     const heading = panel.querySelector(":scope > .panel-heading");
     if (!heading || heading.querySelector(".panel-collapse-toggle")) return;
     const toggle = document.createElement("button");
@@ -5145,12 +5159,13 @@ function initCollapsiblePanels() {
 }
 
 document.addEventListener("click", (event) => {
-  const heading = event.target.closest?.("#manager > .panel > .panel-heading, #admin > .panel > .panel-heading");
+  const heading = event.target.closest?.("#manager .panel > .panel-heading, #admin > .panel > .panel-heading");
   if (!heading) return;
   const interactive = event.target.closest("button, select, input, a, label");
   if (interactive && !interactive.classList.contains("panel-collapse-toggle")) return;
   togglePanelCollapse(heading.parentElement);
 });
+initManagerSideRail();
 initCollapsiblePanels();
 
 document.getElementById("kpiDrillClose")?.addEventListener("click", closeKpiDrill);
