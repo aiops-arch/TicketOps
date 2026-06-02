@@ -14,7 +14,7 @@
 3. Connect your GitHub account and select `aiops-arch/TicketOps`
 4. Click "Deploy"
 
-Your application will be deployed at: `https://ticketops.vercel.app` (or your custom domain)
+Your application will be deployed at: `https://ticketops-silk.vercel.app` (or your custom domain)
 
 ### Step 2: Configure Environment Variables in Vercel
 

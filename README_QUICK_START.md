@@ -20,7 +20,7 @@ Your application is **100% ready for production deployment** to Vercel + Supabas
 2. Select → aiops-arch/TicketOps repository
 3. Click → Deploy
 4. Wait → 1-2 minutes
-✅ LIVE URL: https://ticketops.vercel.app
+✅ LIVE URL: https://ticketops-silk.vercel.app
 ```
 
 ### Step 2️⃣: Setup Supabase (5 minutes)

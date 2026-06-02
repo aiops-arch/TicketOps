@@ -46,7 +46,7 @@ Steps:
 4. Click "Deploy"
 5. Wait for deployment to complete
 ```
-**Result**: Your app will be live at `https://ticketops.vercel.app`
+**Result**: Your app will be live at `https://ticketops-silk.vercel.app`
 
 ### 3️⃣ Create Supabase Project (Free)
 - Go to https://supabase.com
