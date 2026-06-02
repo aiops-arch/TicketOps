@@ -2841,7 +2841,7 @@ function ticketCard(ticket, mode) {
   const workflowSteps = ticketWorkflowSteps(ticket);
 
   return `
-    <article class="ticket-card ${priorityClass}">
+    <article class="ticket-card ${priorityClass}" data-ticket-id="${escapeHtml(ticket.id)}">
       <div class="ticket-top">
         <div>
           <h3 class="ticket-title"><span class="ticket-id">${escapeHtml(ticket.id)}</span> ${escapeHtml(ticket.note || "Maintenance request")}</h3>
@@ -5248,6 +5248,22 @@ document.addEventListener("click", async (event) => {
   if (taskPhotoButton) {
     const task = (state.tasks || []).find((item) => item.id === taskPhotoButton.dataset.taskPhoto);
     openPhotoLightbox(`${task?.id || "Task"} — evidence photo`, [task?.evidencePhotoUrl]);
+    return;
+  }
+
+  // Tapping anywhere on a ticket card (outside its controls) opens its photos.
+  const ticketCardEl = event.target.closest?.(".ticket-card[data-ticket-id]");
+  if (ticketCardEl && !event.target.closest("button, select, input, textarea, label, a")) {
+    const ticket = (state.tickets || []).find((item) => item.id === ticketCardEl.dataset.ticketId);
+    const photos = [
+      ...(ticket?.photoUrls?.length ? ticket.photoUrls : [ticket?.photoUrl]),
+      ...(ticket?.resolutionPhotoUrls || [])
+    ].filter(Boolean);
+    if (photos.length) {
+      openPhotoLightbox(`${ticket.id} — photos`, photos);
+    } else {
+      showToast(`${ticketCardEl.dataset.ticketId} has no photos attached yet.`, "info");
+    }
     return;
   }
 

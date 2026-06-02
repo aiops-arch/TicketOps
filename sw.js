@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v35-scheduler-seed";
+const CACHE_NAME = "ticketops-v38-photo-lightbox";
 const APP_SHELL = [
   "./",
   "./index.html",
