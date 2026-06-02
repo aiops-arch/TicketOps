@@ -388,6 +388,112 @@ function showPromptModal(label, defaultValue = "") {
   });
 }
 
+/* ─── In-app photo lightbox ───
+   window.open + document.write fails silently in installed PWAs, Capacitor WebViews,
+   and popup-blocked browsers, so photos are shown in an in-app overlay instead.
+   Styles are injected here so the lightbox works with any styles.css version. */
+
+let photoLightboxPhotos = [];
+let photoLightboxIndex = 0;
+
+function ensurePhotoLightbox() {
+  if (document.getElementById("photoLightbox")) return;
+  const style = document.createElement("style");
+  style.id = "photoLightboxStyles";
+  style.textContent = `
+    #photoLightbox { position: fixed; inset: 0; z-index: 12000; display: grid; grid-template-rows: auto 1fr auto; gap: 10px; padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: rgba(8, 15, 18, 0.93); backdrop-filter: blur(6px); }
+    #photoLightbox[hidden] { display: none; }
+    #photoLightbox .photo-lightbox-chrome { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #f2fbff; }
+    #photoLightbox .photo-lightbox-title { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #photoLightbox .photo-lightbox-close { width: 44px; height: 44px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.14); color: #fff; font-size: 18px; font-weight: 700; cursor: pointer; }
+    #photoLightbox .photo-lightbox-stage { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 0; }
+    #photoLightbox .photo-lightbox-stage img { max-width: 100%; max-height: 100%; min-height: 0; margin: 0 auto; object-fit: contain; border-radius: 10px; }
+    #photoLightbox .photo-lightbox-nav { width: 44px; height: 64px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.14); color: #fff; font-size: 26px; cursor: pointer; }
+    #photoLightbox .photo-lightbox-nav[disabled] { opacity: 0.25; cursor: default; }
+    #photoLightbox .photo-lightbox-count { text-align: center; color: rgba(242, 251, 255, 0.85); font-size: 13px; font-weight: 700; min-height: 18px; }
+    body.photo-lightbox-open { overflow: hidden; }
+  `;
+  document.head.appendChild(style);
+
+  const overlay = document.createElement("div");
+  overlay.id = "photoLightbox";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", "Photo viewer");
+  overlay.hidden = true;
+  overlay.innerHTML = `
+    <div class="photo-lightbox-chrome">
+      <span class="photo-lightbox-title"></span>
+      <button type="button" class="photo-lightbox-close" aria-label="Close photo viewer">✕</button>
+    </div>
+    <div class="photo-lightbox-stage">
+      <button type="button" class="photo-lightbox-nav" data-lightbox-step="-1" aria-label="Previous photo">‹</button>
+      <img alt="Attached photo">
+      <button type="button" class="photo-lightbox-nav" data-lightbox-step="1" aria-label="Next photo">›</button>
+    </div>
+    <div class="photo-lightbox-count" aria-live="polite"></div>
+  `;
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay || event.target.closest(".photo-lightbox-close")) {
+      closePhotoLightbox();
+      return;
+    }
+    const stepButton = event.target.closest("[data-lightbox-step]");
+    if (stepButton && !stepButton.disabled) stepPhotoLightbox(Number(stepButton.dataset.lightboxStep));
+  });
+  document.addEventListener("keydown", (event) => {
+    if (overlay.hidden) return;
+    if (event.key === "Escape") closePhotoLightbox();
+    if (event.key === "ArrowLeft") stepPhotoLightbox(-1);
+    if (event.key === "ArrowRight") stepPhotoLightbox(1);
+  });
+  document.body.appendChild(overlay);
+}
+
+function renderPhotoLightbox() {
+  const overlay = document.getElementById("photoLightbox");
+  if (!overlay) return;
+  const image = overlay.querySelector(".photo-lightbox-stage img");
+  const count = overlay.querySelector(".photo-lightbox-count");
+  const [prev, next] = overlay.querySelectorAll("[data-lightbox-step]");
+  image.src = photoLightboxPhotos[photoLightboxIndex] || "";
+  count.textContent = photoLightboxPhotos.length > 1 ? `Photo ${photoLightboxIndex + 1} of ${photoLightboxPhotos.length}` : "";
+  prev.disabled = photoLightboxIndex <= 0;
+  next.disabled = photoLightboxIndex >= photoLightboxPhotos.length - 1;
+  prev.hidden = next.hidden = photoLightboxPhotos.length <= 1;
+}
+
+function stepPhotoLightbox(step) {
+  const nextIndex = photoLightboxIndex + step;
+  if (nextIndex < 0 || nextIndex >= photoLightboxPhotos.length) return;
+  photoLightboxIndex = nextIndex;
+  renderPhotoLightbox();
+}
+
+function openPhotoLightbox(title, photos) {
+  const list = (photos || []).filter(Boolean);
+  if (!list.length) {
+    showToast("No photo attached to this item.", "info");
+    return;
+  }
+  ensurePhotoLightbox();
+  photoLightboxPhotos = list;
+  photoLightboxIndex = 0;
+  const overlay = document.getElementById("photoLightbox");
+  overlay.querySelector(".photo-lightbox-title").textContent = title;
+  overlay.hidden = false;
+  document.body.classList.add("photo-lightbox-open");
+  renderPhotoLightbox();
+  overlay.querySelector(".photo-lightbox-close").focus();
+}
+
+function closePhotoLightbox() {
+  const overlay = document.getElementById("photoLightbox");
+  if (!overlay) return;
+  overlay.hidden = true;
+  document.body.classList.remove("photo-lightbox-open");
+}
+
 let currentUser = readStoredUser();
 let directoryUsers = [];
 let editingUserAccessId = "";
@@ -2662,8 +2768,14 @@ function renderSelects() {
 function renderActionButtons(ticket, mode, canVerify, canWork) {
   const canDeleteAssignment = Boolean(ticket.assignedTo) && (currentUser?.role === "admin" || ticket.createdBy === currentUser?.id);
   const canAdminClose = currentUser?.role === "admin" && ticket.status !== "Closed";
-  const assignableForRole = state.technicians
-    .filter((tech) => ["Present", "Busy", "Emergency Available"].includes(tech.status));
+  const availableStatuses = ["Present", "Busy", "Emergency Available"];
+  // Admin sees every technician (available first) — unavailable ones go through the
+  // override-with-reason flow instead of disappearing from the dropdown entirely.
+  const assignableForRole = currentUser?.role === "admin"
+    ? [...state.technicians].sort((a, b) =>
+        Number(availableStatuses.includes(b.status)) - Number(availableStatuses.includes(a.status))
+        || String(a.name).localeCompare(String(b.name)))
+    : state.technicians.filter((tech) => availableStatuses.includes(tech.status));
   const assignmentOptions = assignableForRole
     .map((tech) => {
       const selected = tech.id === ((ticket.suggestedTechnician && assignableForRole.some((item) => item.id === ticket.suggestedTechnician.id) ? ticket.suggestedTechnician.id : "") || ticket.assignedTo) ? "selected" : "";
@@ -5119,40 +5231,21 @@ document.addEventListener("click", async (event) => {
   if (photoButton) {
     const ticket = state.tickets.find((item) => item.id === photoButton.dataset.photoOpen);
     const photos = (ticket?.photoUrls?.length ? ticket.photoUrls : [ticket?.photoUrl]).filter(Boolean);
-    if (photos.length) {
-      const viewer = window.open("", "_blank");
-      if (viewer) {
-        viewer.document.write(`<title>${escapeHtml(ticket.id)} issue photos</title>${photos.map((photo, index) => `<img src="${escapeHtml(photo)}" alt="Issue photo ${index + 1}" style="max-width:100%;height:auto;display:block;margin:0 auto 16px;">`).join("")}`);
-        viewer.document.close();
-      }
-    }
+    openPhotoLightbox(`${ticket?.id || "Ticket"} — issue photos`, photos);
     return;
   }
 
   const resolutionPhotoButton = event.target.closest?.("[data-resolution-photo-open]");
   if (resolutionPhotoButton) {
     const ticket = state.tickets.find((item) => item.id === resolutionPhotoButton.dataset.resolutionPhotoOpen);
-    const photos = (ticket?.resolutionPhotoUrls || []).filter(Boolean);
-    if (photos.length) {
-      const viewer = window.open("", "_blank");
-      if (viewer) {
-        viewer.document.write(`<title>${escapeHtml(ticket.id)} completion photos</title>${photos.map((photo, index) => `<img src="${escapeHtml(photo)}" alt="Completion photo ${index + 1}" style="max-width:100%;height:auto;display:block;margin:0 auto 16px;">`).join("")}`);
-        viewer.document.close();
-      }
-    }
+    openPhotoLightbox(`${ticket?.id || "Ticket"} — completion photos`, ticket?.resolutionPhotoUrls || []);
     return;
   }
 
   const taskPhotoButton = event.target.closest?.("[data-task-photo]");
   if (taskPhotoButton) {
     const task = (state.tasks || []).find((item) => item.id === taskPhotoButton.dataset.taskPhoto);
-    if (task?.evidencePhotoUrl) {
-      const viewer = window.open("", "_blank");
-      if (viewer) {
-        viewer.document.write(`<title>${escapeHtml(task.id)} evidence</title><img src="${escapeHtml(task.evidencePhotoUrl)}" alt="Checklist evidence" style="max-width:100%;height:auto;display:block;margin:0 auto;">`);
-        viewer.document.close();
-      }
-    }
+    openPhotoLightbox(`${task?.id || "Task"} — evidence photo`, [task?.evidencePhotoUrl]);
     return;
   }
 
