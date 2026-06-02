@@ -93,7 +93,7 @@ function handleRequest(envelope) {
   if (method === "GET" && path === "/api/auth/demo-users") return ok({ users: (db.users || []).map(publicUser) });
   if (method === "POST" && path === "/api/auth/change-password") return changePassword(db, user, body);
   if (method === "POST" && /^\/api\/admin\/users\/[^/]+\/reset-password$/.test(path)) return resetPassword(db, user, segment(path, 3), body);
-  if (method === "GET" && path === "/api/bootstrap") return requireLogin(user, () => ok(withReports(scopedDbForUser(db, user), user)));
+  if (method === "GET" && path === "/api/bootstrap") return requireLogin(user, () => { refreshTodayTasks(db); return ok(withReports(scopedDbForUser(db, user), user)); });
   if (method === "GET" && path === "/api/categories") return requireAdmin(user, () => ok(db.categories || []));
   if (method === "GET" && path.startsWith("/api/reports/export/")) return requireAdmin(user, () => ok(exportCsv(db, segment(path, 3))));
   if (method === "GET" && path.startsWith("/api/backups/monthly/")) return requireAdmin(user, () => monthlyBackup(db, decodeURIComponent(segment(path, 3))));
@@ -103,6 +103,7 @@ function handleRequest(envelope) {
   if (method === "POST" && /^\/api\/technician\/tasks\/[^/]+\/status$/.test(path)) return requireRole(user, "technician", () => updateTaskStatus(db, segment(path, 3), body.status === "done" ? "Done" : "Not Done", body));
   if (method === "PATCH" && /^\/api\/tasks\/[^/]+\/status$/.test(path)) return requireLoggedIn(user, () => updateTaskStatus(db, segment(path, 2), body.status || "Done", body));
   if (method === "DELETE" && /^\/api\/tasks\/[^/]+$/.test(path)) return requireAdmin(user, () => deleteById(db, "tasks", segment(path, 2)));
+  if (method === "POST" && path === "/api/tasks/refresh") return requireAdmin(user, () => { var n = refreshTodayTasks(db); return ok({ generated: n, date: dateKey() }); });
   if (method === "POST" && path === "/api/tickets") return requireLoggedIn(user, () => createTicket(db, body, user));
   if (method === "PATCH" && /^\/api\/tickets\/[^/]+\/assign$/.test(path)) return requireAdmin(user, () => assignTicket(db, segment(path, 2), body));
   if (method === "PATCH" && /^\/api\/tickets\/[^/]+\/schedule$/.test(path)) return requireAdmin(user, () => updateTicket(db, segment(path, 2), { scheduledAt: body.scheduledAt || "" }));
@@ -111,7 +112,7 @@ function handleRequest(envelope) {
   if (method === "DELETE" && /^\/api\/tickets\/[^/]+\/assignment$/.test(path)) return requireAdmin(user, () => updateTicket(db, segment(path, 2), { status: "New", assignedTo: "", scheduledAt: "" }));
   if (method === "DELETE" && /^\/api\/tickets\/[^/]+$/.test(path)) return requireLoggedIn(user, () => deleteById(db, "tickets", segment(path, 2)));
   if (method === "PATCH" && /^\/api\/tickets\/[^/]+\/status$/.test(path)) return requireLoggedIn(user, () => {
-    var fields = { status: body.status, latestDetail: body.detail || body.status, evidencePhotoUrl: body.evidencePhotoUrl || "" };
+    var fields = { status: body.status, latestDetail: body.detail || body.status, evidencePhotoUrl: body.evidencePhotoUrl || "", evidencePhotoUrls: body.evidencePhotoUrls || [] };
     if (body.status === "Closed" && Number(body.closePrice || 0) > 0) {
       fields.closePrice = Number(body.closePrice);
       fields.closePriceBy = body.closePriceBy || user.id;
@@ -212,6 +213,164 @@ function saveChunkedDb(db) {
   }
 }
 
+function dateKey() {
+  var d = new Date();
+  return d.toISOString().slice(0, 10);
+}
+
+function frequencyLabel(value) {
+  var labels = { daily: "Daily", weekly: "Weekly", monthly: "Monthly", quarterly: "Quarterly", "half-yearly": "Half Yearly", yearly: "Yearly" };
+  return labels[String(value || "").toLowerCase()] || "Scheduled";
+}
+
+function normalizeIntegerInRange(value, min, max, fallback) {
+  var n = Number(value);
+  return Number.isInteger(n) && n >= min && n <= max ? n : (fallback !== undefined ? fallback : null);
+}
+
+function isMaintenanceRuleDue(rule, day) {
+  if (!day) day = dateKey();
+  var date = new Date(day + "T00:00:00");
+  var dow = date.getDay();
+  var dom = date.getDate();
+  var month = date.getMonth();
+  var freq = String(rule.frequency || "daily").toLowerCase();
+  var targetDow = normalizeIntegerInRange(rule.recurrenceDayOfWeek, 0, 6, 1);
+  var maxDom = new Date(date.getFullYear(), month + 1, 0).getDate();
+  var targetDom = Math.min(normalizeIntegerInRange(rule.recurrenceDayOfMonth, 1, 31, 1), maxDom);
+  var defaultMonths = { quarterly: [0, 3, 6, 9], "half-yearly": [0, 6], yearly: [0] };
+  var targetMonths = (Array.isArray(rule.recurrenceMonths) && rule.recurrenceMonths.length)
+    ? rule.recurrenceMonths
+    : (defaultMonths[freq] || []);
+  if (freq === "daily") return true;
+  if (freq === "weekly") return dow === targetDow;
+  if (freq === "monthly") return dom === targetDom;
+  if (freq === "quarterly" || freq === "half-yearly" || freq === "yearly") return targetMonths.indexOf(month) !== -1 && dom === targetDom;
+  return false;
+}
+
+function checklistTechnicians(db) {
+  return (db.technicians || []).slice().sort(function(a, b) { return String(a.name).localeCompare(String(b.name)); });
+}
+
+function balancedChecklistTechnician(technicians, loadMap) {
+  if (!technicians.length) return null;
+  return technicians.reduce(function(selected, tech) {
+    if (!selected) return tech;
+    var sl = loadMap[selected.id] || 0;
+    var tl = loadMap[tech.id] || 0;
+    if (tl < sl) return tech;
+    if (tl === sl && String(tech.name).localeCompare(String(selected.name)) < 0) return tech;
+    return selected;
+  }, null);
+}
+
+function technicianCoversOutlet(tech, outlet) {
+  if (!outlet) return true;
+  var outlets = Array.isArray(tech.serviceOutlets) ? tech.serviceOutlets : [];
+  return !outlets.length || outlets.indexOf(outlet) !== -1;
+}
+
+function maintenanceRuleById(db, ruleId) {
+  return (db.maintenanceRules || []).find(function(r) { return r.id === ruleId; }) || null;
+}
+
+function maintenanceRuleAssignments(db, rule) {
+  var explicit = (db.maintenanceRuleAssignments || []).filter(function(a) { return a.ruleId === rule.id && a.active !== false; });
+  if (explicit.length) return explicit;
+  if (rule.outlet) {
+    return [{ id: rule.id + ":" + rule.outlet, ruleId: rule.id, outlet: rule.outlet, assignedTechnicianId: rule.assignedTechnicianId || "", active: true }];
+  }
+  return [];
+}
+
+function maintenanceRuleTechnician(db, rule, loadMap, fallbackTechnicians, outlet) {
+  var allTechs = fallbackTechnicians || checklistTechnicians(db);
+  if (rule && rule.assignedTechnicianId) {
+    var assigned = allTechs.find(function(t) { return t.id === rule.assignedTechnicianId; });
+    if (assigned) return assigned;
+  }
+  var targetOutlet = outlet || (rule && rule.outlet) || "";
+  var eligible = allTechs.filter(function(t) { return technicianCoversOutlet(t, targetOutlet); });
+  var map = loadMap || {};
+  if (!loadMap) {
+    eligible.forEach(function(t) { map[t.id] = 0; });
+  }
+  return balancedChecklistTechnician(eligible, map);
+}
+
+function isChecklistTask(task) {
+  var title = String(task.title || "");
+  return title.indexOf("Morning Opening:") === 0 || title.indexOf("Checklist:") === 0 || title.indexOf("Mid-Day:") === 0 || title.indexOf("Closing:") === 0 || title.indexOf("Weekly:") === 0 || title.indexOf("Daily check") === 0;
+}
+
+function generateTodayTasks(db, day) {
+  if (!day) day = dateKey();
+  var rules = (db.maintenanceRules || []).filter(function(rule) {
+    return rule.active !== false && isMaintenanceRuleDue(rule, day);
+  });
+  var technicians = checklistTechnicians(db);
+  var loadMap = {};
+  technicians.forEach(function(tech) {
+    loadMap[tech.id] = (db.tasks || []).filter(function(t) { return t.date === day && t.assignedTo === tech.id && isChecklistTask(t); }).length;
+  });
+  var existingKeys = {};
+  var existingIds = {};
+  (db.tasks || []).forEach(function(t) {
+    if (t.date === day) existingKeys[day + "|" + t.outlet + "|" + (t.ruleId || t.title)] = true;
+    existingIds[t.id] = true;
+  });
+  var sequence = (db.tasks || []).filter(function(t) { return t.date === day; }).length + 1;
+  function nextTaskId() {
+    var base = "TASK-" + day.replace(/-/g, "") + "-";
+    var id = base + String(sequence).padStart(3, "0");
+    while (existingIds[id]) { sequence += 1; id = base + String(sequence).padStart(3, "0"); }
+    existingIds[id] = true;
+    sequence += 1;
+    return id;
+  }
+  var added = [];
+  (db.outlets || []).forEach(function(outlet) {
+    var outletAssets = (db.assets || []).filter(function(a) { return a.status === "Active" && a.outlet === outlet; });
+    rules.forEach(function(rule) {
+      var assignments = maintenanceRuleAssignments(db, rule);
+      var assignment = assignments.find(function(a) { return a.outlet === outlet; });
+      if (!assignment) return;
+      var asset = outletAssets.find(function(a) { return a.category === rule.category; }) || outletAssets[0];
+      var effectiveRule = Object.assign({}, rule, { assignedTechnicianId: assignment.assignedTechnicianId || rule.assignedTechnicianId || "", outlet: outlet });
+      var tech = maintenanceRuleTechnician(db, effectiveRule, loadMap, technicians, outlet);
+      if (!asset || !tech) return;
+      var title = (rule.phase || "Checklist") + ": " + rule.title;
+      var taskKey = day + "|" + outlet + "|" + rule.id;
+      if (existingKeys[taskKey]) return;
+      existingKeys[taskKey] = true;
+      var task = {
+        id: nextTaskId(),
+        title: title,
+        assetId: asset.id,
+        outlet: outlet,
+        assignedTo: tech.id,
+        ruleId: rule.id,
+        status: "Pending",
+        date: day,
+        completedAt: "",
+        notes: (rule.group || "Maintenance") + " / " + frequencyLabel(rule.frequency) + (rule.allowOutsideWindow ? " / outside window allowed" : "")
+      };
+      added.push(task);
+      loadMap[tech.id] = (loadMap[tech.id] || 0) + 1;
+    });
+  });
+  db.tasks = (db.tasks || []).concat(added);
+  return added.length;
+}
+
+function refreshTodayTasks(db) {
+  var day = dateKey();
+  var generated = generateTodayTasks(db, day);
+  if (generated > 0) saveDb(db);
+  return generated;
+}
+
 function normalizeDb(db) {
   const next = db || {};
   ["users", "outlets", "categories", "assets", "technicians", "tickets", "tasks", "assignmentTimeWindows", "maintenanceRules", "attendancePlans", "ticketHistory"].forEach((key) => {
@@ -284,6 +443,9 @@ function login(db, body) {
 
 function changePassword(db, user, body) {
   if (!user) return fail(401, "Login required");
+  const current = String(body.currentPassword || "");
+  const accepted = current === String(user.password || "") || current === String(user.passwordPlain || "") || current === DEFAULT_PASSWORDS[user.username];
+  if (!accepted) return fail(400, "Current password is incorrect");
   const next = String(body.newPassword || "");
   if (next.length < 8) return fail(400, "New password must be at least 8 characters");
   if (next !== String(body.confirmPassword || "")) return fail(400, "New password confirmation does not match");
@@ -396,16 +558,35 @@ function createRow(db, route, body) {
   return ok(Object.assign({}, row, { reports: reports(db) }));
 }
 
+function renameOutletEverywhere(db, oldName, name) {
+  // Rename every reference to an outlet across all collections: item.outlet strings
+  // plus the allowedOutlets (users) and serviceOutlets (technicians) arrays.
+  ["assets", "tickets", "tasks", "users", "technicians", "maintenanceRules", "maintenanceRuleAssignments", "attendancePlans", "assignmentTimeWindows"].forEach(function(key) {
+    (db[key] || []).forEach(function(item) {
+      if (item.outlet === oldName) item.outlet = name;
+      ["allowedOutlets", "serviceOutlets"].forEach(function(listKey) {
+        if (Array.isArray(item[listKey])) {
+          item[listKey] = item[listKey].map(function(value) { return value === oldName ? name : value; });
+        }
+      });
+    });
+  });
+}
+
 function patchRow(db, route, id, body) {
   if (route.key === "outlets") {
     const oldName = id;
     const name = String(body.name || oldName).trim();
     db.outlets = db.outlets.map((item) => item === oldName ? name : item);
-    db.assets.forEach((item) => { if (item.outlet === oldName) item.outlet = name; });
-    db.tickets.forEach((item) => { if (item.outlet === oldName) item.outlet = name; });
-    db.tasks.forEach((item) => { if (item.outlet === oldName) item.outlet = name; });
+    renameOutletEverywhere(db, oldName, name);
+    const previousLocation = db.outletLocations[oldName] || {};
     delete db.outletLocations[oldName];
-    db.outletLocations[name] = { branch: body.branch || "", address: body.address || "", latitude: body.latitude || null, longitude: body.longitude || null };
+    db.outletLocations[name] = {
+      branch: body.branch || previousLocation.branch || "",
+      address: body.address || previousLocation.address || "",
+      latitude: body.latitude != null ? body.latitude : (previousLocation.latitude || null),
+      longitude: body.longitude != null ? body.longitude : (previousLocation.longitude || null)
+    };
     saveDb(db);
     return ok({ name, reports: reports(db) });
   }
@@ -494,6 +675,7 @@ function updateTaskStatus(db, id, status, body) {
   task.status = status;
   task.evidenceComment = body.comment || task.evidenceComment || "";
   task.photoUrl = body.photoUrl || task.photoUrl || "";
+  task.photoUrls = body.photoUrls || task.photoUrls || [];
   task.completedAt = status === "Done" ? new Date().toISOString() : "";
   saveDb(db);
   return ok({ task, reports: reports(db) });
