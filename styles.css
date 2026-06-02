@@ -13654,3 +13654,31 @@ body[data-theme="dark"] .outlet-stats small { color: rgba(255,255,255,0.5) !impo
     min-height: 36px !important;
   }
 }
+
+/* ━━━ ADMIN CONTROL: two-column work row ━━━
+   Scheduled Work used to sit alone in the left column with ~950px of empty
+   space beside it for its full (2600px+) height, and the Control Queue ran
+   full-width below. Now Scheduled Work is a compact sticky rail that scrolls
+   internally, and the Control Queue fills the wide right column beside it. */
+
+@media (min-width: 1180px) {
+  .ops-portal #admin .admin-queue-panel {
+    grid-column: 2;
+  }
+
+  .ops-portal #admin .admin-scheduled-panel {
+    grid-column: 1;
+    position: sticky;
+    top: 100px; /* clears the sticky metrics strip */
+    max-height: calc(100vh - 114px);
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .ops-portal #admin .admin-scheduled-panel .card-list {
+    overflow-y: auto;
+    min-height: 0;
+    padding-right: 2px;
+  }
+}
