@@ -950,8 +950,8 @@ function maintenanceRuleForTask(task) {
 }
 
 function technicianAssignmentSummary(tech, ticket) {
-  const serviceOutlets = tech?.serviceOutlets || [];
-  const servesOutlet = serviceOutlets.includes(ticket.outlet);
+  // Empty serviceOutlets means "All outlets" — same semantics as technicianCoversOutlet and serviceAreaLabel.
+  const servesOutlet = technicianCoversOutlet(tech, ticket.outlet);
   const skillMatch = true;
   const assignable = ["Present", "Busy", "Emergency Available"].includes(tech?.status);
   const openJobs = technicianOpenWorkload(tech?.id);
@@ -1755,7 +1755,7 @@ async function assignTicket(ticketId, technicianId) {
   if (currentUser?.role === "admin") payload.scheduledAt = scheduledInput?.value || "";
   const hardRisk = summary?.risk || [];
   if (hardRisk.includes("not registered for outlet")) {
-    showToast("This technician is not registered for this outlet. Add the outlet to the technician service area first.", "warning");
+    showToast(`${technician?.name || "This technician"} covers ${serviceAreaLabel(technician)} — not ${ticket?.outlet || "this outlet"}. Update outlet coverage in Masters > Technicians, or pick another technician.`, "warning");
     return;
   }
 
