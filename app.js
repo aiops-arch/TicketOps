@@ -5092,6 +5092,67 @@ document.querySelectorAll(".tab[data-view]").forEach((button) => {
 });
 document.querySelector(".topbar")?.addEventListener("click", releasePointerFocus);
 
+/* ─── Collapsible panels (Manager Desk / Admin Control) ───
+   Panel headings get a chevron toggle; collapsed state persists per user device. */
+const PANEL_COLLAPSE_KEY = "ticketops-collapsed-panels";
+
+function readCollapsedPanels() {
+  try {
+    return JSON.parse(localStorage.getItem(PANEL_COLLAPSE_KEY) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+function panelCollapseId(panel) {
+  const view = panel.closest(".view")?.id || "view";
+  const marker = [...panel.classList].filter((name) => name !== "panel" && name !== "is-collapsed").sort().join(".") || "panel";
+  return `${view}:${marker}`;
+}
+
+function setPanelCollapsed(panel, collapsed) {
+  panel.classList.toggle("is-collapsed", collapsed);
+  const toggle = panel.querySelector(":scope > .panel-heading .panel-collapse-toggle");
+  toggle?.setAttribute("aria-expanded", String(!collapsed));
+  toggle?.setAttribute("aria-label", collapsed ? "Expand panel" : "Collapse panel");
+}
+
+function togglePanelCollapse(panel) {
+  const collapsed = !panel.classList.contains("is-collapsed");
+  setPanelCollapsed(panel, collapsed);
+  const map = readCollapsedPanels();
+  if (collapsed) map[panelCollapseId(panel)] = 1;
+  else delete map[panelCollapseId(panel)];
+  try {
+    localStorage.setItem(PANEL_COLLAPSE_KEY, JSON.stringify(map));
+  } catch {
+    // Ignore storage pressure; collapse still works for this session.
+  }
+}
+
+function initCollapsiblePanels() {
+  const stored = readCollapsedPanels();
+  document.querySelectorAll("#manager > .panel, #admin > .panel").forEach((panel) => {
+    const heading = panel.querySelector(":scope > .panel-heading");
+    if (!heading || heading.querySelector(".panel-collapse-toggle")) return;
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "panel-collapse-toggle";
+    toggle.textContent = "▾";
+    heading.appendChild(toggle);
+    setPanelCollapsed(panel, Boolean(stored[panelCollapseId(panel)]));
+  });
+}
+
+document.addEventListener("click", (event) => {
+  const heading = event.target.closest?.("#manager > .panel > .panel-heading, #admin > .panel > .panel-heading");
+  if (!heading) return;
+  const interactive = event.target.closest("button, select, input, a, label");
+  if (interactive && !interactive.classList.contains("panel-collapse-toggle")) return;
+  togglePanelCollapse(heading.parentElement);
+});
+initCollapsiblePanels();
+
 document.getElementById("kpiDrillClose")?.addEventListener("click", closeKpiDrill);
 document.getElementById("kpiDrillOverlay")?.addEventListener("click", (e) => { if (e.target === e.currentTarget) closeKpiDrill(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeKpiDrill(); });

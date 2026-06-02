@@ -13682,3 +13682,88 @@ body[data-theme="dark"] .outlet-stats small { color: rgba(255,255,255,0.5) !impo
     padding-right: 2px;
   }
 }
+
+/* ━━━ MANAGER DESK: parallel panels ━━━
+   The Review Gate occupied one giant grid row, so Scheduled Work (Technician
+   Jobs) only began after the entire verification queue ended — leaving the
+   left column empty for thousands of pixels. Now the Review Gate spans the
+   right column while Create Ticket + a sticky, internally-scrolling Scheduled
+   Work rail share the left column. */
+
+@media (min-width: 900px) {
+  .ops-portal #manager .intake-panel {
+    grid-row: 2 !important;
+    grid-column: 1 !important;
+    position: static !important;
+    align-self: start;
+  }
+
+  .ops-portal #manager .admin-access-panel {
+    grid-row: 2 / span 2 !important;
+    grid-column: 2 !important;
+    align-self: start;
+  }
+
+  .ops-portal #manager .manager-scheduled-panel {
+    grid-row: 3 !important;
+    grid-column: 1 !important;
+    align-self: start;
+    position: sticky !important;
+    top: 16px;
+    max-height: calc(100vh - 30px);
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .ops-portal.single-role-workspace #manager .manager-scheduled-panel {
+    top: 92px;
+    max-height: calc(100vh - 106px);
+  }
+
+  .ops-portal #manager .manager-scheduled-panel .card-list {
+    overflow-y: auto;
+    min-height: 0;
+    padding-right: 2px;
+  }
+}
+
+/* ━━━ COLLAPSIBLE PANELS (Manager Desk / Admin Control) ━━━ */
+
+#manager > .panel > .panel-heading,
+#admin > .panel > .panel-heading {
+  cursor: pointer;
+  user-select: none;
+}
+
+.panel-collapse-toggle {
+  flex: 0 0 auto;
+  margin-left: 10px;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(120, 150, 160, 0.25);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  color: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.18s ease;
+}
+
+.panel-collapse-toggle:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.panel.is-collapsed > .panel-heading .panel-collapse-toggle {
+  transform: rotate(-90deg);
+}
+
+.panel.is-collapsed > :not(.panel-heading) {
+  display: none !important;
+}
+
+.panel.is-collapsed {
+  max-height: none !important;
+  align-self: start;
+}
