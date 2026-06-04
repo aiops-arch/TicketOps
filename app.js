@@ -1,5 +1,26 @@
 const NATIVE_DEFAULT_API = location.protocol === "capacitor:" ? "http://10.0.2.2:3000" : "";
-const CONFIG_API_BASE = window.TICKETOPS_CONFIG?.apiBase || window.TICKETOPS_API_BASE || "";
+const LOCAL_QUERY = new URLSearchParams(location.search);
+const VIEW_ROUTE_FILES = {
+  dashboard: "dashboard.html",
+  manager: "manager.html",
+  admin: "admin.html",
+  scheduler: "scheduler.html",
+  masters: "masters.html",
+  technician: "technician.html",
+  history: "history.html",
+  reports: "reports.html"
+};
+const ROUTE_FILE_VIEWS = Object.fromEntries(Object.entries(VIEW_ROUTE_FILES).map(([view, file]) => [file, view]));
+
+function requestedRouteView() {
+  const queryView = LOCAL_QUERY.get("view");
+  if (queryView && VIEW_ROUTE_FILES[queryView]) return queryView;
+  const file = location.pathname.split("/").pop() || "index.html";
+  return ROUTE_FILE_VIEWS[file] || "";
+}
+const LOCAL_DATA_MODE = LOCAL_QUERY.get("data") || "";
+const QUERY_API_BASE = LOCAL_QUERY.get("apiBase") || "";
+const CONFIG_API_BASE = QUERY_API_BASE || window.TICKETOPS_CONFIG?.apiBase || window.TICKETOPS_API_BASE || "";
 const STORED_API_BASE = localStorage.getItem("ticketops-api-base") || "";
 const STALE_API_BASE_PATTERN = /(ticketops-api\.onrender\.com|supabase\.co|ksfbnsdqbaccuebrrhvu)/i;
 if (STALE_API_BASE_PATTERN.test(CONFIG_API_BASE) || STALE_API_BASE_PATTERN.test(STORED_API_BASE)) {
@@ -8,14 +29,14 @@ if (STALE_API_BASE_PATTERN.test(CONFIG_API_BASE) || STALE_API_BASE_PATTERN.test(
 }
 const SAFE_CONFIG_API_BASE = STALE_API_BASE_PATTERN.test(CONFIG_API_BASE) ? "" : CONFIG_API_BASE;
 const SAFE_STORED_API_BASE = STALE_API_BASE_PATTERN.test(STORED_API_BASE) ? "" : STORED_API_BASE;
-const API_BASE = SAFE_CONFIG_API_BASE || SAFE_STORED_API_BASE || NATIVE_DEFAULT_API;
+const API_BASE = ["browser", "empty"].includes(LOCAL_DATA_MODE) ? "" : (SAFE_CONFIG_API_BASE || SAFE_STORED_API_BASE || NATIVE_DEFAULT_API);
 const USE_APPS_SCRIPT_API = /script\.google\.com\/macros\/s\/.+\/exec/i.test(API_BASE);
 const USE_BROWSER_FALLBACK_API = !API_BASE;
 const AUTH_STORAGE_KEY = "ticketops-auth-user-v2";
 const THEME_STORAGE_KEY = "ticketops-theme";
 const DASHBOARD_MODE_STORAGE_KEY = "ticketops-dashboard-mode";
 const LAST_ACTIVITY_STORAGE_KEY = "ticketops-last-activity";
-const BOOTSTRAP_CACHE_KEY = "ticketops-bootstrap-cache-v3";
+const BOOTSTRAP_CACHE_KEY = "ticketops-bootstrap-cache-v4";
 const BROWSER_DB_STORAGE_KEY = "ticketops-browser-db-v3";
 const BOOTSTRAP_CACHE_TTL_MS = 10 * 60 * 1000;
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
@@ -92,7 +113,10 @@ let state = {
   assets: [],
   technicians: [],
   tickets: [],
+  tasks: [],
+  maintenanceRules: [],
   assignmentTimeWindows: [],
+  attendancePlans: [],
   reports: {}
 };
 
@@ -269,6 +293,38 @@ function pushIndex(map, key, value) {
   } else {
     map.set(key, [value]);
   }
+}
+
+function bind(selector, eventName, handler, options) {
+  const element = document.querySelector(selector);
+  if (!element) return null;
+  element.addEventListener(eventName, handler, options);
+  return element;
+}
+
+function normalizeBootstrapState(rawState = {}) {
+  const source = rawState && typeof rawState === "object" ? rawState : {};
+  const reports = source.reports && typeof source.reports === "object" ? source.reports : {};
+  return {
+    ...source,
+    outlets: Array.isArray(source.outlets) ? source.outlets : [],
+    outletLocations: source.outletLocations && typeof source.outletLocations === "object" ? source.outletLocations : {},
+    categories: Array.isArray(source.categories) ? source.categories : [],
+    assets: Array.isArray(source.assets) ? source.assets : [],
+    technicians: Array.isArray(source.technicians) ? source.technicians : [],
+    tickets: Array.isArray(source.tickets) ? source.tickets : [],
+    tasks: Array.isArray(source.tasks) ? source.tasks : [],
+    maintenanceRules: Array.isArray(source.maintenanceRules) ? source.maintenanceRules : [],
+    assignmentTimeWindows: Array.isArray(source.assignmentTimeWindows) ? source.assignmentTimeWindows : [],
+    attendancePlans: Array.isArray(source.attendancePlans) ? source.attendancePlans : [],
+    reports: {
+      ...reports,
+      alerts: Array.isArray(reports.alerts) ? reports.alerts : [],
+      technicianWorkload: Array.isArray(reports.technicianWorkload) ? reports.technicianWorkload : [],
+      outletSummary: Array.isArray(reports.outletSummary) ? reports.outletSummary : []
+    },
+    stitch: source.stitch && typeof source.stitch === "object" ? source.stitch : {}
+  };
 }
 
 function rebuildStateIndex() {
@@ -507,7 +563,10 @@ let activeMasterTab = "outlets";
 let editingAssignmentWindowId = "";
 let editingMaintenanceRuleId = "";
 let editingMaintenanceAssignments = [];
+let ticketPhotoPreviewUrls = [];
 let mobileNavOpen = false;
+let desktopNavOpen = false;
+let sidebarHoverTimer = 0;
 let currentTheme = readStoredTheme();
 let currentDashboardMode = readStoredDashboardMode();
 let inactivityTimer = null;
@@ -600,6 +659,8 @@ function readStoredTheme() {
 function applyTheme(theme) {
   currentTheme = theme === "dark" ? "dark" : "light";
   document.body.dataset.theme = currentTheme;
+  document.documentElement.dataset.theme = currentTheme;
+  document.documentElement.style.colorScheme = currentTheme;
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", currentTheme === "dark" ? "#0d1024" : "#f4f7ff");
   const button = document.querySelector("#themeToggle");
   if (button) {
@@ -649,12 +710,21 @@ function isMobileNav() {
 
 function updateMobileNav() {
   const open = isMobileNav() && mobileNavOpen;
+  const desktopOpen = !isMobileNav() && desktopNavOpen;
   document.body.classList.toggle("mobile-nav-open", open);
+  document.body.classList.toggle("desktop-nav-open", desktopOpen);
+  if (isMobileNav() || !currentUser) {
+    document.body.classList.remove("sidebar-hover-open");
+  }
+  if (desktopOpen) {
+    document.querySelector(".topbar")?.scrollTo?.({ top: 0, left: 0 });
+  }
   const toggle = document.querySelector("#sidebarToggle");
   if (toggle) {
-    toggle.setAttribute("aria-expanded", open ? "true" : "false");
-    toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
-    toggle.textContent = open ? "\u00d7" : "\u2630";
+    const expanded = open || desktopOpen;
+    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    toggle.setAttribute("aria-label", expanded ? "Close menu" : "Open menu");
+    toggle.textContent = expanded ? "\u00d7" : "\u2630";
   }
 }
 
@@ -671,6 +741,29 @@ function closeMobileNav() {
 function toggleMobileNav() {
   mobileNavOpen = !mobileNavOpen;
   updateMobileNav();
+}
+
+function closeDesktopNav() {
+  desktopNavOpen = false;
+  updateMobileNav();
+}
+
+function toggleDesktopNav() {
+  desktopNavOpen = !desktopNavOpen;
+  updateMobileNav();
+}
+
+function setSidebarHoverOpen(open) {
+  window.clearTimeout(sidebarHoverTimer);
+  if (!currentUser || isMobileNav() || desktopNavOpen) {
+    document.body.classList.remove("sidebar-hover-open");
+    return;
+  }
+  const apply = () => {
+    document.body.classList.toggle("sidebar-hover-open", open);
+    if (open) document.querySelector(".topbar")?.scrollTo?.({ top: 0, left: 0 });
+  };
+  sidebarHoverTimer = window.setTimeout(apply, open ? 45 : 90);
 }
 
 function escapeHtml(value) {
@@ -746,8 +839,10 @@ function updateTicketPhotoHint() {
   const hint = document.querySelector("#ticketCreateResult");
   if (!input || !hint) return;
   const files = [...(input.files || [])];
+  renderTicketPhotoPreview(files);
   if (!files.length) {
     hint.textContent = "";
+    hint.classList.remove("form-error");
     return;
   }
   const maxPhotos = maxTicketPhotosForStorage();
@@ -756,6 +851,53 @@ function updateTicketPhotoHint() {
     ? `Only ${maxPhotos} photo(s) can be attached. Please remove ${files.length - maxPhotos}.`
     : `${files.length} photo(s) selected. Photos will be compressed before upload.`;
   hint.classList.toggle("form-error", overLimit);
+}
+
+function renderTicketPhotoPreview(files = []) {
+  const input = document.querySelector("#ticketPhoto");
+  if (!input) return;
+
+  let preview = document.querySelector("#ticketPhotoPreview");
+  if (!preview) {
+    preview = document.createElement("div");
+    preview.id = "ticketPhotoPreview";
+    preview.className = "ticket-photo-preview";
+    input.closest(".photo-upload")?.insertAdjacentElement("afterend", preview);
+  }
+
+  ticketPhotoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+  ticketPhotoPreviewUrls = [];
+
+  const maxPhotos = maxTicketPhotosForStorage();
+  if (!files.length) {
+    preview.innerHTML = `
+      <div class="photo-preview-empty">
+        <strong>No photos selected</strong>
+        <span>Attach up to ${escapeHtml(maxPhotos)} image${maxPhotos === 1 ? "" : "s"} before creating high-risk tickets.</span>
+      </div>
+    `;
+    return;
+  }
+
+  const overLimit = files.length > maxPhotos;
+  preview.innerHTML = `
+    <div class="photo-preview-head ${overLimit ? "is-over-limit" : ""}">
+      <strong>${escapeHtml(files.length)} selected</strong>
+      <span>${overLimit ? `Remove ${escapeHtml(files.length - maxPhotos)} to continue` : `Limit ${escapeHtml(maxPhotos)} image${maxPhotos === 1 ? "" : "s"}`}</span>
+    </div>
+    <div class="photo-preview-grid">
+      ${files.slice(0, maxPhotos).map((file) => {
+        const url = URL.createObjectURL(file);
+        ticketPhotoPreviewUrls.push(url);
+        return `
+          <figure>
+            <img src="${escapeHtml(url)}" alt="${escapeHtml(file.name || "Selected issue photo")}">
+            <figcaption>${escapeHtml(file.name || "Issue photo")}</figcaption>
+          </figure>
+        `;
+      }).join("")}
+    </div>
+  `;
 }
 
 function readImageFile(file) {
@@ -933,11 +1075,15 @@ function scheduledTaskRows(tasks, { allowActions = false } = {}) {
     const windowText = rule?.allowOutsideWindow ? "All day" : rule ? `${rule.startTime || "?"} - ${rule.endTime || "?"}` : "Scheduled";
     const technician = technicianById(task.assignedTo);
     const needsEvidence = taskRequiresEvidence(task);
+    const evidencePhoto = task.evidencePhotoUrl || task.photoUrl || "";
     return `
       <article class="task-row status-${token(task.status)} ${needsEvidence && task.status !== "Done" ? "requires-evidence" : ""}">
-        <div>
-          <strong>${escapeHtml(title)}</strong>
-          <span>${escapeHtml(task.outlet)} / ${escapeHtml(technician?.name || "Unassigned")} / ${escapeHtml(taskFrequencyLabel(task))} / ${escapeHtml(windowText)}</span>
+        <div class="task-main">
+          <div class="task-title-row">
+            <strong>${escapeHtml(title)}</strong>
+            <span class="task-window">${escapeHtml(windowText)}</span>
+          </div>
+          <span class="task-meta">${escapeHtml(task.outlet)} / ${escapeHtml(technician?.name || "Unassigned")} / ${escapeHtml(taskFrequencyLabel(task))}</span>
           <div class="task-tags">
             <span>${escapeHtml(task.status)}</span>
             <span>${escapeHtml(phase)}</span>
@@ -946,7 +1092,7 @@ function scheduledTaskRows(tasks, { allowActions = false } = {}) {
           </div>
         </div>
         <div class="task-actions">
-          ${task.evidencePhotoUrl ? `<button type="button" class="small-button" data-task-photo="${escapeHtml(task.id)}">Evidence</button>` : ""}
+          ${evidencePhoto ? `<button type="button" class="small-button" data-task-photo="${escapeHtml(task.id)}">Evidence</button>` : ""}
           ${allowActions && task.status !== "Done" ? `<button type="button" class="small-button success task-done-button" data-task-done="${escapeHtml(task.id)}">Done</button>` : ""}
           ${allowActions && task.status !== "Done" ? `<button type="button" class="small-button warning" data-task-not-done="${escapeHtml(task.id)}">Not Done</button>` : ""}
         </div>
@@ -1283,6 +1429,7 @@ async function api(path, options = {}) {
 }
 
 function browserReadDb() {
+  if (LOCAL_DATA_MODE === "empty") return makeEmptyBrowserDb();
   try {
     const stored = JSON.parse(localStorage.getItem(BROWSER_DB_STORAGE_KEY) || "null");
     if (stored && typeof stored === "object") return browserNormalizeDb(stored);
@@ -1295,7 +1442,25 @@ function browserReadDb() {
 }
 
 function browserWriteDb(db) {
+  if (LOCAL_DATA_MODE === "empty") return;
   localStorage.setItem(BROWSER_DB_STORAGE_KEY, JSON.stringify(browserNormalizeDb(db)));
+}
+
+function makeEmptyBrowserDb() {
+  const db = JSON.parse(JSON.stringify(BROWSER_FALLBACK_DB));
+  db.outlets = [];
+  db.outletLocations = {};
+  db.categories = [];
+  db.assets = [];
+  db.technicians = [];
+  db.tickets = [];
+  db.tasks = [];
+  db.assignmentTimeWindows = [];
+  db.maintenanceRules = [];
+  db.attendancePlans = [];
+  db.activity = [];
+  db.reports = browserReports(db);
+  return browserNormalizeDb(db);
 }
 
 function browserNormalizeDb(db) {
@@ -1375,6 +1540,137 @@ function browserNextId(items, prefix) {
   return `${prefix}${String((items || []).length + 1001)}-${Date.now().toString(36).toUpperCase()}`;
 }
 
+function browserCsvEscape(value) {
+  const text = String(value ?? "");
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function browserToCsv(headers, rows) {
+  return [
+    headers.join(","),
+    ...rows.map((row) => headers.map((header) => browserCsvEscape(row[header])).join(","))
+  ].join("\n");
+}
+
+function browserDateKey() {
+  return todayInputValue();
+}
+
+function browserExportCsv(db, type) {
+  if (type === "tasks") {
+    const headers = ["id", "date", "outlet", "title", "assignedTo", "status", "completedAt", "notes"];
+    const rows = (db.tasks || []).map((task) => ({
+      id: task.id,
+      date: task.date || task.taskDate || "",
+      outlet: task.outlet || "",
+      title: task.title || "",
+      assignedTo: technicianById(task.assignedTo)?.name || task.assignedTo || "",
+      status: task.status || "",
+      completedAt: task.completedAt || "",
+      notes: task.notes || ""
+    }));
+    return { filename: `ticketops-tasks-${browserDateKey()}.csv`, csv: browserToCsv(headers, rows) };
+  }
+
+  if (type === "tickets") {
+    const headers = ["id", "outlet", "category", "priority", "status", "assignedTo", "createdAt", "updatedAt", "latestDetail"];
+    const rows = (db.tickets || []).map((ticket) => ({
+      id: ticket.id,
+      outlet: ticket.outlet || "",
+      category: ticket.category || "",
+      priority: ticket.priority || "",
+      status: ticket.status || "",
+      assignedTo: technicianById(ticket.assignedTo)?.name || ticket.assignedTo || "",
+      createdAt: ticket.createdAt || "",
+      updatedAt: ticket.updatedAt || "",
+      latestDetail: ticket.latestDetail || ticket.note || ""
+    }));
+    return { filename: `ticketops-tickets-${browserDateKey()}.csv`, csv: browserToCsv(headers, rows) };
+  }
+
+  if (type === "technicians") {
+    const headers = ["id", "name", "skill", "status", "quality", "serviceOutlets"];
+    const rows = (db.technicians || []).map((tech) => ({
+      id: tech.id,
+      name: tech.name || "",
+      skill: tech.skill || (tech.skills || []).join(", "),
+      status: tech.status || "",
+      quality: tech.quality || "",
+      serviceOutlets: (tech.serviceOutlets || []).join(", ")
+    }));
+    return { filename: `ticketops-technicians-${browserDateKey()}.csv`, csv: browserToCsv(headers, rows) };
+  }
+
+  if (type === "outlets") {
+    const headers = ["name", "address", "latitude", "longitude"];
+    const rows = (db.outlets || []).map((name) => ({
+      name,
+      address: db.outletLocations?.[name]?.address || "",
+      latitude: db.outletLocations?.[name]?.latitude || "",
+      longitude: db.outletLocations?.[name]?.longitude || ""
+    }));
+    return { filename: `ticketops-outlets-${browserDateKey()}.csv`, csv: browserToCsv(headers, rows) };
+  }
+
+  return null;
+}
+
+function browserMonthRange(month = "") {
+  return /^\d{4}-\d{2}$/.test(month) ? month : "";
+}
+
+function browserMonthlyBackup(db, month) {
+  const selectedMonth = browserMonthRange(month);
+  if (!selectedMonth) return null;
+  const backup = {
+    type: "ticketops-monthly-backup",
+    version: 1,
+    month: selectedMonth,
+    generatedAt: new Date().toISOString(),
+    outlets: db.outlets || [],
+    outletLocations: db.outletLocations || {},
+    categories: db.categories || [],
+    assets: db.assets || [],
+    technicians: db.technicians || [],
+    maintenanceRules: db.maintenanceRules || [],
+    assignmentTimeWindows: db.assignmentTimeWindows || [],
+    tickets: (db.tickets || []).filter((ticket) => String(ticket.createdAt || "").slice(0, 7) === selectedMonth || String(ticket.updatedAt || "").slice(0, 7) === selectedMonth),
+    tasks: (db.tasks || []).filter((task) => String(task.date || task.taskDate || "").slice(0, 7) === selectedMonth)
+  };
+  return { ...backup, report: browserBackupReport(backup) };
+}
+
+function browserBackupReport(backup = {}) {
+  const tickets = backup.tickets || [];
+  const tasks = backup.tasks || [];
+  const doneTasks = tasks.filter((task) => task.status === "Done").length;
+  const openTickets = tickets.filter((ticket) => !["Closed", "Cancelled"].includes(ticket.status)).length;
+  const closedTickets = tickets.filter((ticket) => ticket.status === "Closed").length;
+  const outlets = [...new Set([...(backup.outlets || []), ...tickets.map((ticket) => ticket.outlet), ...tasks.map((task) => task.outlet)].filter(Boolean))].sort();
+  return {
+    month: backup.month || "",
+    totals: {
+      tickets: tickets.length,
+      openTickets,
+      closedTickets,
+      tasks: tasks.length,
+      completedTasks: doneTasks,
+      taskCompletionRate: tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 100
+    },
+    byOutlet: outlets.map((outlet) => {
+      const outletTickets = tickets.filter((ticket) => ticket.outlet === outlet);
+      const outletTasks = tasks.filter((task) => task.outlet === outlet);
+      return {
+        outlet,
+        tickets: outletTickets.length,
+        closed: outletTickets.filter((ticket) => ticket.status === "Closed").length,
+        tasks: outletTasks.length,
+        doneTasks: outletTasks.filter((task) => task.status === "Done").length
+      };
+    })
+  };
+}
+
 async function browserFallbackApi(path, options = {}) {
   const method = String(options.method || "GET").toUpperCase();
   const body = options.body ? JSON.parse(options.body) : {};
@@ -1396,9 +1692,196 @@ async function browserFallbackApi(path, options = {}) {
     browserRequireUser(user);
     return browserScopedDb(db, user);
   }
+  if (method === "GET" && /^\/api\/reports\/export\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const exportFile = browserExportCsv(db, decodeURIComponent(path.split("/")[4]));
+    if (!exportFile) throw new Error("Unknown report export");
+    return exportFile;
+  }
+  if (method === "GET" && /^\/api\/backups\/monthly\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const backup = browserMonthlyBackup(db, decodeURIComponent(path.split("/")[4]));
+    if (!backup) throw new Error("Use month format YYYY-MM");
+    return backup;
+  }
+  if (method === "POST" && path === "/api/backups/report") {
+    browserRequireAdmin(user);
+    if (body?.type !== "ticketops-monthly-backup") throw new Error("Invalid TicketOps backup file");
+    return browserBackupReport(body);
+  }
+  if (method === "POST" && /^\/api\/technician\/tasks\/[^/]+\/status$/.test(path)) {
+    browserRequireUser(user);
+    if (user.role !== "technician") throw new Error("Technician access only");
+    const task = db.tasks.find((item) => item.id === decodeURIComponent(path.split("/")[4]));
+    if (!task) throw new Error("Task not found");
+    if (task.assignedTo && user.technicianId && task.assignedTo !== user.technicianId) {
+      throw new Error("Technicians can only update their own tasks");
+    }
+    const status = String(body.status || "").toLowerCase();
+    if (!["done", "not_done"].includes(status)) throw new Error("Only status done or not_done is allowed");
+    task.status = status === "done" ? "Done" : "Not Done";
+    task.evidenceComment = body.comment || task.evidenceComment || "";
+    task.photoUrl = body.photoUrl || task.photoUrl || "";
+    task.evidencePhotoUrl = body.photoUrl || body.evidencePhotoUrl || task.evidencePhotoUrl || task.photoUrl || "";
+    task.photoUrls = body.photoUrls || task.photoUrls || [];
+    task.completedAt = task.status === "Done" ? new Date().toISOString() : "";
+    browserWriteDb(db);
+    return { task, reports: browserReports(db) };
+  }
   if (method === "GET" && path === "/api/categories") {
     browserRequireAdmin(user);
     return db.categories || [];
+  }
+  if (method === "POST" && path === "/api/outlets") {
+    browserRequireAdmin(user);
+    const name = String(body.name || "").trim();
+    if (!name) throw new Error("Outlet name is required");
+    if (!db.outlets.includes(name)) db.outlets.push(name);
+    db.outletLocations[name] = { address: body.address || "", latitude: body.latitude || null, longitude: body.longitude || null };
+    browserWriteDb(db);
+    return { name, ...(db.outletLocations[name] || {}) };
+  }
+  if (method === "PATCH" && /^\/api\/outlets\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const oldName = decodeURIComponent(path.split("/")[3]);
+    const name = String(body.name || oldName).trim();
+    if (!db.outlets.includes(oldName)) throw new Error("Outlet not found");
+    db.outlets = db.outlets.map((outlet) => outlet === oldName ? name : outlet);
+    const previousLocation = db.outletLocations[oldName] || {};
+    delete db.outletLocations[oldName];
+    db.outletLocations[name] = { ...previousLocation, address: body.address || previousLocation.address || "", latitude: body.latitude || previousLocation.latitude || null, longitude: body.longitude || previousLocation.longitude || null };
+    db.assets.forEach((asset) => { if (asset.outlet === oldName) asset.outlet = name; });
+    db.technicians.forEach((tech) => {
+      if (tech.outlet === oldName) tech.outlet = name;
+      tech.serviceOutlets = (tech.serviceOutlets || []).map((outlet) => outlet === oldName ? name : outlet);
+    });
+    db.users.forEach((item) => {
+      if (item.outlet === oldName) item.outlet = name;
+      item.allowedOutlets = (item.allowedOutlets || []).map((outlet) => outlet === oldName ? name : outlet);
+    });
+    browserWriteDb(db);
+    return { name, ...(db.outletLocations[name] || {}) };
+  }
+  if (method === "DELETE" && /^\/api\/outlets\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const name = decodeURIComponent(path.split("/")[3]);
+    db.outlets = db.outlets.filter((outlet) => outlet !== name);
+    delete db.outletLocations[name];
+    browserWriteDb(db);
+    return { ok: true };
+  }
+  if (method === "POST" && path === "/api/categories") {
+    browserRequireAdmin(user);
+    const category = { id: browserNextId(db.categories, "C-"), name: body.name || "", description: body.description || "" };
+    db.categories.push(category);
+    browserWriteDb(db);
+    return category;
+  }
+  if (method === "PATCH" && /^\/api\/categories\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const category = db.categories.find((item) => item.id === decodeURIComponent(path.split("/")[3]));
+    if (!category) throw new Error("Category not found");
+    Object.assign(category, { name: body.name || category.name, description: body.description || "" });
+    browserWriteDb(db);
+    return category;
+  }
+  if (method === "DELETE" && /^\/api\/categories\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const categoryId = decodeURIComponent(path.split("/")[3]);
+    db.categories = db.categories.filter((item) => item.id !== categoryId);
+    browserWriteDb(db);
+    return { ok: true };
+  }
+  if (method === "POST" && path === "/api/assets") {
+    browserRequireAdmin(user);
+    const asset = { id: browserNextId(db.assets, "ASSET-"), outlet: body.outlet || "", category: body.category || "", name: body.name || "", code: body.code || "", status: body.status || "Active", notes: body.notes || "" };
+    db.assets.unshift(asset);
+    browserWriteDb(db);
+    return asset;
+  }
+  if (method === "PATCH" && /^\/api\/assets\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const asset = db.assets.find((item) => item.id === decodeURIComponent(path.split("/")[3]));
+    if (!asset) throw new Error("Asset not found");
+    Object.assign(asset, { outlet: body.outlet || asset.outlet, category: body.category || asset.category, name: body.name || asset.name, code: body.code || "", status: body.status || asset.status || "Active" });
+    browserWriteDb(db);
+    return asset;
+  }
+  if (method === "DELETE" && /^\/api\/assets\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const assetId = decodeURIComponent(path.split("/")[3]);
+    db.assets = db.assets.filter((item) => item.id !== assetId);
+    browserWriteDb(db);
+    return { ok: true };
+  }
+  if (method === "POST" && path === "/api/technicians") {
+    browserRequireAdmin(user);
+    const technician = { id: browserNextId(db.technicians, "T-"), name: body.name || "", skill: body.skill || "", skills: body.skills || [], status: "Present", workload: 0, quality: 90, outlet: body.outlet || "", serviceOutlets: body.serviceOutlets || [] };
+    db.technicians.push(technician);
+    browserWriteDb(db);
+    return technician;
+  }
+  if (method === "PATCH" && /^\/api\/technicians\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const technician = db.technicians.find((item) => item.id === decodeURIComponent(path.split("/")[3]));
+    if (!technician) throw new Error("Technician not found");
+    Object.assign(technician, { name: body.name || technician.name, skill: body.skill || technician.skill, skills: body.skills || technician.skills || [], outlet: body.outlet || technician.outlet || "", serviceOutlets: body.serviceOutlets || technician.serviceOutlets || [] });
+    browserWriteDb(db);
+    return technician;
+  }
+  if (method === "DELETE" && /^\/api\/technicians\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const technicianId = decodeURIComponent(path.split("/")[3]);
+    db.technicians = db.technicians.filter((item) => item.id !== technicianId);
+    browserWriteDb(db);
+    return { ok: true };
+  }
+  if (method === "POST" && path === "/api/assignment-windows") {
+    browserRequireAdmin(user);
+    const window = { id: browserNextId(db.assignmentTimeWindows, "AW-"), name: body.name || "", days: body.allDays ? [0, 1, 2, 3, 4, 5, 6] : body.days || [], startTime: body.startTime || "", endTime: body.endTime || "", active: body.active !== false, createdAt: new Date().toISOString() };
+    db.assignmentTimeWindows.push(window);
+    browserWriteDb(db);
+    return window;
+  }
+  if (method === "PATCH" && /^\/api\/assignment-windows\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const window = db.assignmentTimeWindows.find((item) => item.id === decodeURIComponent(path.split("/")[3]));
+    if (!window) throw new Error("Dispatch window not found");
+    Object.assign(window, { name: body.name || window.name, days: body.allDays ? [0, 1, 2, 3, 4, 5, 6] : body.days || window.days || [], startTime: body.startTime || window.startTime, endTime: body.endTime || window.endTime, active: body.active !== false });
+    browserWriteDb(db);
+    return window;
+  }
+  if (method === "DELETE" && /^\/api\/assignment-windows\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const windowId = decodeURIComponent(path.split("/")[3]);
+    db.assignmentTimeWindows = db.assignmentTimeWindows.filter((item) => item.id !== windowId);
+    browserWriteDb(db);
+    return { ok: true };
+  }
+  if (method === "POST" && path === "/api/admin/users") {
+    browserRequireAdmin(user);
+    const username = String(body.username || "").trim().toLowerCase();
+    if (!username) throw new Error("Username is required");
+    const created = { id: browserNextId(db.users, "U-"), username, passwordPlain: body.password || "", name: body.name || username, post: body.post || "", role: body.role || "manager", outlet: (body.allowedOutlets || [])[0] || "", accessAllOutlets: Boolean(body.accessAllOutlets), allowedOutlets: body.allowedOutlets || [], address: body.address || "", defaultView: (body.role || "manager") === "technician" ? "technician" : "manager", allowedViews: ROLE_DEFAULT_VIEWS[body.role] || ROLE_DEFAULT_VIEWS.manager };
+    db.users.push(created);
+    browserWriteDb(db);
+    return browserPublicUser(created);
+  }
+  if (method === "PATCH" && /^\/api\/admin\/users\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const target = db.users.find((item) => item.id === decodeURIComponent(path.split("/")[4]));
+    if (!target) throw new Error("User not found");
+    Object.assign(target, { name: body.name || target.name, post: body.post || "", role: body.role || target.role, accessAllOutlets: Boolean(body.accessAllOutlets), allowedOutlets: body.allowedOutlets || [], outlet: (body.allowedOutlets || [])[0] || target.outlet || "", address: body.address || "" });
+    if (body.password) target.passwordPlain = body.password;
+    browserWriteDb(db);
+    return browserPublicUser(target);
+  }
+  if (method === "DELETE" && /^\/api\/admin\/users\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const userId = decodeURIComponent(path.split("/")[4]);
+    db.users = db.users.filter((item) => item.id !== userId);
+    browserWriteDb(db);
+    return { ok: true };
   }
   if (method === "POST" && path === "/api/reset") {
     browserRequireAdmin(user);
@@ -1460,6 +1943,43 @@ async function browserFallbackApi(path, options = {}) {
     browserWriteDb(db);
     return { ticket, reports: browserReports(db) };
   }
+  if (method === "PATCH" && /^\/api\/technicians\/[^/]+\/status$/.test(path)) {
+    browserRequireAdmin(user);
+    const technicianId = decodeURIComponent(path.split("/")[3]);
+    const tech = db.technicians.find((item) => item.id === technicianId);
+    if (!tech) throw new Error("Technician not found");
+    tech.status = body.status || tech.status;
+    browserWriteDb(db);
+    return { technician: tech, reports: browserReports(db) };
+  }
+  if (method === "POST" && path === "/api/maintenance-rules") {
+    browserRequireAdmin(user);
+    const rule = {
+      id: browserNextId(db.maintenanceRules, "MR-"),
+      active: true,
+      ...body,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    db.maintenanceRules.unshift(rule);
+    browserWriteDb(db);
+    return rule;
+  }
+  if (method === "PATCH" && /^\/api\/maintenance-rules\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const rule = db.maintenanceRules.find((item) => item.id === decodeURIComponent(path.split("/")[3]));
+    if (!rule) throw new Error("Maintenance rule not found");
+    Object.assign(rule, body, { updatedAt: new Date().toISOString() });
+    browserWriteDb(db);
+    return rule;
+  }
+  if (method === "DELETE" && /^\/api\/maintenance-rules\/[^/]+$/.test(path)) {
+    browserRequireAdmin(user);
+    const ruleId = decodeURIComponent(path.split("/")[3]);
+    db.maintenanceRules = db.maintenanceRules.filter((item) => item.id !== ruleId);
+    browserWriteDb(db);
+    return { ok: true };
+  }
   if (method === "POST" && /^\/api\/tickets\/[^/]+\/accept$/.test(path)) {
     browserRequireUser(user);
     const ticket = db.tickets.find((item) => item.id === decodeURIComponent(path.split("/")[3]));
@@ -1510,9 +2030,24 @@ async function appsScriptApi(path, options = {}) {
       body: options.body ? JSON.parse(options.body) : null
     })
   });
-  const payload = await response.json().catch(() => ({ error: "Request failed" }));
+  const text = await response.text();
+  let payload;
+  try {
+    payload = JSON.parse(text);
+  } catch (error) {
+    console.error("Apps Script returned invalid JSON", {
+      path,
+      status: response.status,
+      preview: text.slice(0, 240)
+    });
+    throw new Error("Live Google backend returned invalid JSON. Use ?data=browser for local redesign testing, or check the Apps Script response.");
+  }
   if (!response.ok || payload.ok === false) {
-    throw new Error(payload.error || payload.body?.error || "Request failed");
+    const backendError = payload.error || payload.body?.error || "Request failed";
+    if (/Expected ',' or ']' after array element in JSON/i.test(String(backendError))) {
+      throw new Error("Live Google backend data is corrupted in the Sheet snapshot. Local test data still works with ?data=browser.");
+    }
+    throw new Error(backendError);
   }
   return payload.body;
 }
@@ -1545,7 +2080,7 @@ function writeBootstrapCache(nextState, etag = "") {
 
 async function fetchBootstrapState({ preferCache = true } = {}) {
   const cached = readBootstrapCache();
-  if (preferCache && cached?.state && Date.now() - Number(cached.at || 0) < BOOTSTRAP_CACHE_TTL_MS) {
+  if (preferCache && !LOCAL_DATA_MODE && !USE_APPS_SCRIPT_API && cached?.state && Date.now() - Number(cached.at || 0) < BOOTSTRAP_CACHE_TTL_MS) {
     return cached.state;
   }
   if (USE_BROWSER_FALLBACK_API) {
@@ -1553,7 +2088,6 @@ async function fetchBootstrapState({ preferCache = true } = {}) {
       method: "GET",
       headers: cached?.etag ? { "If-None-Match": cached.etag } : {}
     });
-    writeBootstrapCache(nextState, "");
     return nextState;
   }
   if (USE_APPS_SCRIPT_API) {
@@ -1561,7 +2095,6 @@ async function fetchBootstrapState({ preferCache = true } = {}) {
       method: "GET",
       headers: cached?.etag ? { "If-None-Match": cached.etag } : {}
     });
-    writeBootstrapCache(nextState, "");
     return nextState;
   }
   const response = await fetch(`${API_BASE}/api/bootstrap`, {
@@ -1593,6 +2126,35 @@ async function loginWithCredentials(username, password) {
   await enterApp();
 }
 
+let appLoadingStartedAt = 0;
+let appLoadingHideTimer = 0;
+const APP_LOADING_MIN_MS = 180;
+
+function setAppLoading(isLoading, title = "Connecting Google data", detail = "Preparing dashboard, tickets, attendance, and reports.") {
+  window.clearTimeout(appLoadingHideTimer);
+  const overlay = document.querySelector("#appLoadingOverlay");
+  const titleEl = document.querySelector("#appLoadingTitle");
+  const detailEl = document.querySelector("#appLoadingDetail");
+  if (titleEl) titleEl.textContent = title;
+  if (detailEl) detailEl.textContent = detail;
+  if (isLoading) {
+    if (!document.body.classList.contains("is-app-loading")) {
+      appLoadingStartedAt = Date.now();
+    }
+    document.body.classList.add("is-app-loading");
+    if (overlay) overlay.setAttribute("aria-hidden", "false");
+    document.querySelector("#syncStatus").textContent = title;
+    return;
+  }
+
+  const elapsed = Date.now() - appLoadingStartedAt;
+  const delay = Math.max(0, APP_LOADING_MIN_MS - elapsed);
+  appLoadingHideTimer = window.setTimeout(() => {
+    document.body.classList.remove("is-app-loading");
+    if (overlay) overlay.setAttribute("aria-hidden", "true");
+  }, delay);
+}
+
 async function handleLogin(event) {
   event.preventDefault();
   const button = event.currentTarget.querySelector("button[type='submit']");
@@ -1616,6 +2178,7 @@ async function handleLogin(event) {
 
 function showLogin() {
   closeMobileNav();
+  setAppLoading(false);
   document.body.classList.remove("has-session");
   document.body.classList.remove("single-role-workspace", "role-admin", "role-manager", "role-technician", "role-auditor");
   delete document.body.dataset.view;
@@ -1631,13 +2194,27 @@ function showLogin() {
 async function enterApp() {
   document.body.classList.add("has-session");
   document.querySelector("#loginScreen").classList.add("is-hidden");
-  document.querySelector("#appShell").classList.remove("is-hidden");
+  document.querySelector("#appShell").classList.add("is-hidden");
   renderAuthChrome();
+  const routeView = requestedRouteView();
   const savedView = sessionStorage.getItem("ticketops-last-view");
-  document.body.dataset.view = savedView && canOpenView(savedView) ? savedView : roleHomeView();
-  await loadState();
-  switchView(document.body.dataset.view);
-  markUserActivity();
+  document.body.dataset.view = routeView && canOpenView(routeView)
+    ? routeView
+    : savedView && canOpenView(savedView)
+      ? savedView
+      : roleHomeView();
+  setAppLoading(true);
+  try {
+    await loadState();
+    document.querySelector("#appShell").classList.remove("is-hidden");
+    switchView(document.body.dataset.view);
+    markUserActivity();
+  } catch (error) {
+    document.querySelector("#appShell").classList.remove("is-hidden");
+    showConnectionError(error);
+  } finally {
+    setAppLoading(false);
+  }
 }
 
 function renderAuthChrome() {
@@ -1652,7 +2229,7 @@ function renderAuthChrome() {
   document.querySelector("#userPill").classList.remove("is-hidden");
   document.querySelector("#logoutButton").classList.remove("is-hidden");
   document.querySelector("#resetData").classList.toggle("is-hidden", currentUser?.role !== "admin");
-  document.querySelector("#sidebarToggle")?.classList.toggle("is-hidden", !currentUser || !isMobileNav() || singleRole);
+  document.querySelector("#sidebarToggle")?.classList.toggle("is-hidden", !currentUser || singleRole);
   document.querySelector(".tabs")?.classList.toggle("is-hidden", singleRole);
   updateMobileNav();
 
@@ -1666,23 +2243,28 @@ function renderAuthChrome() {
 
 async function loadState() {
   if (!currentUser) return;
-  state = await fetchBootstrapState();
-  rebuildStateIndex();
-  if (currentUser?.role === "admin" && state.stitch?.configured) {
-    try {
-      state.stitch = { ...state.stitch, ...(await api("/api/stitch/status")) };
-    } catch {
-      state.stitch = { ...state.stitch, connected: false, error: "Unable to verify Stitch right now" };
+  setAppLoading(true, "Reading live operations", "Loading tickets, technicians, outlets, schedules, and report totals.");
+  try {
+    state = normalizeBootstrapState(await fetchBootstrapState());
+    rebuildStateIndex();
+    if (currentUser?.role === "admin" && state.stitch?.configured) {
+      try {
+        state.stitch = { ...state.stitch, ...(await api("/api/stitch/status")) };
+      } catch {
+        state.stitch = { ...state.stitch, connected: false, error: "Unable to verify Stitch right now" };
+      }
     }
+    if (["admin", "auditor"].includes(currentUser?.role) || canUseView("masters") || canUseView("history")) {
+      await loadDirectoryUsers();
+    } else {
+      directoryUsers = [];
+    }
+    renderSelects();
+    render();
+    updateLiveIntel();
+  } finally {
+    setAppLoading(false);
   }
-  if (["admin", "auditor"].includes(currentUser?.role) || canUseView("masters") || canUseView("history")) {
-    await loadDirectoryUsers();
-  } else {
-    directoryUsers = [];
-  }
-  renderSelects();
-  render();
-  updateLiveIntel();
 }
 
 async function loadDirectoryUsers() {
@@ -1705,18 +2287,22 @@ async function createTicket(event) {
     const photoUrls = await readTicketPhotos();
     const photoUrl = photoUrls[0] || "";
     const impact = document.querySelector("#ticketImpact").value;
-    const category = document.querySelector("#ticketCategory").value;
-    const note = document.querySelector("#ticketNote").value.trim();
-    const assetValue = document.querySelector("#ticketAsset").value;
-    const photoRequired = ticketRequiresPhoto({ impact, category, note });
-    if (photoRequired && !photoUrl) {
-      throw new Error("Photo is required for critical, food-safety, gas, electrical, leak, or temperature issues.");
-    }
+  const category = document.querySelector("#ticketCategory").value;
+  const note = document.querySelector("#ticketNote").value.trim();
+  const assetValue = document.querySelector("#ticketAsset").value;
+  const outlet = document.querySelector("#ticketOutlet").value;
+  if (!outlet) {
+    throw new Error("Add an outlet before creating a ticket.");
+  }
+  const photoRequired = ticketRequiresPhoto({ impact, category, note });
+  if (photoRequired && !photoUrl) {
+    throw new Error("Photo is required for critical, food-safety, gas, electrical, leak, or temperature issues.");
+  }
 
     const created = await api("/api/tickets", {
       method: "POST",
       body: JSON.stringify({
-        outlet: document.querySelector("#ticketOutlet").value,
+        outlet,
         category,
         assetId: assetValue === "__other" ? "" : assetValue,
         unknownAsset: assetValue === "__other",
@@ -1886,6 +2472,7 @@ async function assignTicket(ticketId, technicianId) {
     body: JSON.stringify(payload)
   });
   await loadState();
+  showToast(`${ticket?.id || "Ticket"} assigned to ${technician?.name || "technician"}.`, "success");
 }
 
 async function saveTicketSchedule(ticketId) {
@@ -2364,6 +2951,8 @@ function fillMaintenanceRuleForm(ruleId) {
   updateRuleTimeDisabled();
   updateRuleRecurrenceFields();
   renderRuleAssignmentsBoard();
+  document.querySelector("#maintenanceRuleForm")?.scrollIntoView({ block: "start", behavior: "smooth" });
+  showToast(`Editing ${rule.title}.`, "info");
 }
 
 async function toggleMaintenanceRule(ruleId, active) {
@@ -2374,6 +2963,7 @@ async function toggleMaintenanceRule(ruleId, active) {
     body: JSON.stringify({ active })
   });
   await loadState();
+  showToast(`Rule ${active ? "enabled" : "paused"}.`, "success");
 }
 
 async function deleteMaintenanceRule(ruleId, title) {
@@ -2381,6 +2971,7 @@ async function deleteMaintenanceRule(ruleId, title) {
   if (!confirm(`Delete rule "${title}"? This cannot be undone.`)) return;
   await api(`/api/maintenance-rules/${ruleId}`, { method: "DELETE" });
   await loadState();
+  showToast(`Deleted ${title}.`, "success");
 }
 
 async function updateTechnicianStatus(technicianId, status) {
@@ -2438,6 +3029,14 @@ async function deleteTask(taskId) {
 }
 
 async function downloadReport(type) {
+  if (LOCAL_DATA_MODE) {
+    const exportFile = await browserFallbackApi(`/api/reports/export/${type}`, {
+      method: "GET",
+      headers: currentUser ? { "X-TicketOps-User": currentUser.id, "X-TicketOps-Role": currentUser.role } : {}
+    });
+    downloadBlob(new Blob([exportFile.csv || ""], { type: "text/csv;charset=utf-8" }), exportFile.filename || `ticketops-${type}.csv`);
+    return;
+  }
   if (USE_APPS_SCRIPT_API) {
     const exportFile = await appsScriptApi(`/api/reports/export/${type}`, { method: "GET" });
     downloadBlob(new Blob([exportFile.csv || ""], { type: "text/csv;charset=utf-8" }), exportFile.filename || `ticketops-${type}.csv`);
@@ -2477,6 +3076,14 @@ function downloadBlob(blob, filename) {
 
 async function downloadMonthlyBackup() {
   const month = document.querySelector("#backupMonth")?.value || todayInputValue().slice(0, 7);
+  if (LOCAL_DATA_MODE) {
+    const backup = await browserFallbackApi(`/api/backups/monthly/${encodeURIComponent(month)}`, {
+      method: "GET",
+      headers: currentUser ? { "X-TicketOps-User": currentUser.id, "X-TicketOps-Role": currentUser.role } : {}
+    });
+    downloadBlob(new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" }), `ticketops-backup-${month}.json`);
+    return;
+  }
   if (USE_APPS_SCRIPT_API) {
     const backup = await appsScriptApi(`/api/backups/monthly/${encodeURIComponent(month)}`, { method: "GET" });
     downloadBlob(new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" }), `ticketops-backup-${month}.json`);
@@ -2589,9 +3196,16 @@ function renderSelects() {
   const ticketOutlets = managerOutlets.length ? managerOutlets : state.outlets;
 
   if (outletSelect) {
-    outletSelect.innerHTML = ticketOutlets
-      .map((outlet) => `<option value="${escapeHtml(outlet)}">${escapeHtml(outlet)}</option>`)
-      .join("");
+    outletSelect.innerHTML = ticketOutlets.length
+      ? ticketOutlets.map((outlet) => `<option value="${escapeHtml(outlet)}">${escapeHtml(outlet)}</option>`).join("")
+      : `<option value="">No outlets available</option>`;
+    outletSelect.disabled = !ticketOutlets.length;
+  }
+
+  const ticketSubmit = document.querySelector("#ticketForm button[type='submit']");
+  if (ticketSubmit) {
+    ticketSubmit.disabled = !ticketOutlets.length;
+    ticketSubmit.textContent = ticketOutlets.length ? "Create Ticket" : "Add outlet first";
   }
 
   function renderTicketAssets() {
@@ -2722,9 +3336,9 @@ function renderSelects() {
     const scope = document.querySelector("#managerScope");
     if (scope) scope.textContent = `${userOutletLabel(currentUser)} auto dispatch`;
   } else if (outletSelect) {
-    outletSelect.disabled = false;
+    outletSelect.disabled = !ticketOutlets.length;
     const scope = document.querySelector("#managerScope");
-    if (scope) scope.textContent = "Coverage + time auto dispatch";
+    if (scope) scope.textContent = ticketOutlets.length ? "Coverage + time auto dispatch" : "Add outlet first";
   }
 
   renderTicketAssets();
@@ -3031,11 +3645,11 @@ function categoryRepairRows(tickets) {
   return [...map.values()].sort((a, b) => b.open - a.open || b.total - a.total || a.category.localeCompare(b.category));
 }
 
-function renderCategoryRepairBoard(tickets) {
+function renderCategoryRepairBoard(tickets, limit = Infinity) {
   const rows = categoryRepairRows(tickets);
   const max = Math.max(...rows.map((row) => row.open), 1);
   return rows.length
-    ? rows.slice(0, 5).map((row, index) => {
+    ? rows.slice(0, limit).map((row, index) => {
       const percent = Math.round((row.open / max) * 100);
       return `
         <article class="repair-row heat-${Math.min(index + 1, 5)}" style="--repair-load: ${percent}%">
@@ -3307,7 +3921,7 @@ function renderDashboard() {
     ["30D Value", formatClosePrice(closePriceMonth), "Priced closures in 30 days", "teal", Math.min(100, closePriceMonth / 1000), "30D", "30d-value"],
     ["Checklist", todayTasks.length ? `${doneTasks}/${todayTasks.length}` : "0/0", "Daily PM completion", "coral", taskPercent, "PM", "checklist"]
   ].map(([label, value, detail, tone, meter, badge, kpiKey]) => `
-    <article class="dashboard-kpi ${tone}" data-kpi-key="${escapeHtml(kpiKey || label)}" role="button" tabindex="0" aria-label="View ${escapeHtml(label)} details">
+    <article class="dashboard-kpi ${tone} kpi-${escapeHtml(kpiKey || label)}" data-kpi-key="${escapeHtml(kpiKey || label)}" role="button" tabindex="0" aria-label="View ${escapeHtml(label)} details">
       <div class="dashboard-kpi-head">
         <span>${escapeHtml(label)}</span>
         <b>${escapeHtml(badge)}</b>
@@ -3375,12 +3989,12 @@ function renderDashboard() {
     todayTasks,
     doneTasks
   );
-  document.querySelector("#dashboardSummaryCategories").innerHTML = renderCategoryRepairBoard(allScopedTickets);
-  document.querySelector("#dashboardSummaryOutlets").innerHTML = outletHealthCards(4) || `<div class="empty mini">No outlet data yet.</div>`;
+  document.querySelector("#dashboardSummaryCategories").innerHTML = renderCategoryRepairBoard(allScopedTickets, 8);
+  document.querySelector("#dashboardSummaryOutlets").innerHTML = outletHealthCards(Math.max(state.outlets.length, 8)) || `<div class="empty mini">No outlet data yet.</div>`;
 
   document.querySelector("#openClawAdvisorBoard").innerHTML = openClawAdvisor(allScopedTickets, reports, actions);
-  document.querySelector("#categoryRepairBoard").innerHTML = renderCategoryRepairBoard(allScopedTickets);
-  document.querySelector("#outletHealthBoard").innerHTML = outletHealthCards(6) || `<div class="empty mini">No outlet data yet.</div>`;
+  document.querySelector("#categoryRepairBoard").innerHTML = renderCategoryRepairBoard(allScopedTickets, 12);
+  document.querySelector("#outletHealthBoard").innerHTML = outletHealthCards(Math.max(state.outlets.length, 10)) || `<div class="empty mini">No outlet data yet.</div>`;
 
   document.querySelector("#needsActionBoard").innerHTML = actions.length
     ? actions.map((item) => `
@@ -3391,7 +4005,7 @@ function renderDashboard() {
       `).join("")
     : `<div class="empty mini">No urgent action right now.</div>`;
 
-  document.querySelector("#dispatchBrainBoard").innerHTML = state.technicians.slice(0, 6).map((tech) => {
+  document.querySelector("#dispatchBrainBoard").innerHTML = state.technicians.map((tech) => {
     const activeJobs = (stateIndex.ticketsByTechnicianId.get(tech.id) || [])
       .filter((ticket) => scopedTicketIds.has(ticket.id))
       .length;
@@ -3418,7 +4032,7 @@ function renderDashboard() {
   }
 
   document.querySelector("#dashboardActivityBoard").innerHTML = activities.length
-    ? activities.slice(0, 3).map((item) => `
+    ? activities.slice(0, 8).map((item) => `
         <article class="activity-item">
           <div>
             <strong>${escapeHtml(item.ticketId)} / ${escapeHtml(item.outlet)}</strong>
@@ -3710,11 +4324,16 @@ function renderAdmin() {
   const workload = state.reports.technicianWorkload || [];
   const today = todayInputValue();
   const openTickets = state.tickets.filter((ticket) => ticket.status !== "Closed");
-  document.querySelector("#attendanceBoard").innerHTML = state.technicians.map((tech) => {
+  document.querySelector("#attendanceBoard").innerHTML = state.technicians.length ? state.technicians.map((tech) => {
     const techLoad = workload.find((item) => item.id === tech.id)?.openTickets || 0;
     const statusClass = `status-${token(tech.status)}`;
     const activePlan = tech.activeAttendancePlan;
     const nextPlan = (tech.attendancePlans || []).find((plan) => plan.id !== activePlan?.id);
+    const availability = ["Present", "Emergency Available"].includes(tech.status)
+      ? "Available"
+      : tech.status === "Busy"
+        ? "Busy"
+        : "Unavailable";
     return `
       <article class="tech-card ${statusClass}">
         <div class="tech-status-row">
@@ -3727,6 +4346,10 @@ function renderAdmin() {
           </div>
           <span class="status-dot" aria-hidden="true"></span>
         </div>
+        <div class="attendance-signal">
+          <span>${escapeHtml(availability)}</span>
+          <span>${techLoad} active jobs</span>
+        </div>
         <select class="status-select" data-tech-status="${escapeHtml(tech.id)}" aria-label="Status for ${escapeHtml(tech.name)}">
           ${["Present", "Busy", "Break", "On Leave", "Absent", "Off Duty", "Emergency Available"].map((status) => (
             `<option ${tech.status === status ? "selected" : ""}>${escapeHtml(status)}</option>`
@@ -3734,7 +4357,7 @@ function renderAdmin() {
         </select>
       </article>
     `;
-  }).join("");
+  }).join("") : `<div class="empty">No technicians found.</div>`;
 
   document.querySelector("#adminTechnicianDashboard").innerHTML = state.technicians.length
     ? state.technicians.map((tech) => {
@@ -3753,15 +4376,29 @@ function renderAdmin() {
           ? `${nextTicket.id} / ${nextTicket.note}`
           : "No active work";
       const completion = todayTasks.length ? Math.round((doneTasks / todayTasks.length) * 100) : 100;
+      const capacityScore = techTickets.length + pendingTasks + notDoneTasks + (blockedTickets * 2);
+      const capacityState = blockedTickets
+        ? "Blocked load"
+        : token(tech.status) === "present" && capacityScore <= 1
+          ? "Ready"
+          : capacityScore >= 4
+            ? "High load"
+            : "Steady";
+      const capacityClass = token(capacityState);
 
       return `
-        <article class="admin-tech-card status-${token(tech.status)}">
+        <article class="admin-tech-card status-${token(tech.status)} capacity-${capacityClass}">
           <div class="admin-tech-top">
             <div>
               <strong>${escapeHtml(tech.name)}</strong>
               <span>${escapeHtml(technicianSkillLabel(tech))} / ${escapeHtml(tech.status)}</span>
             </div>
-            <span class="badge">${completion}% checklist</span>
+            <span class="badge capacity-badge">${escapeHtml(capacityState)}</span>
+          </div>
+          <div class="admin-tech-load">
+            <span><strong>${techTickets.length}</strong><small>active tickets</small></span>
+            <span><strong>${pendingTasks + notDoneTasks}</strong><small>open tasks</small></span>
+            <span><strong>${completion}%</strong><small>checklist</small></span>
           </div>
           <div class="admin-tech-stats">
             <span><strong>${doneTasks}</strong><small>done</small></span>
@@ -3770,7 +4407,7 @@ function renderAdmin() {
             <span><strong>${techTickets.length}</strong><small>tickets</small></span>
             <span><strong>${blockedTickets}</strong><small>blocked</small></span>
           </div>
-          <p>${escapeHtml(nextWork)}</p>
+          <p class="admin-tech-next">Next: ${escapeHtml(nextWork)}</p>
           <div class="mini-progress" aria-label="Checklist progress">
             <span style="width: ${completion}%"></span>
           </div>
@@ -3846,12 +4483,22 @@ function renderMaintenanceScheduler() {
   document.querySelector("#maintenanceRulesBoard").innerHTML = rules.length
     ? rules.map((rule) => {
       const timeLabel = rule.allowOutsideWindow ? "All day" : `${escapeHtml(rule.startTime || "?")} - ${escapeHtml(rule.endTime || "?")}`;
-      const reminderLabel = rule.reminderDays ? ` / Reminder ${escapeHtml(rule.reminderDays)} days before` : "";
+      const reminderLabel = rule.reminderDays ? `${escapeHtml(rule.reminderDays)}d reminder` : "No reminder";
+      const assignmentCount = assignmentListForRule(rule).length;
       return `
-      <article class="rule-row ${rule.active === false ? "is-paused" : ""}">
-        <div>
-          <strong>${escapeHtml(rule.title)}</strong>
-          <span>${escapeHtml(rule.outlet || "All outlets")} / ${escapeHtml(rule.category)} / ${timeLabel} / ${escapeHtml(scheduleLabel(rule))} / ${escapeHtml(maintenanceRuleTechnicianLabel(rule))}${reminderLabel}</span>
+      <article class="rule-row scheduler-rule-card ${rule.active === false ? "is-paused" : "is-active-rule"}">
+        <div class="rule-main">
+          <div class="rule-title-row">
+            <strong>${escapeHtml(rule.title)}</strong>
+            <span class="rule-state">${rule.active === false ? "Paused" : "Active"}</span>
+          </div>
+          <span class="rule-meta">${escapeHtml(rule.outlet || "All outlets")} / ${escapeHtml(rule.category)} / ${escapeHtml(maintenanceRuleTechnicianLabel(rule))}</span>
+          <div class="rule-chip-row">
+            <span>${timeLabel}</span>
+            <span>${escapeHtml(scheduleLabel(rule))}</span>
+            <span>${reminderLabel}</span>
+            <span>${assignmentCount || 1} outlet${(assignmentCount || 1) === 1 ? "" : "s"}</span>
+          </div>
         </div>
         <div class="rule-actions">
           <button class="small-button" data-edit-rule="${escapeHtml(rule.id)}">Edit</button>
@@ -3902,14 +4549,22 @@ function renderMaintenanceScheduler() {
     ? preview.slice(0, 12).map((item) => {
       const timeLabel = item.rule.allowOutsideWindow ? "All day" : `${item.rule.startTime || "?"} - ${item.rule.endTime || "?"}`;
       return `
-      <article class="rule-row">
-        <div>
-          <strong>${escapeHtml(item.rule.title)}</strong>
-          <span>${escapeHtml(item.outlet)} / ${escapeHtml(item.asset.name)} / ${escapeHtml(item.technician.name)} / ${timeLabel} / ${escapeHtml(scheduleLabel(item.rule))}</span>
+      <article class="rule-row scheduler-preview-card">
+        <div class="rule-main">
+          <div class="rule-title-row">
+            <strong>${escapeHtml(item.rule.title)}</strong>
+            <span class="rule-state">Tomorrow</span>
+          </div>
+          <span class="rule-meta">${escapeHtml(item.outlet)} / ${escapeHtml(item.asset.name)} / ${escapeHtml(item.technician.name)}</span>
+          <div class="rule-chip-row">
+            <span>${escapeHtml(timeLabel)}</span>
+            <span>${escapeHtml(scheduleLabel(item.rule))}</span>
+          </div>
         </div>
       </article>`;
     }).join("") + (preview.length > 12 ? `<div class="empty mini">${preview.length - 12} more tasks will generate.</div>` : "")
     : `<div class="empty mini">No task will generate tomorrow from active rules.</div>`;
+  renderRuleAssignmentsBoard();
 }
 function closeAssetDetail() {
   document.querySelector("#assetDetailOverlay")?.classList.add("is-hidden");
@@ -4242,8 +4897,20 @@ function renderTechnician() {
     </section>
   ` : "";
 
+  const evidenceJobs = activeTech ? `
+    <section class="technician-job-section technician-evidence-section">
+      <div class="mini-heading">
+        <span class="section-kicker">Evidence Submitted</span>
+        <strong>${escapeHtml(doneTickets.length)} ready for review</strong>
+      </div>
+      ${doneTickets.length
+        ? doneTickets.slice(0, 4).map((ticket) => ticketCard(ticket, "technician")).join("")
+        : `<div class="empty">Completed tickets with proof will appear here after submission.</div>`}
+    </section>
+  ` : "";
+
   ticketBoard.innerHTML = activeTech
-    ? scheduledJobs + ticketJobs
+    ? scheduledJobs + ticketJobs + evidenceJobs
     : "";
 }
 
@@ -4659,13 +5326,17 @@ function renderPasswordResetControl(scope, helpText) {
     </div>
     <div class="password-stack" data-password-reset-shell>
       <form id="${escapeHtml(scope)}PasswordResetForm" class="password-form" data-password-reset-form>
-        <select data-password-reset-user required>
+        <select data-password-reset-user autocomplete="username" required>
           <option value="">Choose user</option>
           ${directoryUsers.map((user) => `<option value="${escapeHtml(user.id)}">${escapeHtml(user.name)} / ${escapeHtml(user.role)} / ${escapeHtml(user.username)}</option>`).join("")}
         </select>
-        <input data-password-reset-value type="text" placeholder="New password, min 8 characters" minlength="8">
+        <input data-password-reset-value type="password" autocomplete="new-password" placeholder="Optional new password, min 8 characters" minlength="8">
         <button class="small-button warning" type="submit">Reset Password</button>
       </form>
+      <div class="password-safety">
+        <span>Blank password auto-generates a temporary password.</span>
+        <span>Share reset credentials outside the shared screen.</span>
+      </div>
       <p class="password-feedback" data-password-reset-status>Leave the password field blank to auto-generate a temporary password.</p>
     </div>
   `;
@@ -4938,7 +5609,7 @@ function updateLiveIntel() {
   const unassigned = reports.unassigned || 0;
   const present = reports.presentTechnicians || 0;
   const total = reports.technicianCount || 0;
-  const verificationPending = state.tickets.filter((ticket) => ["Resolved", "Verification Pending"].includes(ticket.status)).length;
+  const verificationPending = (state.tickets || []).filter((ticket) => ["Resolved", "Verification Pending"].includes(ticket.status)).length;
 
   document.querySelector("#intelSla").textContent = critical ? `${critical} Critical` : blocked ? `${blocked} Blocked` : open ? "Stable" : "Clear";
   document.querySelector("#intelSlaDetail").textContent = critical
@@ -5015,10 +5686,19 @@ function switchView(viewName) {
 
   sessionStorage.setItem("ticketops-last-view", nextView);
   document.body.dataset.view = nextView;
+  const nextFile = VIEW_ROUTE_FILES[nextView] || "index.html";
+  const currentFile = location.pathname.split("/").pop() || "index.html";
+  if (currentFile !== nextFile && location.protocol !== "capacitor:") {
+    const nextUrl = new URL(location.href);
+    nextUrl.pathname = nextUrl.pathname.replace(/[^/]*$/, nextFile);
+    nextUrl.searchParams.delete("view");
+    history.replaceState(null, "", nextUrl);
+  }
   document.querySelectorAll(".tab[data-view]").forEach((tab) => tab.classList.toggle("is-active", tab.dataset.view === nextView));
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("is-active", view.id === nextView));
   renderActiveView(nextView);
   closeMobileNav();
+  requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0 }));
 
   if (document.activeElement instanceof HTMLElement) {
     document.activeElement.blur();
@@ -5045,8 +5725,8 @@ function showConnectionError(error) {
       <button class="primary-button" id="saveApiBase">Save API URL</button>
     </section>
   `;
-  document.querySelector("#saveApiBase").addEventListener("click", () => {
-    localStorage.setItem("ticketops-api-base", document.querySelector("#apiBaseInput").value.trim());
+  bind("#saveApiBase", "click", () => {
+    localStorage.setItem("ticketops-api-base", document.querySelector("#apiBaseInput")?.value.trim() || "");
     window.location.reload();
   });
 }
@@ -5085,7 +5765,7 @@ function startWaterDrift() {
   });
 }
 
-document.querySelector("#loginForm").addEventListener("submit", handleLogin);
+bind("#loginForm", "submit", handleLogin);
 
 document.querySelectorAll(".tab[data-view]").forEach((button) => {
   button.addEventListener("click", () => switchView(button.dataset.view));
@@ -5171,55 +5851,79 @@ initCollapsiblePanels();
 document.getElementById("kpiDrillClose")?.addEventListener("click", closeKpiDrill);
 document.getElementById("kpiDrillOverlay")?.addEventListener("click", (e) => { if (e.target === e.currentTarget) closeKpiDrill(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeKpiDrill(); });
-document.querySelector("#ticketForm").addEventListener("submit", createTicket);
-document.querySelector("#ticketPhoto").addEventListener("change", updateTicketPhotoHint);
-document.querySelector("#ticketImpact").addEventListener("change", updateTicketPriorityPreview);
-document.querySelector("#ticketCategory").addEventListener("change", updateTicketPriorityPreview);
-document.querySelector("#ticketNote").addEventListener("input", updateTicketPriorityPreview);
-document.querySelector("#assetForm").addEventListener("submit", saveAssetMaster);
-document.querySelector("#assetCancel").addEventListener("click", resetAssetForm);
-document.querySelector("#outletForm").addEventListener("submit", createOutlet);
-document.querySelector("#outletCancel").addEventListener("click", resetOutletForm);
-document.querySelector("#categoryForm").addEventListener("submit", createCategory);
-document.querySelector("#categoryCancel").addEventListener("click", resetCategoryForm);
-document.querySelector("#technicianForm").addEventListener("submit", saveTechnicianMaster);
-document.querySelector("#technicianCancel").addEventListener("click", resetTechnicianForm);
-document.querySelector("#userAccessForm").addEventListener("submit", saveUserAccess);
-document.querySelector("#userAccessCancel").addEventListener("click", resetUserAccessForm);
-document.querySelector("#accessRole").addEventListener("change", () => {
+bind("#ticketForm", "submit", createTicket);
+bind("#ticketPhoto", "change", updateTicketPhotoHint);
+bind("#ticketImpact", "change", updateTicketPriorityPreview);
+bind("#ticketCategory", "change", updateTicketPriorityPreview);
+bind("#ticketNote", "input", updateTicketPriorityPreview);
+bind("#assetForm", "submit", saveAssetMaster);
+bind("#assetCancel", "click", resetAssetForm);
+bind("#outletForm", "submit", createOutlet);
+bind("#outletCancel", "click", resetOutletForm);
+bind("#categoryForm", "submit", createCategory);
+bind("#categoryCancel", "click", resetCategoryForm);
+bind("#technicianForm", "submit", saveTechnicianMaster);
+bind("#technicianCancel", "click", resetTechnicianForm);
+bind("#userAccessForm", "submit", saveUserAccess);
+bind("#userAccessCancel", "click", resetUserAccessForm);
+bind("#accessRole", "change", () => {
   updateUserAccessVisibility();
   renderMasterSelectionPanels();
 });
-document.querySelector("#accessAllOutlets").addEventListener("change", () => {
+bind("#accessAllOutlets", "change", () => {
   updateUserAccessVisibility();
   renderMasterSelectionPanels();
 });
-document.querySelector("#assignmentWindowForm").addEventListener("submit", saveAssignmentWindow);
-document.querySelector("#assignmentWindowCancel").addEventListener("click", resetAssignmentWindowForm);
-document.querySelector("#maintenanceRuleForm").addEventListener("submit", createMaintenanceRule);
-document.querySelector("#ruleCancel").addEventListener("click", resetMaintenanceRuleForm);
-document.querySelector("#ruleAllowOutsideWindow").addEventListener("change", updateRuleTimeDisabled);
-document.querySelector("#ruleOutlet").addEventListener("change", () => populateRuleTechnicians(document.querySelector("#ruleOutlet").value, ""));
-document.querySelector("#activeTechnician").addEventListener("change", renderTechnician);
+bind("#assignmentWindowForm", "submit", saveAssignmentWindow);
+bind("#assignmentWindowCancel", "click", resetAssignmentWindowForm);
+bind("#maintenanceRuleForm", "submit", createMaintenanceRule);
+bind("#ruleCancel", "click", resetMaintenanceRuleForm);
+bind("#ruleAllowOutsideWindow", "change", updateRuleTimeDisabled);
+bind("#ruleOutlet", "change", () => populateRuleTechnicians(document.querySelector("#ruleOutlet")?.value || "", ""));
+bind("#activeTechnician", "change", renderTechnician);
 document.querySelectorAll("[data-master-tab]").forEach((button) => {
   button.addEventListener("click", () => switchMasterTab(button.dataset.masterTab));
 });
-document.querySelector("#logoutButton").addEventListener("click", () => {
+bind("#logoutButton", "click", () => {
   clearUser();
   showLogin();
 });
-document.querySelector("#themeToggle").addEventListener("click", toggleTheme);
-document.querySelector("#dashboardSummaryMode")?.addEventListener("click", () => toggleDashboardMode("summary"));
-document.querySelector("#dashboardDetailMode")?.addEventListener("click", () => toggleDashboardMode("detail"));
-document.querySelector("#sidebarToggle").addEventListener("click", () => {
+bind("#themeToggle", "click", toggleTheme);
+bind("#dashboardSummaryMode", "click", () => toggleDashboardMode("summary"));
+bind("#dashboardDetailMode", "click", () => toggleDashboardMode("detail"));
+document.querySelector(".topbar")?.addEventListener("pointerenter", (event) => {
+  if (!currentUser || isMobileNav()) return;
+  event.currentTarget.scrollTo?.({ top: 0, left: 0 });
+  setSidebarHoverOpen(true);
+});
+document.querySelector(".topbar")?.addEventListener("pointerleave", () => {
+  setSidebarHoverOpen(false);
+});
+document.querySelector(".topbar")?.addEventListener("focusin", (event) => {
+  if (!currentUser || isMobileNav()) return;
+  event.currentTarget.scrollTo?.({ top: 0, left: 0 });
+  setSidebarHoverOpen(true);
+});
+document.querySelector(".topbar")?.addEventListener("focusout", (event) => {
+  if (event.currentTarget.contains(event.relatedTarget)) return;
+  setSidebarHoverOpen(false);
+});
+bind("#sidebarToggle", "click", () => {
   if (!currentUser) return;
-  toggleMobileNav();
+  if (isMobileNav()) {
+    toggleMobileNav();
+  } else {
+    toggleDesktopNav();
+  }
 });
-document.querySelector("#navBackdrop").addEventListener("click", closeMobileNav);
+bind("#navBackdrop", "click", closeMobileNav);
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") closeMobileNav();
+  if (event.key === "Escape") {
+    closeMobileNav();
+    closeDesktopNav();
+  }
 });
-document.querySelector("#resetData").addEventListener("click", async () => {
+bind("#resetData", "click", async () => {
   if (currentUser?.role !== "admin") return;
   await api("/api/reset", { method: "POST" });
   await loadState();
@@ -5323,7 +6027,7 @@ document.addEventListener("click", async (event) => {
   const taskPhotoButton = event.target.closest?.("[data-task-photo]");
   if (taskPhotoButton) {
     const task = (state.tasks || []).find((item) => item.id === taskPhotoButton.dataset.taskPhoto);
-    openPhotoLightbox(`${task?.id || "Task"} — evidence photo`, [task?.evidencePhotoUrl]);
+    openPhotoLightbox(`${task?.id || "Task"} — evidence photo`, [task?.evidencePhotoUrl || task?.photoUrl]);
     return;
   }
 
@@ -5662,7 +6366,13 @@ document.addEventListener("change", async (event) => {
 
   const techId = event.target.dataset.techStatus;
   if (!techId) return;
-  await updateTechnicianStatus(techId, event.target.value);
+  try {
+    await updateTechnicianStatus(techId, event.target.value);
+    showToast(`${event.target.value} status saved.`, "success");
+  } catch (error) {
+    showToast(error.message, "error");
+    await loadState();
+  }
 });
 
 ["pointerdown", "keydown", "touchstart", "input", "change", "submit"].forEach((eventName) => {

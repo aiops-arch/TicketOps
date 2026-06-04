@@ -6,6 +6,14 @@ const out = path.join(root, "www");
 
 const files = [
   "index.html",
+  "dashboard.html",
+  "manager.html",
+  "admin.html",
+  "scheduler.html",
+  "masters.html",
+  "technician.html",
+  "history.html",
+  "reports.html",
   "customer.html",
   "styles.css",
   "customer.css",
