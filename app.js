@@ -18,7 +18,8 @@ function requestedRouteView() {
   const file = location.pathname.split("/").pop() || "index.html";
   return ROUTE_FILE_VIEWS[file] || "";
 }
-const LOCAL_DATA_MODE = LOCAL_QUERY.get("data") || "";
+const ALLOW_LOCAL_DATA_MODE = ["localhost", "127.0.0.1", "::1"].includes(location.hostname) || location.protocol === "file:";
+const LOCAL_DATA_MODE = ALLOW_LOCAL_DATA_MODE ? (LOCAL_QUERY.get("data") || "") : "";
 const QUERY_API_BASE = LOCAL_QUERY.get("apiBase") || "";
 const CONFIG_API_BASE = QUERY_API_BASE || window.TICKETOPS_CONFIG?.apiBase || window.TICKETOPS_API_BASE || "";
 const STORED_API_BASE = localStorage.getItem("ticketops-api-base") || "";

@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v38-photo-lightbox";
+const CACHE_NAME = "ticketops-v39-live-data-guard";
 const APP_SHELL = [
   "./",
   "./index.html",
