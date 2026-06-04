@@ -24255,6 +24255,46 @@ body.ops-portal .ops-chart {
     opacity var(--ops-motion-fast) var(--ops-ease) !important;
 }
 
+body.ops-portal .closed-history-detail .ticket-card {
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-items: start !important;
+}
+
+body.ops-portal .closed-history-detail .ticket-card .ticket-top,
+body.ops-portal .closed-history-detail .ticket-card .ticket-flow,
+body.ops-portal .closed-history-detail .ticket-card .ticket-progress,
+body.ops-portal .closed-history-detail .ticket-card .badge-row,
+body.ops-portal .closed-history-detail .ticket-card > .ticket-meta,
+body.ops-portal .closed-history-detail .ticket-card .ticket-photo,
+body.ops-portal .closed-history-detail .ticket-card .assignment-signal {
+  grid-column: 1 / -1 !important;
+  grid-row: auto !important;
+}
+
+body.ops-portal .closed-history-detail .ticket-card .actions {
+  grid-column: 1 / -1 !important;
+  grid-row: auto !important;
+  align-self: start !important;
+}
+
+@media (max-width: 980px) {
+  body.ops-portal .closed-history-detail .ticket-card {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.ops-portal .closed-history-detail .ticket-card .ticket-top,
+  body.ops-portal .closed-history-detail .ticket-card .ticket-flow,
+  body.ops-portal .closed-history-detail .ticket-card .ticket-progress,
+  body.ops-portal .closed-history-detail .ticket-card .badge-row,
+  body.ops-portal .closed-history-detail .ticket-card > .ticket-meta,
+  body.ops-portal .closed-history-detail .ticket-card .ticket-photo,
+  body.ops-portal .closed-history-detail .ticket-card .assignment-signal,
+  body.ops-portal .closed-history-detail .ticket-card .actions {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+}
+
 body.ops-portal .panel .panel,
 body.ops-portal .panel .report-card,
 body.ops-portal .panel .settings-card {

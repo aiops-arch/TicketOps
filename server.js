@@ -3053,11 +3053,20 @@ async function updateTicketStatus(ticketId, status, detail, user, evidence = {})
   if (user.role === "technician" && status === "Resolved" && !resolutionPhotoUrls.length) {
     return { status: 400, body: { error: "Completion photo is required before resolving the ticket" } };
   }
+  const closePrice = Number(evidence.closePrice || 0);
+  if (closePrice > 0 && (user.role !== "admin" || status !== "Closed")) {
+    return { status: 403, body: { error: "Only admin can edit a closed ticket price" } };
+  }
 
   const action = detail || `Status changed to ${status}`;
   if (useSupabase) {
     const updatePayload = { status, latest_detail: action, updated_at: new Date().toISOString() };
     if ((status === "Resolved" || status === "Closed") && resolutionPhotoUrls.length) updatePayload.resolution_photo_urls = resolutionPhotoUrls;
+    if (closePrice > 0) {
+      updatePayload.close_price = closePrice;
+      updatePayload.close_price_by = evidence.closePriceBy || user.id;
+      updatePayload.close_price_at = evidence.closePriceAt || new Date().toISOString();
+    }
     await requireSupabase(
       await supabase
         .from("tickets")
@@ -3071,6 +3080,11 @@ async function updateTicketStatus(ticketId, status, detail, user, evidence = {})
   ticket.status = status;
   ticket.latestDetail = action;
   if ((status === "Resolved" || status === "Closed") && resolutionPhotoUrls.length) ticket.resolutionPhotoUrls = resolutionPhotoUrls;
+  if (closePrice > 0) {
+    ticket.closePrice = closePrice;
+    ticket.closePriceBy = evidence.closePriceBy || user.id;
+    ticket.closePriceAt = evidence.closePriceAt || new Date().toISOString();
+  }
   ticket.history.push({ at: new Date().toISOString(), action });
   writeJsonDb(db);
   return { status: 200, body: ticket };
@@ -4065,7 +4079,10 @@ app.patch(
     if (!req.body.status) return res.status(400).json({ error: "status is required" });
     const result = await updateTicketStatus(req.params.id, req.body.status, req.body.detail, user, {
       evidencePhotoUrl: req.body.evidencePhotoUrl,
-      evidencePhotoUrls: req.body.evidencePhotoUrls
+      evidencePhotoUrls: req.body.evidencePhotoUrls,
+      closePrice: req.body.closePrice,
+      closePriceBy: req.body.closePriceBy,
+      closePriceAt: req.body.closePriceAt
     });
     res.status(result.status).json(result.body);
   })

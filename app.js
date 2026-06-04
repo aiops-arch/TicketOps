@@ -1035,6 +1035,24 @@ function taskFrequencyLabel(task) {
   return match ? frequencyLabel(match[1].toLowerCase().replace(/\s+/g, "-")) : "Scheduled";
 }
 
+function ticketCategoryLabel(ticket = {}) {
+  const asset = assetById(ticket.assetId);
+  return ticket.category || asset?.category || "Uncategorized";
+}
+
+function taskCategoryLabel(task = {}) {
+  const rule = maintenanceRuleForTask(task);
+  const asset = assetById(task.assetId);
+  return task.category || rule?.category || asset?.category || "Uncategorized";
+}
+
+function taskAssignedByLabel(task = {}) {
+  const rule = maintenanceRuleForTask(task);
+  if (task.createdBy) return userById(task.createdBy)?.name || task.createdBy;
+  if (rule?.createdBy) return userById(rule.createdBy)?.name || rule.createdBy;
+  return rule ? "Scheduler rule" : "System";
+}
+
 function isMaintenanceRuleDueOn(rule, day) {
   const date = new Date(`${day}T00:00:00`);
   const dayOfWeek = date.getDay();
@@ -1075,6 +1093,8 @@ function scheduledTaskRows(tasks, { allowActions = false } = {}) {
     const rule = maintenanceRuleForTask(task);
     const windowText = rule?.allowOutsideWindow ? "All day" : rule ? `${rule.startTime || "?"} - ${rule.endTime || "?"}` : "Scheduled";
     const technician = technicianById(task.assignedTo);
+    const category = taskCategoryLabel(task);
+    const assignedBy = taskAssignedByLabel(task);
     const needsEvidence = taskRequiresEvidence(task);
     const evidencePhoto = task.evidencePhotoUrl || task.photoUrl || "";
     return `
@@ -1084,7 +1104,7 @@ function scheduledTaskRows(tasks, { allowActions = false } = {}) {
             <strong>${escapeHtml(title)}</strong>
             <span class="task-window">${escapeHtml(windowText)}</span>
           </div>
-          <span class="task-meta">${escapeHtml(task.outlet)} / ${escapeHtml(technician?.name || "Unassigned")} / ${escapeHtml(taskFrequencyLabel(task))}</span>
+          <span class="task-meta">${escapeHtml(task.outlet)} / Category: ${escapeHtml(category)} / Tech: ${escapeHtml(technician?.name || "Unassigned")} / Assigned by: ${escapeHtml(assignedBy)} / ${escapeHtml(taskFrequencyLabel(task))}</span>
           <div class="task-tags">
             <span>${escapeHtml(task.status)}</span>
             <span>${escapeHtml(phase)}</span>
@@ -2435,6 +2455,33 @@ async function setTicketStatus(ticketId, status, detail = "") {
   await loadState();
 }
 
+async function editClosedTicketPrice(ticketId) {
+  if (currentUser?.role !== "admin") return;
+  const ticket = (state.tickets || []).find((item) => item.id === ticketId);
+  if (!ticket) return;
+  const priceInput = await showPromptModal("Updated closing price", Number(ticket.closePrice || 0) > 0 ? String(ticket.closePrice) : "");
+  if (priceInput === null) return;
+  const closePrice = parseClosePrice(priceInput);
+  if (closePrice <= 0) {
+    showToast("Enter a valid closing price greater than zero.", "warning");
+    return;
+  }
+  const detail = await showPromptModal("Admin price edit note", `Admin corrected close price to ${formatClosePrice(closePrice)}`);
+  if (!detail?.trim()) return;
+  await api(`/api/tickets/${ticketId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      status: "Closed",
+      detail: detail.trim(),
+      closePrice,
+      closePriceBy: currentUser?.id || "",
+      closePriceAt: new Date().toISOString()
+    })
+  });
+  await loadState();
+  showToast(`${ticketId} close price updated.`, "success");
+}
+
 async function detailForStatus(status) {
   if (status === "Blocked") {
     return await showPromptModal("Blocked reason", "Spare part required") || "";
@@ -3404,6 +3451,7 @@ function renderSelects() {
 function renderActionButtons(ticket, mode, canVerify, canWork) {
   const canDeleteAssignment = Boolean(ticket.assignedTo) && (currentUser?.role === "admin" || ticket.createdBy === currentUser?.id);
   const canAdminClose = currentUser?.role === "admin" && ticket.status !== "Closed";
+  const isClosed = ticket.status === "Closed";
   const availableStatuses = ["Present", "Busy", "Emergency Available"];
   // Admin sees every technician (available first) — unavailable ones go through the
   // override-with-reason flow instead of disappearing from the dropdown entirely.
@@ -3432,11 +3480,12 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
 
   if (mode === "admin" && canUseView("admin")) {
     return `
-      <div class="action-group-title">Dispatch</div>
+      <div class="action-group-title">${isClosed ? "Admin Recovery" : "Dispatch"}</div>
       <select data-assign="${escapeHtml(ticket.id)}" aria-label="Assign ${escapeHtml(ticket.id)}">${assignmentOptions}</select>
-      <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">Assign Job</button>
+      <button class="small-button primary" data-assign-button="${escapeHtml(ticket.id)}">${isClosed ? "Reassign + Reopen" : "Assign Job"}</button>
       ${canDeleteAssignment ? `<button class="small-button danger" data-delete-assignment="${escapeHtml(ticket.id)}">Delete</button>` : ""}
-      <button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Blocked">Blocked</button>
+      ${isClosed ? `<button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Reopened">Reopen</button>` : `<button class="small-button warning" data-status="${escapeHtml(ticket.id)}:Blocked">Blocked</button>`}
+      ${(isClosed || Number(ticket.closePrice || 0) > 0) ? `<button class="small-button" data-edit-close-price="${escapeHtml(ticket.id)}">Edit Price</button>` : ""}
       ${canAdminClose ? `<button class="small-button success" data-status="${escapeHtml(ticket.id)}:Closed">Close Ticket</button>` : ""}
     `;
   }
@@ -3457,6 +3506,7 @@ function renderActionButtons(ticket, mode, canVerify, canWork) {
 function ticketCard(ticket, mode) {
   const assigned = technicianById(ticket.assignedTo);
   const asset = (state.assets || []).find((item) => item.id === ticket.assetId);
+  const category = ticketCategoryLabel(ticket);
   const suggested = !assigned && ticket.status !== "Closed" ? ticket.suggestedTechnician : null;
   const selectedTech = assigned || suggested;
   const selectedSummary = selectedTech ? technicianAssignmentSummary(selectedTech, ticket) : null;
@@ -3479,7 +3529,7 @@ function ticketCard(ticket, mode) {
       <div class="ticket-top">
         <div>
           <h3 class="ticket-title"><span class="ticket-id">${escapeHtml(ticket.id)}</span> ${escapeHtml(ticket.note || "Maintenance request")}</h3>
-          <p class="ticket-meta">${escapeHtml(ticket.outlet)}${ticket.area ? ` / ${escapeHtml(ticket.area)}` : ""} / ${escapeHtml(asset?.name || ticket.category)} / ${escapeHtml(ticket.impact)}</p>
+          <p class="ticket-meta">${escapeHtml(ticket.outlet)}${ticket.area ? ` / ${escapeHtml(ticket.area)}` : ""} / Category: ${escapeHtml(category)} / Asset: ${escapeHtml(asset?.name || "General")} / ${escapeHtml(ticket.impact)}</p>
           <p class="ticket-meta">Opened ${escapeHtml(formatDateTime(ticket.createdAt))} / ${escapeHtml(formatAge(ticket.createdAt))}</p>
         </div>
         <span class="badge ${priorityClass}">${escapeHtml(PRIORITY_LABELS[ticket.priority] || ticket.priority)}</span>
@@ -3500,6 +3550,7 @@ function ticketCard(ticket, mode) {
         <span class="badge ${statusClass}">${escapeHtml(ticket.status)}</span>
         <span class="badge">${escapeHtml(assigned ? assigned.name : "Unassigned")}</span>
         ${ticket.scheduledAt ? `<span class="badge">Dispatch ${escapeHtml(formatDateTime(ticket.scheduledAt))}</span>` : ""}
+        ${Number(ticket.closePrice || 0) > 0 ? `<span class="badge status-closed">Close ${escapeHtml(formatClosePrice(ticket.closePrice))}</span>` : ""}
         ${photoUrls.length ? `<span class="badge photo-badge">${photoUrls.length} Photo${photoUrls.length === 1 ? "" : "s"}</span>` : ""}
         ${resolutionPhotoUrls.length ? `<span class="badge status-closed">Completion Photo</span>` : ""}
         ${suggested ? `<span class="badge confidence">Score ${escapeHtml(suggested.dispatchScore || "OK")}: ${escapeHtml(suggested.name)}</span>` : ""}
@@ -4739,7 +4790,8 @@ function closedHistoryCard(ticket) {
   const closedTime = closedAt(ticket);
   const duration = formatDurationBetween(ticket.createdAt, closedTime);
   const problem = ticket.note || ticket.latestDetail || "Maintenance request";
-  const fullCard = ticketCard(ticket, "archive");
+  const category = ticketCategoryLabel(ticket);
+  const fullCard = ticketCard(ticket, currentUser?.role === "admin" ? "admin" : "archive");
 
   return `
     <details class="closed-history-card">
@@ -4747,12 +4799,13 @@ function closedHistoryCard(ticket) {
         <div class="closed-history-problem">
           <span class="section-kicker">${escapeHtml(ticket.id)}</span>
           <strong>${escapeHtml(problem)}</strong>
-          <small>${escapeHtml(asset?.name || ticket.category || "General repair")}</small>
+          <small>${escapeHtml(category)} / ${escapeHtml(asset?.name || "General repair")}</small>
         </div>
         <div class="closed-history-facts" aria-label="Closed ticket summary">
           <span><b>Manager</b>${escapeHtml(closedTicketManager(ticket))}</span>
           <span><b>Outlet</b>${escapeHtml(ticket.outlet || "Not recorded")}</span>
           <span><b>Technician</b>${escapeHtml(assigned?.name || "Unassigned")}</span>
+          <span><b>Price</b>${escapeHtml(Number(ticket.closePrice || 0) > 0 ? formatClosePrice(ticket.closePrice) : "Not priced")}</span>
           <span><b>Time</b>${escapeHtml(duration)}</span>
         </div>
         <span class="closed-history-toggle">View full</span>
@@ -6127,6 +6180,16 @@ document.addEventListener("click", async (event) => {
     const select = document.querySelector(`[data-assign="${assignId}"]`);
     try {
       await assignTicket(assignId, select?.value || "");
+    } catch (error) {
+      showToast(error.message, "error");
+    }
+    return;
+  }
+
+  const editClosePriceButton = event.target.closest?.("[data-edit-close-price]");
+  if (editClosePriceButton) {
+    try {
+      await editClosedTicketPrice(editClosePriceButton.dataset.editClosePrice);
     } catch (error) {
       showToast(error.message, "error");
     }
