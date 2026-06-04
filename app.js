@@ -2078,6 +2078,12 @@ function writeBootstrapCache(nextState, etag = "") {
   }
 }
 
+function hasOperationalData(nextState) {
+  if (!nextState || typeof nextState !== "object") return false;
+  return ["outlets", "categories", "assets", "technicians", "tickets", "tasks", "maintenanceRules", "assignmentTimeWindows"]
+    .some((key) => Array.isArray(nextState[key]) && nextState[key].length > 0);
+}
+
 async function fetchBootstrapState({ preferCache = true } = {}) {
   const cached = readBootstrapCache();
   if (preferCache && !LOCAL_DATA_MODE && !USE_APPS_SCRIPT_API && cached?.state && Date.now() - Number(cached.at || 0) < BOOTSTRAP_CACHE_TTL_MS) {
@@ -2091,11 +2097,24 @@ async function fetchBootstrapState({ preferCache = true } = {}) {
     return nextState;
   }
   if (USE_APPS_SCRIPT_API) {
-    const nextState = await appsScriptApi("/api/bootstrap", {
-      method: "GET",
-      headers: cached?.etag ? { "If-None-Match": cached.etag } : {}
-    });
-    return nextState;
+    try {
+      const nextState = normalizeBootstrapState(await appsScriptApi("/api/bootstrap", {
+        method: "GET",
+        headers: cached?.etag ? { "If-None-Match": cached.etag } : {}
+      }));
+      if (!hasOperationalData(nextState) && cached?.state && hasOperationalData(cached.state)) {
+        showToast("Live data returned empty. Showing last synced data while the backend catches up.", "warning", 6000);
+        return cached.state;
+      }
+      writeBootstrapCache(nextState, cached?.etag || "");
+      return nextState;
+    } catch (error) {
+      if (cached?.state && hasOperationalData(cached.state)) {
+        showToast("Live data could not refresh. Showing last synced data.", "warning", 6000);
+        return cached.state;
+      }
+      throw error;
+    }
   }
   const response = await fetch(`${API_BASE}/api/bootstrap`, {
     headers: {
