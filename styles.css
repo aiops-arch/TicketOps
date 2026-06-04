@@ -23641,3 +23641,646 @@ body.ops-portal.has-session[data-view="dashboard"] #dashboard .command-hero {
 body.ops-portal.has-session[data-view="dashboard"] #dashboard .hero-metrics article {
   min-height: clamp(58px, 5.4vw, 74px) !important;
 }
+
+/* Station 94: keep dashboard panel rows balanced; overflow scrolls inside panels. */
+body.ops-portal.has-session[data-view="dashboard"] .dashboard-summary-grid,
+body.ops-portal.has-session[data-view="dashboard"] .dashboard-detail-grid {
+  align-items: stretch !important;
+}
+
+body.ops-portal.has-session[data-view="dashboard"] .dashboard-summary-grid > .dashboard-panel,
+body.ops-portal.has-session[data-view="dashboard"] .dashboard-detail-grid > .dashboard-panel {
+  height: clamp(560px, 70vh, 800px) !important;
+  max-height: clamp(560px, 70vh, 800px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+body.ops-portal.has-session[data-view="dashboard"] .dashboard-panel > :not(.panel-heading),
+body.ops-portal.has-session[data-view="dashboard"] .dashboard-openclaw-panel > :not(.panel-heading),
+body.ops-portal.has-session[data-view="dashboard"] .dashboard-category-panel > :not(.panel-heading),
+body.ops-portal.has-session[data-view="dashboard"] .dashboard-tech-panel > :not(.panel-heading) {
+  min-height: 0 !important;
+}
+
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryActions,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryCategories,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryOutlets,
+body.ops-portal.has-session[data-view="dashboard"] #openClawAdvisorBoard,
+body.ops-portal.has-session[data-view="dashboard"] #categoryRepairBoard,
+body.ops-portal.has-session[data-view="dashboard"] #outletHealthBoard,
+body.ops-portal.has-session[data-view="dashboard"] #needsActionBoard,
+body.ops-portal.has-session[data-view="dashboard"] #dispatchBrainBoard,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardActivityBoard {
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  scrollbar-width: thin !important;
+  gap: 12px !important;
+  padding-right: 8px !important;
+  scroll-padding-block: 8px !important;
+}
+
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryActions .action-item,
+body.ops-portal.has-session[data-view="dashboard"] #needsActionBoard .action-item,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardActivityBoard .activity-item,
+body.ops-portal.has-session[data-view="dashboard"] #categoryRepairBoard .repair-row,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryCategories .repair-row,
+body.ops-portal.has-session[data-view="dashboard"] #outletHealthBoard .outlet-card,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryOutlets .outlet-card {
+  min-height: 58px !important;
+  padding-block: 12px !important;
+  align-items: center !important;
+}
+
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryActions .action-item strong,
+body.ops-portal.has-session[data-view="dashboard"] #needsActionBoard .action-item strong,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardActivityBoard .activity-item strong,
+body.ops-portal.has-session[data-view="dashboard"] #categoryRepairBoard .repair-row strong,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryCategories .repair-row strong,
+body.ops-portal.has-session[data-view="dashboard"] #outletHealthBoard .outlet-card strong,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryOutlets .outlet-card strong {
+  line-height: 1.18 !important;
+}
+
+body.ops-portal.has-session[data-view="dashboard"] #outletHealthBoard .outlet-card,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryOutlets .outlet-card {
+  position: relative !important;
+  display: grid !important;
+  grid-template-rows: auto auto !important;
+  align-content: start !important;
+  gap: 10px !important;
+  min-height: 92px !important;
+  padding: 14px 16px 22px !important;
+}
+
+body.ops-portal.has-session[data-view="dashboard"] #outletHealthBoard .outlet-card-main,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryOutlets .outlet-card-main {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+body.ops-portal.has-session[data-view="dashboard"] #outletHealthBoard .outlet-card-main strong,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryOutlets .outlet-card-main strong {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.ops-portal.has-session[data-view="dashboard"] #outletHealthBoard .outlet-stats,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryOutlets .outlet-stats {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+
+body.ops-portal.has-session[data-view="dashboard"] #outletHealthBoard .outlet-stats span,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryOutlets .outlet-stats span {
+  min-height: 22px !important;
+  padding: 3px 9px !important;
+  line-height: 1.1 !important;
+}
+
+body.ops-portal.has-session[data-view="dashboard"] #outletHealthBoard .outlet-card::after,
+body.ops-portal.has-session[data-view="dashboard"] #dashboardSummaryOutlets .outlet-card::after {
+  left: 16px !important;
+  right: auto !important;
+  bottom: 10px !important;
+  max-width: calc(100% - 32px) !important;
+}
+
+@media (max-width: 1180px) {
+  body.ops-portal.has-session[data-view="dashboard"] .dashboard-summary-grid > .dashboard-panel,
+  body.ops-portal.has-session[data-view="dashboard"] .dashboard-detail-grid > .dashboard-panel {
+    height: auto !important;
+    max-height: none !important;
+  }
+}
+
+/* Station 95: Manager Desk professional density and queue polish. */
+body.ops-portal.has-session[data-view="manager"] #manager {
+  --manager-gap: clamp(12px, 1vw, 18px);
+  --manager-radius: 10px;
+  --manager-panel-h: clamp(520px, 68vh, 760px);
+  display: grid !important;
+  grid-template-columns: minmax(360px, 0.82fr) minmax(520px, 1.18fr) !important;
+  grid-template-areas:
+    "stage stage"
+    "rail queue" !important;
+  gap: var(--manager-gap) !important;
+  align-items: start !important;
+  max-width: min(1760px, 100%) !important;
+  margin-inline: auto !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #manager .intake-panel.is-collapsed {
+  min-height: 76px !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #manager .manager-stage {
+  grid-area: stage !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.55fr) !important;
+  align-items: center !important;
+  gap: clamp(14px, 2vw, 28px) !important;
+  min-height: 0 !important;
+  padding: clamp(14px, 1.4vw, 20px) clamp(16px, 1.8vw, 26px) !important;
+  border-radius: var(--manager-radius) !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #manager .manager-stage h2 {
+  margin: 4px 0 4px !important;
+  font-size: clamp(24px, 2vw, 34px) !important;
+  line-height: 1.04 !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #manager .manager-stage p {
+  max-width: 72ch !important;
+  font-size: clamp(12px, 0.86vw, 14px) !important;
+  line-height: 1.35 !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerPulse {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerPulse article {
+  min-height: 70px !important;
+  padding: 10px 12px !important;
+  border-radius: var(--manager-radius) !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #manager .manager-side-rail {
+  grid-area: rail !important;
+  display: grid !important;
+  gap: var(--manager-gap) !important;
+  align-self: start !important;
+  min-width: 0 !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #manager .admin-access-panel {
+  grid-area: queue !important;
+  min-width: 0 !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #manager .intake-panel,
+body.ops-portal.has-session[data-view="manager"] #manager .manager-scheduled-panel,
+body.ops-portal.has-session[data-view="manager"] #manager .admin-access-panel {
+  border-radius: var(--manager-radius) !important;
+  padding: clamp(14px, 1.25vw, 18px) !important;
+  box-shadow: 0 12px 34px color-mix(in srgb, var(--shadow, rgba(15, 23, 42, 0.16)) 44%, transparent) !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #manager .admin-access-panel,
+body.ops-portal.has-session[data-view="manager"] #manager .manager-scheduled-panel {
+  max-height: calc(var(--manager-panel-h) + 90px) !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #manager .panel > .panel-heading {
+  min-height: 0 !important;
+  padding-bottom: 10px !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--brand) 12%, var(--border)) !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #manager .panel-heading h2 {
+  margin-top: 5px !important;
+  font-size: clamp(17px, 1.05vw, 20px) !important;
+  line-height: 1.15 !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #ticketForm {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  padding: 14px !important;
+  border-radius: var(--manager-radius) !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #ticketForm label {
+  gap: 6px !important;
+  font-size: 11px !important;
+  line-height: 1.15 !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #ticketForm input,
+body.ops-portal.has-session[data-view="manager"] #ticketForm select {
+  min-height: 42px !important;
+  border-radius: 9px !important;
+  font-size: 13px !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #ticketForm label:nth-of-type(3),
+body.ops-portal.has-session[data-view="manager"] #ticketForm label:nth-of-type(6),
+body.ops-portal.has-session[data-view="manager"] #ticketForm .photo-upload,
+body.ops-portal.has-session[data-view="manager"] #ticketPhotoPreview,
+body.ops-portal.has-session[data-view="manager"] #ticketPriorityPreview,
+body.ops-portal.has-session[data-view="manager"] #ticketForm .primary-button {
+  grid-column: 1 / -1 !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #ticketPriorityPreview {
+  min-height: 48px !important;
+  padding: 10px 12px !important;
+  border-radius: 9px !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #ticketForm .primary-button {
+  min-height: 46px !important;
+  border-radius: 9px !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets,
+body.ops-portal.has-session[data-view="manager"] #managerScheduledJobs {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  scrollbar-width: thin !important;
+  padding: 10px 8px 2px 0 !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .manager-summary,
+body.ops-portal.has-session[data-view="manager"] #managerScheduledJobs .manager-summary {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+  padding: 0 0 8px !important;
+  background: linear-gradient(180deg, var(--surface-1) 76%, transparent) !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .manager-summary span,
+body.ops-portal.has-session[data-view="manager"] #managerScheduledJobs .manager-summary span {
+  min-height: 24px !important;
+  padding: 4px 9px !important;
+  font-size: 11px !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .manager-queue-group {
+  gap: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .queue-group-heading {
+  position: sticky !important;
+  top: 34px !important;
+  z-index: 1 !important;
+  padding: 8px 10px !important;
+  border-radius: 9px !important;
+  background: color-mix(in srgb, var(--surface-1) 92%, var(--brand) 8%) !important;
+  backdrop-filter: blur(12px) saturate(140%) !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .queue-group-list,
+body.ops-portal.has-session[data-view="manager"] #managerScheduledJobs .technician-task-list {
+  display: grid !important;
+  gap: 9px !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-card,
+body.ops-portal.has-session[data-view="manager"] #managerScheduledJobs .task-row {
+  border-radius: 10px !important;
+  padding: 11px 12px !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-card {
+  grid-template-columns: minmax(0, 1.06fr) minmax(280px, 0.94fr) !important;
+  align-items: start !important;
+  column-gap: 14px !important;
+  row-gap: 8px !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-top {
+  grid-column: 1 / 2 !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-flow,
+body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-progress,
+body.ops-portal.has-session[data-view="manager"] #managerTickets .badge-row,
+body.ops-portal.has-session[data-view="manager"] #managerTickets .dispatch-confidence,
+body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-photo,
+body.ops-portal.has-session[data-view="manager"] #managerTickets .actions {
+  grid-column: 2 / 3 !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-photo {
+  margin-top: 0 !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-photo img {
+  width: 72px !important;
+  height: 52px !important;
+  object-fit: cover !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-title {
+  font-size: 14px !important;
+  line-height: 1.18 !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-meta {
+  font-size: 12px !important;
+  line-height: 1.28 !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-flow span,
+body.ops-portal.has-session[data-view="manager"] #managerTickets .badge,
+body.ops-portal.has-session[data-view="manager"] #managerTickets .actions .small-button {
+  min-height: 28px !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-flow,
+body.ops-portal.has-session[data-view="manager"] #managerTickets .badge-row,
+body.ops-portal.has-session[data-view="manager"] #managerTickets .actions {
+  gap: 6px !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-progress {
+  gap: 6px !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #managerScheduledJobs .task-row {
+  min-height: 92px !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #manager .panel.is-collapsed {
+  max-height: none !important;
+  overflow: hidden !important;
+}
+
+body.ops-portal.has-session[data-view="manager"] #manager .panel.is-collapsed > .panel-heading {
+  border-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+@media (max-width: 1280px) {
+  body.ops-portal.has-session[data-view="manager"] #manager {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas:
+      "stage"
+      "rail"
+      "queue" !important;
+  }
+
+  body.ops-portal.has-session[data-view="manager"] #manager .admin-access-panel,
+  body.ops-portal.has-session[data-view="manager"] #manager .manager-scheduled-panel {
+    max-height: none !important;
+  }
+
+  body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-card {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-top,
+  body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-flow,
+  body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-progress,
+  body.ops-portal.has-session[data-view="manager"] #managerTickets .badge-row,
+  body.ops-portal.has-session[data-view="manager"] #managerTickets .dispatch-confidence,
+  body.ops-portal.has-session[data-view="manager"] #managerTickets .ticket-photo,
+  body.ops-portal.has-session[data-view="manager"] #managerTickets .actions {
+    grid-column: auto !important;
+  }
+}
+
+@media (max-width: 720px) {
+  body.ops-portal.has-session[data-view="manager"] #manager .manager-stage,
+  body.ops-portal.has-session[data-view="manager"] #managerPulse,
+  body.ops-portal.has-session[data-view="manager"] #ticketForm {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* Station 96: master consistency layer for TicketOps OS. */
+:root {
+  --ops-radius-panel: 10px;
+  --ops-radius-card: 10px;
+  --ops-radius-control: 9px;
+  --ops-gap-page: clamp(12px, 1vw, 18px);
+  --ops-gap-panel: 12px;
+  --ops-pad-panel: clamp(14px, 1.2vw, 18px);
+  --ops-control-h: 42px;
+  --ops-control-sm-h: 30px;
+  --ops-chip-h: 26px;
+  --ops-scrollbar: color-mix(in srgb, var(--brand, #1a8b88) 42%, transparent);
+  --ops-ease: cubic-bezier(0.2, 0.9, 0.22, 1);
+  --ops-motion-fast: 150ms;
+  --ops-motion: 220ms;
+}
+
+body.ops-portal .view {
+  gap: var(--ops-gap-page) !important;
+}
+
+body.ops-portal .panel,
+body.ops-portal .command-hero,
+body.ops-portal .page-stage,
+body.ops-portal .metric,
+body.ops-portal .dashboard-kpi,
+body.ops-portal .ops-chart,
+body.ops-portal .report-card,
+body.ops-portal .settings-card,
+body.ops-portal .admin-tech-card,
+body.ops-portal .tech-card {
+  border-radius: var(--ops-radius-panel) !important;
+}
+
+body.ops-portal .panel {
+  padding: var(--ops-pad-panel) !important;
+}
+
+body.ops-portal .panel-heading {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: start !important;
+  gap: var(--ops-gap-panel) !important;
+  min-height: 0 !important;
+  padding-bottom: 12px !important;
+}
+
+body.ops-portal .panel-heading h2 {
+  margin: 5px 0 0 !important;
+  color: var(--ink-strong) !important;
+  font-size: clamp(17px, 1.08vw, 20px) !important;
+  font-weight: 850 !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0 !important;
+}
+
+body.ops-portal .section-kicker,
+body.ops-portal .heading-chip {
+  display: inline-grid !important;
+  place-items: center !important;
+  box-sizing: border-box !important;
+  width: fit-content !important;
+  max-width: min(100%, 320px) !important;
+  min-height: var(--ops-chip-h) !important;
+  height: var(--ops-chip-h) !important;
+  padding: 0 13px !important;
+  border-radius: 999px !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  text-align: center !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body.ops-portal .section-kicker {
+  border: 1px solid color-mix(in srgb, var(--brand, #1a8b88) 72%, var(--border)) !important;
+  background: color-mix(in srgb, var(--brand, #1a8b88) 13%, var(--surface-raised, #e9fbfb)) !important;
+  color: var(--brand-strong, #22706d) !important;
+}
+
+body.ops-portal .heading-chip {
+  border: 1px solid color-mix(in srgb, var(--brand, #1a8b88) 54%, var(--border)) !important;
+  background: color-mix(in srgb, var(--brand, #1a8b88) 9%, var(--surface-2, #eefafa)) !important;
+  color: var(--brand-strong, #22706d) !important;
+}
+
+body.ops-portal input,
+body.ops-portal select,
+body.ops-portal textarea {
+  min-height: var(--ops-control-h) !important;
+  border-radius: var(--ops-radius-control) !important;
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+}
+
+body.ops-portal .primary-button,
+body.ops-portal .small-button,
+body.ops-portal .ghost-button,
+body.ops-portal .panel-collapse-toggle {
+  border-radius: var(--ops-radius-control) !important;
+  letter-spacing: 0 !important;
+  transition:
+    transform var(--ops-motion-fast) var(--ops-ease),
+    border-color var(--ops-motion-fast) var(--ops-ease),
+    background-color var(--ops-motion-fast) var(--ops-ease),
+    color var(--ops-motion-fast) var(--ops-ease),
+    box-shadow var(--ops-motion-fast) var(--ops-ease) !important;
+}
+
+body.ops-portal .primary-button {
+  min-height: 46px !important;
+}
+
+body.ops-portal .small-button,
+body.ops-portal .ghost-button,
+body.ops-portal .panel-collapse-toggle {
+  min-height: var(--ops-control-sm-h) !important;
+}
+
+body.ops-portal .ticket-card,
+body.ops-portal .task-row,
+body.ops-portal .master-row,
+body.ops-portal .rule-row,
+body.ops-portal .action-item,
+body.ops-portal .activity-item,
+body.ops-portal .repair-row,
+body.ops-portal .outlet-card,
+body.ops-portal .dispatch-card {
+  border-radius: var(--ops-radius-card) !important;
+  min-width: 0 !important;
+}
+
+body.ops-portal .ticket-card,
+body.ops-portal .task-row,
+body.ops-portal .action-item,
+body.ops-portal .activity-item {
+  padding: 12px !important;
+}
+
+body.ops-portal .badge,
+body.ops-portal .priority-badge,
+body.ops-portal .status-badge,
+body.ops-portal .ticket-flow span,
+body.ops-portal .task-tags span,
+body.ops-portal .outlet-stats span,
+body.ops-portal .rule-chip-row span {
+  min-height: 24px !important;
+  border-radius: 999px !important;
+  padding: 3px 9px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+}
+
+body.ops-portal .card-list,
+body.ops-portal .queue-group-list,
+body.ops-portal .technician-task-list,
+body.ops-portal .task-list,
+body.ops-portal .master-list,
+body.ops-portal .rule-list {
+  gap: 10px !important;
+}
+
+body.ops-portal .card-list,
+body.ops-portal .queue-group-list,
+body.ops-portal .technician-task-list,
+body.ops-portal .task-list,
+body.ops-portal .master-list,
+body.ops-portal .rule-list,
+body.ops-portal [id$="Board"],
+body.ops-portal [id$="Jobs"] {
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--ops-scrollbar) transparent !important;
+}
+
+body.ops-portal .panel,
+body.ops-portal .ticket-card,
+body.ops-portal .task-row,
+body.ops-portal .metric,
+body.ops-portal .dashboard-kpi,
+body.ops-portal .ops-chart {
+  transition:
+    border-color var(--ops-motion-fast) var(--ops-ease),
+    background-color var(--ops-motion-fast) var(--ops-ease),
+    box-shadow var(--ops-motion-fast) var(--ops-ease),
+    transform var(--ops-motion-fast) var(--ops-ease),
+    opacity var(--ops-motion-fast) var(--ops-ease) !important;
+}
+
+body.ops-portal .panel .panel,
+body.ops-portal .panel .report-card,
+body.ops-portal .panel .settings-card {
+  border-radius: var(--ops-radius-card) !important;
+}
+
+body[data-theme="dark"].ops-portal .section-kicker,
+body[data-theme="dark"].ops-portal .heading-chip {
+  border-color: color-mix(in srgb, var(--brand, #55d4c7) 48%, rgba(255, 255, 255, 0.16)) !important;
+  background: color-mix(in srgb, var(--brand, #55d4c7) 14%, rgba(15, 23, 42, 0.92)) !important;
+  color: var(--brand-strong, #8cf1e7) !important;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --ops-gap-page: 12px;
+    --ops-gap-panel: 10px;
+    --ops-pad-panel: 14px;
+    --ops-control-h: 42px;
+  }
+
+  body.ops-portal .panel-heading {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.ops-portal .panel-heading .heading-chip {
+    justify-self: start !important;
+  }
+}
