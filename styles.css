@@ -24284,3 +24284,359 @@ body[data-theme="dark"].ops-portal .heading-chip {
     justify-self: start !important;
   }
 }
+
+/* Station 97: Admin technician cards and Masters redesign. */
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)) !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-card {
+  display: grid !important;
+  grid-template-rows: auto auto auto minmax(34px, auto) auto !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  padding: 14px !important;
+}
+
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-top {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: start !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-top > div,
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-top strong,
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-top span:not(.badge) {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .capacity-badge {
+  max-width: 92px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-load {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-stats {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(54px, 1fr)) !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  padding-bottom: 2px !important;
+  scrollbar-width: thin !important;
+}
+
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-load span,
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-stats span {
+  min-width: 0 !important;
+  min-height: 52px !important;
+  padding: 8px !important;
+  border-radius: 9px !important;
+}
+
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-load strong,
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-stats strong {
+  font-size: clamp(18px, 1.4vw, 23px) !important;
+  line-height: 1 !important;
+}
+
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-load small,
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-stats small {
+  font-size: 9px !important;
+  line-height: 1.12 !important;
+  white-space: normal !important;
+}
+
+body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-next {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  line-height: 1.25 !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] #masters {
+  --masters-gap: clamp(12px, 1vw, 18px);
+  display: grid !important;
+  gap: var(--masters-gap) !important;
+  max-width: min(1760px, 100%) !important;
+  margin-inline: auto !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] #masters .masters-stage {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.6fr) !important;
+  align-items: center !important;
+  gap: clamp(14px, 2vw, 28px) !important;
+  min-height: 0 !important;
+  padding: clamp(14px, 1.4vw, 20px) clamp(16px, 1.8vw, 26px) !important;
+  border-radius: var(--ops-radius-panel) !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] #masters .masters-stage h2 {
+  margin: 4px 0 !important;
+  font-size: clamp(24px, 2vw, 34px) !important;
+  line-height: 1.04 !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] #masters .masters-stage p {
+  max-width: 76ch !important;
+  font-size: clamp(12px, 0.86vw, 14px) !important;
+  line-height: 1.35 !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] #mastersPulse {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] #mastersPulse article {
+  min-height: 70px !important;
+  padding: 10px 12px !important;
+  border-radius: var(--ops-radius-panel) !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-control-panel {
+  display: grid !important;
+  grid-template-rows: auto auto auto minmax(0, 1fr) !important;
+  gap: 12px !important;
+  min-height: min(760px, calc(100vh - 150px)) !important;
+  overflow: hidden !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  padding: 6px !important;
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border)) !important;
+  border-radius: 12px !important;
+  background: color-mix(in srgb, var(--surface-2) 84%, transparent) !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-tab {
+  min-width: 0 !important;
+  min-height: 38px !important;
+  padding: 0 10px !important;
+  border-radius: 9px !important;
+  font-size: 12px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-sections,
+body.ops-portal.has-session[data-view="masters"] .master-section.is-active {
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-section.is-active {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  gap: 12px !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-section-heading {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 10px 12px !important;
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border)) !important;
+  border-radius: 10px !important;
+  background: color-mix(in srgb, var(--surface-1) 92%, var(--brand) 8%) !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-section-heading h3 {
+  margin: 0 !important;
+  font-size: 16px !important;
+  line-height: 1.15 !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-section-heading p {
+  margin: 3px 0 0 !important;
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-form {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(160px, 1fr)) !important;
+  gap: 12px !important;
+  align-items: end !important;
+  min-width: 0 !important;
+  padding: 14px !important;
+  border-radius: 10px !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-form label {
+  min-width: 0 !important;
+  gap: 6px !important;
+  font-size: 11px !important;
+  line-height: 1.15 !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-form input,
+body.ops-portal.has-session[data-view="masters"] .master-form select {
+  min-width: 0 !important;
+  min-height: 40px !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-form > button,
+body.ops-portal.has-session[data-view="masters"] .master-form .primary-button,
+body.ops-portal.has-session[data-view="masters"] .master-form .small-button {
+  min-height: 40px !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-split-layout,
+body.ops-portal.has-session[data-view="masters"] .user-master-split {
+  display: grid !important;
+  grid-template-columns: minmax(360px, 0.88fr) minmax(420px, 1.12fr) !important;
+  gap: 14px !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-split-layout .master-form,
+body.ops-portal.has-session[data-view="masters"] .user-master-split .master-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-content: start !important;
+  overflow-y: auto !important;
+  max-height: min(620px, calc(100vh - 310px)) !important;
+  scrollbar-width: thin !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .user-master-split .master-form {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-split-layout .master-list,
+body.ops-portal.has-session[data-view="masters"] .user-master-split .master-list,
+body.ops-portal.has-session[data-view="masters"] .master-section > .master-list {
+  min-height: 0 !important;
+  max-height: min(620px, calc(100vh - 310px)) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-right: 6px !important;
+  scrollbar-width: thin !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-entry,
+body.ops-portal.has-session[data-view="masters"] .time-master-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 66px !important;
+  padding: 12px !important;
+  border-radius: 10px !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-row-main {
+  min-width: 0 !important;
+  text-align: left !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-row-main strong,
+body.ops-portal.has-session[data-view="masters"] .master-row-main span {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-row-main strong {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  white-space: normal !important;
+  line-height: 1.28 !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-row-main span {
+  display: block !important;
+  white-space: nowrap !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-row-actions {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-row-actions .small-button {
+  min-width: 72px !important;
+}
+
+@media (max-width: 1180px) {
+  body.ops-portal.has-session[data-view="masters"] #masters .masters-stage,
+  body.ops-portal.has-session[data-view="masters"] .master-split-layout,
+  body.ops-portal.has-session[data-view="masters"] .user-master-split {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.ops-portal.has-session[data-view="masters"] .master-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  body.ops-portal.has-session[data-view="masters"] .master-control-panel,
+  body.ops-portal.has-session[data-view="masters"] .master-split-layout .master-form,
+  body.ops-portal.has-session[data-view="masters"] .user-master-split .master-form,
+  body.ops-portal.has-session[data-view="masters"] .master-split-layout .master-list,
+  body.ops-portal.has-session[data-view="masters"] .user-master-split .master-list,
+  body.ops-portal.has-session[data-view="masters"] .master-section > .master-list {
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+}
+
+@media (max-width: 720px) {
+  body.ops-portal.has-session[data-view="admin"] #adminTechnicianDashboard .admin-tech-load {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  body.ops-portal.has-session[data-view="masters"] #masters .masters-stage,
+  body.ops-portal.has-session[data-view="masters"] #mastersPulse,
+  body.ops-portal.has-session[data-view="masters"] .master-form,
+  body.ops-portal.has-session[data-view="masters"] .master-split-layout .master-form,
+  body.ops-portal.has-session[data-view="masters"] .user-master-split .master-form {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.ops-portal.has-session[data-view="masters"] .master-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  body.ops-portal.has-session[data-view="masters"] .master-entry,
+  body.ops-portal.has-session[data-view="masters"] .time-master-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body.ops-portal.has-session[data-view="masters"] .master-row-actions {
+    width: 100% !important;
+  }
+
+  body.ops-portal.has-session[data-view="masters"] .master-row-actions .small-button {
+    flex: 1 1 0 !important;
+  }
+}
