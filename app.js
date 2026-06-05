@@ -562,6 +562,8 @@ let editingOutletName = "";
 let editingAssetId = "";
 let activeMasterTab = "outlets";
 const masterSearchTerms = {};
+let adminQueueSearch = "";
+let historySearch = "";
 let editingAssignmentWindowId = "";
 let editingMaintenanceRuleId = "";
 let editingMaintenanceAssignments = [];
@@ -4515,8 +4517,29 @@ function renderAdmin() {
     `;
   }
 
+  const adminTicketSearchTerm = adminQueueSearch.trim().toLowerCase();
+  const filteredOpenTickets = adminTicketSearchTerm
+    ? openTickets.filter((ticket) => [
+      ticket.id,
+      ticket.outlet,
+      ticket.note,
+      ticket.status,
+      ticket.priority,
+      ticketCategoryLabel(ticket),
+      technicianById(ticket.assignedTo)?.name
+    ].some((value) => String(value || "").toLowerCase().includes(adminTicketSearchTerm)))
+    : openTickets;
   document.querySelector("#adminTickets").innerHTML = openTickets.length
-    ? renderAdminTicketQueue(openTickets)
+    ? `
+      <div class="queue-tools admin-queue-tools">
+        <label>
+          <span>Search queue</span>
+          <input data-admin-queue-search value="${escapeHtml(adminQueueSearch)}" placeholder="Ticket, outlet, category, technician">
+        </label>
+        <span>${filteredOpenTickets.length}/${openTickets.length} shown</span>
+      </div>
+      ${filteredOpenTickets.length ? renderAdminTicketQueue(filteredOpenTickets) : `<div class="empty">No admin tickets match this search.</div>`}
+    `
     : `<div class="empty">The admin queue is clear.</div>`;
 }
 
@@ -4834,6 +4857,24 @@ function renderClosedHistory() {
   const closedTickets = ticketsForCurrentUser(state.tickets)
     .filter((ticket) => ticket.status === "Closed")
     .sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
+  const searchTerm = historySearch.trim().toLowerCase();
+  const visibleClosedTickets = searchTerm
+    ? closedTickets.filter((ticket) => {
+      const assigned = technicianById(ticket.assignedTo);
+      const asset = assetById(ticket.assetId);
+      return [
+        ticket.id,
+        ticket.outlet,
+        ticket.note,
+        ticket.latestDetail,
+        ticketCategoryLabel(ticket),
+        asset?.name,
+        assigned?.name,
+        closedTicketManager(ticket),
+        ticket.closePrice
+      ].some((value) => String(value || "").toLowerCase().includes(searchTerm));
+    })
+    : closedTickets;
   const withCompletionPhotos = closedTickets.filter((ticket) => (ticket.resolutionPhotoUrls || []).length).length;
   const withIssuePhotos = closedTickets.filter((ticket) => (ticket.photoUrls?.length ? ticket.photoUrls : [ticket.photoUrl]).filter(Boolean).length).length;
 
@@ -4851,7 +4892,16 @@ function renderClosedHistory() {
     </article>
   `).join("");
   document.querySelector("#closedTicketHistory").innerHTML = closedTickets.length
-    ? closedTickets.map((ticket) => closedHistoryCard(ticket)).join("")
+    ? `
+      <div class="queue-tools history-tools">
+        <label>
+          <span>Search archive</span>
+          <input data-history-search value="${escapeHtml(historySearch)}" placeholder="Ticket, outlet, category, technician, price">
+        </label>
+        <span>${visibleClosedTickets.length}/${closedTickets.length} shown</span>
+      </div>
+      ${visibleClosedTickets.length ? visibleClosedTickets.map((ticket) => closedHistoryCard(ticket)).join("") : `<div class="empty">No closed tickets match this search.</div>`}
+    `
     : `<div class="empty">No closed tickets found for this login.</div>`;
 }
 
@@ -5992,6 +6042,19 @@ document.addEventListener("input", (event) => {
   if (!search) return;
   masterSearchTerms[search.dataset.masterSearch] = search.value;
   renderMasters();
+});
+document.addEventListener("input", (event) => {
+  const adminSearch = event.target.closest?.("[data-admin-queue-search]");
+  if (adminSearch) {
+    adminQueueSearch = adminSearch.value;
+    renderAdmin();
+    return;
+  }
+  const archiveSearch = event.target.closest?.("[data-history-search]");
+  if (archiveSearch) {
+    historySearch = archiveSearch.value;
+    renderClosedHistory();
+  }
 });
 bind("#logoutButton", "click", () => {
   clearUser();
