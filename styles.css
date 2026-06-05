@@ -25029,3 +25029,117 @@ body.ops-portal.has-session[data-view="masters"] #assignmentTimeBoard .empty {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 }
+
+/* Station 100: Masters console cleanup with search and stable density. */
+body.ops-portal.has-session[data-view="masters"] .master-control-panel {
+  display: grid !important;
+  gap: 12px !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  padding: 6px !important;
+  border: 1px solid color-mix(in srgb, var(--brand) 12%, var(--border)) !important;
+  border-radius: 12px !important;
+  background: color-mix(in srgb, var(--surface-1) 76%, transparent) !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-tab {
+  min-height: 42px !important;
+  border-radius: 9px !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-section.is-active {
+  gap: 12px !important;
+  padding: 16px !important;
+  border-width: 1px !important;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--brand) 5%, transparent), transparent 48%),
+    color-mix(in srgb, var(--surface-1) 88%, transparent) !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-section-heading {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px) !important;
+  align-items: end !important;
+  gap: 14px !important;
+  min-height: 0 !important;
+  padding: 0 0 10px !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--brand) 10%, var(--border)) !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-search-control {
+  display: grid !important;
+  gap: 5px !important;
+  margin: 0 !important;
+  color: color-mix(in srgb, var(--muted) 82%, var(--ink)) !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-search-control input {
+  min-height: 38px !important;
+  border-radius: 999px !important;
+  padding: 0 14px !important;
+  background: color-mix(in srgb, var(--surface-2) 82%, transparent) !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-form {
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-list-summary {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  min-height: 34px !important;
+  align-items: center !important;
+  padding: 6px 8px !important;
+  border: 1px solid color-mix(in srgb, var(--brand) 10%, var(--border)) !important;
+  border-radius: 9px !important;
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent) !important;
+  backdrop-filter: blur(10px) saturate(130%) !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-list-summary span {
+  color: color-mix(in srgb, var(--muted) 75%, var(--ink)) !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-entry,
+body.ops-portal.has-session[data-view="masters"] .time-master-row {
+  border-left-width: 4px !important;
+  border-left-color: color-mix(in srgb, var(--brand) 70%, var(--border)) !important;
+  background: color-mix(in srgb, var(--surface-2) 84%, transparent) !important;
+  box-shadow: 0 8px 22px rgba(22, 50, 56, 0.055) !important;
+}
+
+body.ops-portal.has-session[data-view="masters"] .master-row-actions {
+  justify-content: end !important;
+}
+
+@media (max-width: 1180px) {
+  body.ops-portal.has-session[data-view="masters"] .master-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  body.ops-portal.has-session[data-view="masters"] .master-section-heading {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 620px) {
+  body.ops-portal.has-session[data-view="masters"] .master-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}

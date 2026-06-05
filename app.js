@@ -561,6 +561,7 @@ let editingTechnicianId = "";
 let editingOutletName = "";
 let editingAssetId = "";
 let activeMasterTab = "outlets";
+const masterSearchTerms = {};
 let editingAssignmentWindowId = "";
 let editingMaintenanceRuleId = "";
 let editingMaintenanceAssignments = [];
@@ -2857,6 +2858,34 @@ function switchMasterTab(tabName) {
   });
 }
 
+function masterSearchTerm(tabName) {
+  return String(masterSearchTerms[tabName] || "").trim().toLowerCase();
+}
+
+function masterMatchesSearch(values, tabName) {
+  const term = masterSearchTerm(tabName);
+  if (!term) return true;
+  return values.some((value) => String(value || "").toLowerCase().includes(term));
+}
+
+function ensureMasterSearchControls() {
+  document.querySelectorAll("[data-master-panel]").forEach((panel) => {
+    const panelName = panel.dataset.masterPanel;
+    const heading = panel.querySelector(".master-section-heading");
+    if (!heading || heading.querySelector("[data-master-search]")) return;
+    const tool = document.createElement("label");
+    tool.className = "master-search-control";
+    tool.innerHTML = `
+      <span>Search</span>
+      <input data-master-search="${panelName}" placeholder="Filter ${panelName}" autocomplete="off">
+    `;
+    heading.appendChild(tool);
+  });
+  document.querySelectorAll("[data-master-search]").forEach((input) => {
+    input.value = masterSearchTerms[input.dataset.masterSearch] || "";
+  });
+}
+
 async function createMaintenanceRule(event) {
   event.preventDefault();
   if (!canUseView("scheduler")) return;
@@ -4317,72 +4346,56 @@ function fillAssignmentWindowForm(windowId) {
 }
 
 function renderMasters() {
+  ensureMasterSearchControls();
   switchMasterTab(activeMasterTab);
-  document.querySelector("#outletBoard").innerHTML = state.outlets.length
-    ? state.outlets.map((outlet) => {
-      const location = state.outletLocations?.[outlet] || {};
-      const coordinates = location.latitude !== null && location.latitude !== undefined && location.longitude !== null && location.longitude !== undefined
-        ? `${location.latitude}, ${location.longitude}`
-        : "";
-      return masterEntry({
-        editAttr: `data-edit-outlet="${escapeHtml(outlet)}"`,
-        title: escapeHtml(outlet),
-        detail: escapeHtml(location.address || coordinates || "Location pending"),
-        deleteValue: `outlets:${escapeHtml(outlet)}:${escapeHtml(outlet)}`
-      });
-    }).join("")
-    : `<div class="empty mini">No outlets yet.</div>`;
+
+  renderMasterList("#outletBoard", state.outlets.map((outlet) => {
+    const location = state.outletLocations?.[outlet] || {};
+    const coordinates = location.latitude !== null && location.latitude !== undefined && location.longitude !== null && location.longitude !== undefined
+      ? `${location.latitude}, ${location.longitude}`
+      : "";
+    return masterListItem({ outlet, location, coordinates }, [outlet, location.address, coordinates]);
+  }), "outlets", ({ outlet, location, coordinates }) => masterEntry({
+    editAttr: `data-edit-outlet="${escapeHtml(outlet)}"`,
+    title: escapeHtml(outlet),
+    detail: escapeHtml(location.address || coordinates || "Location pending"),
+    deleteValue: `outlets:${escapeHtml(outlet)}:${escapeHtml(outlet)}`
+  }), masterSearchTerm("outlets") ? "No outlets match this search." : "No outlets yet.");
 
   const visibleCategories = (state.categories || []).filter((c) => c.name);
-  document.querySelector("#categoryBoard").innerHTML = visibleCategories.length
-    ? visibleCategories.map((category) => masterEntry({
-      editAttr: `data-edit-category="${escapeHtml(category.id)}"`,
-      title: escapeHtml(category.name),
-      detail: escapeHtml(category.description || "Category"),
-      deleteValue: `categories:${escapeHtml(category.id)}:${escapeHtml(category.name)}`
-    })).join("")
-    : `<div class="empty mini">No categories yet.</div>`;
+  renderMasterList("#categoryBoard", visibleCategories.map((category) => masterListItem(category, [category.name, category.description])), "categories", (category) => masterEntry({
+    editAttr: `data-edit-category="${escapeHtml(category.id)}"`,
+    title: escapeHtml(category.name),
+    detail: escapeHtml(category.description || "Category"),
+    deleteValue: `categories:${escapeHtml(category.id)}:${escapeHtml(category.name)}`
+  }), masterSearchTerm("categories") ? "No categories match this search." : "No categories yet.");
 
-  document.querySelector("#assetBoard").innerHTML = (state.assets || []).length
-    ? state.assets.map((asset) => masterEntry({
-      className: `asset-row status-${token(asset.status)}`,
-      editAttr: `data-edit-asset="${escapeHtml(asset.id)}"`,
-      title: escapeHtml(asset.name),
-      detail: `${escapeHtml(asset.outlet)} / ${escapeHtml(asset.category)} / ${escapeHtml(asset.code || "No code")}`,
-      deleteValue: `assets:${escapeHtml(asset.id)}:${escapeHtml(asset.name)}`
-    })).join("")
-    : `<div class="empty mini">No assets yet.</div>`;
+  renderMasterList("#assetBoard", (state.assets || []).map((asset) => masterListItem(asset, [asset.name, asset.outlet, asset.category, asset.code, asset.status])), "assets", (asset) => masterEntry({
+    className: `asset-row status-${token(asset.status)}`,
+    editAttr: `data-edit-asset="${escapeHtml(asset.id)}"`,
+    title: escapeHtml(asset.name),
+    detail: `${escapeHtml(asset.outlet)} / ${escapeHtml(asset.category)} / ${escapeHtml(asset.code || "No code")}`,
+    deleteValue: `assets:${escapeHtml(asset.id)}:${escapeHtml(asset.name)}`
+  }), masterSearchTerm("assets") ? "No assets match this search." : "No assets yet.");
 
-  document.querySelector("#technicianMasterBoard").innerHTML = state.technicians.length
-    ? state.technicians.map((tech) => masterEntry({
-      className: `status-${token(tech.status)}`,
-      editAttr: `data-edit-technician="${escapeHtml(tech.id)}"`,
-      title: escapeHtml(tech.name),
-      detail: `${escapeHtml(technicianSkillLabel(tech))} / ${escapeHtml(serviceAreaLabel(tech))}`,
-      deleteValue: `technicians:${escapeHtml(tech.id)}:${escapeHtml(tech.name)}`
-    })).join("")
-    : `<div class="empty mini">No technicians yet.</div>`;
+  renderMasterList("#technicianMasterBoard", state.technicians.map((tech) => masterListItem(tech, [tech.name, tech.skill, technicianSkillLabel(tech), serviceAreaLabel(tech), tech.status])), "technicians", (tech) => masterEntry({
+    className: `status-${token(tech.status)}`,
+    editAttr: `data-edit-technician="${escapeHtml(tech.id)}"`,
+    title: escapeHtml(tech.name),
+    detail: `${escapeHtml(technicianSkillLabel(tech))} / ${escapeHtml(serviceAreaLabel(tech))}`,
+    deleteValue: `technicians:${escapeHtml(tech.id)}:${escapeHtml(tech.name)}`
+  }), masterSearchTerm("technicians") ? "No technicians match this search." : "No technicians yet.");
 
-  const peopleBoard = document.querySelector("#peopleAccessBoard");
-  if (peopleBoard) {
-    peopleBoard.innerHTML = directoryUsers.length
-      ? directoryUsers.map((user) => masterEntry({
-        editAttr: `data-edit-user-access="${escapeHtml(user.id)}"`,
-        title: `${escapeHtml(user.name)} / ${escapeHtml(user.role)}`,
-        detail: `${escapeHtml(user.username)} / ${escapeHtml(userOutletLabel(user))}${user.address ? ` / ${escapeHtml(user.address)}` : ""}`,
-        deleteValue: `admin/users:${escapeHtml(user.id)}:${escapeHtml(user.username)}`
-      })).join("")
-      : `<div class="empty mini">No users yet.</div>`;
-  }
+  renderMasterList("#peopleAccessBoard", directoryUsers.map((user) => masterListItem(user, [user.name, user.role, user.username, userOutletLabel(user), user.address])), "users", (user) => masterEntry({
+    editAttr: `data-edit-user-access="${escapeHtml(user.id)}"`,
+    title: `${escapeHtml(user.name)} / ${escapeHtml(user.role)}`,
+    detail: `${escapeHtml(user.username)} / ${escapeHtml(userOutletLabel(user))}${user.address ? ` / ${escapeHtml(user.address)}` : ""}`,
+    deleteValue: `admin/users:${escapeHtml(user.id)}:${escapeHtml(user.username)}`
+  }), masterSearchTerm("users") ? "No users match this search." : "No users yet.");
 
-  const assignmentTimeBoard = document.querySelector("#assignmentTimeBoard");
-  if (assignmentTimeBoard) {
-    const windows = [...(state.assignmentTimeWindows || [])]
-      .sort((a, b) => String(a.startTime || "").localeCompare(String(b.startTime || "")) || String(a.name || "").localeCompare(String(b.name || "")));
-    assignmentTimeBoard.innerHTML = windows.length
-      ? windows.map(renderAssignmentTimeRow).join("")
-      : `<div class="empty mini">No dispatch time windows yet. Until a window is added, assignment is open all day.</div>`;
-  }
+  const windows = [...(state.assignmentTimeWindows || [])]
+    .sort((a, b) => String(a.startTime || "").localeCompare(String(b.startTime || "")) || String(a.name || "").localeCompare(String(b.name || "")));
+  renderMasterList("#assignmentTimeBoard", windows.map((window) => masterListItem(window, [window.name, assignmentDayLabel(window.days), window.startTime, window.endTime, window.active === false ? "Paused" : "Active"])), "time", renderAssignmentTimeRow, masterSearchTerm("time") ? "No dispatch windows match this search." : "No dispatch time windows yet. Until a window is added, assignment is open all day.");
 }
 
 function renderAdmin() {
@@ -5415,6 +5428,23 @@ function renderPasswordResetControl(scope, helpText) {
   `;
 }
 
+function masterListItem(value, searchValues) {
+  return { value, searchValues };
+}
+
+function renderMasterList(boardSelector, items, tabName, renderItem, emptyText) {
+  const board = document.querySelector(boardSelector);
+  if (!board) return;
+  const filtered = items.filter((item) => masterMatchesSearch(item.searchValues || [], tabName));
+  board.innerHTML = `
+    <div class="master-list-summary">
+      <span>${filtered.length} shown</span>
+      <span>${items.length} total</span>
+    </div>
+    ${filtered.length ? filtered.map((item) => renderItem(item.value)).join("") : `<div class="empty mini">${escapeHtml(emptyText)}</div>`}
+  `;
+}
+
 function renderSettings() {
   const allowed = allowedViews()
     .map((view) => view[0].toUpperCase() + view.slice(1))
@@ -5956,6 +5986,12 @@ bind("#ruleOutlet", "change", () => populateRuleTechnicians(document.querySelect
 bind("#activeTechnician", "change", renderTechnician);
 document.querySelectorAll("[data-master-tab]").forEach((button) => {
   button.addEventListener("click", () => switchMasterTab(button.dataset.masterTab));
+});
+document.addEventListener("input", (event) => {
+  const search = event.target.closest?.("[data-master-search]");
+  if (!search) return;
+  masterSearchTerms[search.dataset.masterSearch] = search.value;
+  renderMasters();
 });
 bind("#logoutButton", "click", () => {
   clearUser();
