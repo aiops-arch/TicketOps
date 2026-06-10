@@ -666,6 +666,18 @@
                 <button id="assetSubmit" type="submit" class="primary-button">Add Asset</button>
                 <button id="assetCancel" type="button" class="small-button">Clear</button>
               </form>
+              <div class="asset-bulk-panel">
+                <div>
+                  <span class="section-kicker">Bulk asset upload</span>
+                  <p>Upload CSV assets with location, category, specification, vendor, AMC, warranty, and purchase details.</p>
+                </div>
+                <div class="asset-bulk-actions">
+                  <button id="assetBulkTemplate" type="button" class="small-button">Download Template</button>
+                  <button id="assetBulkUploadButton" type="button" class="primary-button">Bulk Upload</button>
+                  <input id="assetBulkFile" class="visually-hidden" type="file" accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                </div>
+                <p id="assetBulkStatus" class="asset-bulk-status">Required columns: Location, Item Name, Category. Other columns are saved as asset metadata.</p>
+              </div>
               <div id="assetBoard" class="master-list"></div>
             </section>
 
@@ -937,6 +949,7 @@
       </div>
     </div>
 
+    <script src="vendor/read-excel-file.min.js"></script>
     <script src="frontend-config.js"></script>
     <script src="app.js"></script>
     <script>

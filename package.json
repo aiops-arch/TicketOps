@@ -27,7 +27,8 @@
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^4.19.2",
-    "pdfkit": "^0.18.0"
+    "pdfkit": "^0.18.0",
+    "read-excel-file": "^5.8.8"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.6.2",

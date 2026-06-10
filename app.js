@@ -575,6 +575,26 @@ let currentTheme = readStoredTheme();
 let currentDashboardMode = readStoredDashboardMode();
 let inactivityTimer = null;
 
+const ASSET_BULK_COLUMNS = [
+  "Location",
+  "Item Name",
+  "Category",
+  "Sub Category",
+  "Make",
+  "Model",
+  "Serial No.",
+  "Power",
+  "phase",
+  "Diamantion",
+  "Volume",
+  "AMC",
+  "Warrenty",
+  "Purchase Date",
+  "Purchase Price",
+  "Vendor",
+  "Remarks"
+];
+
 applyTheme(currentTheme);
 applyDashboardMode(currentDashboardMode);
 
@@ -2577,6 +2597,194 @@ async function deleteAssignment(ticketId) {
   await loadState();
 }
 
+function parseCsvAssetRows(text) {
+  const rows = [];
+  let row = [];
+  let value = "";
+  let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+    if (char === "\"") {
+      if (quoted && next === "\"") {
+        value += "\"";
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (char === "," && !quoted) {
+      row.push(value);
+      value = "";
+    } else if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && next === "\n") index += 1;
+      row.push(value);
+      if (row.some((cell) => cell.trim())) rows.push(row);
+      row = [];
+      value = "";
+    } else {
+      value += char;
+    }
+  }
+  row.push(value);
+  if (row.some((cell) => cell.trim())) rows.push(row);
+  if (quoted) throw new Error("CSV has an unclosed quote.");
+  if (rows.length < 2) return [];
+
+  const headers = rows[0].map((header) => header.trim());
+  return rows.slice(1).map((cells, rowIndex) => ({
+    rowNumber: rowIndex + 2,
+    values: headers.reduce((record, header, cellIndex) => {
+      record[header] = (cells[cellIndex] || "").trim();
+      return record;
+    }, {})
+  }));
+}
+
+async function parseExcelAssetRows(file) {
+  if (!window.readXlsxFile) throw new Error("Excel parser did not load. Please refresh and try again.");
+  const rows = await window.readXlsxFile(file);
+  if (rows.length < 2) return [];
+  const headers = rows[0].map((header) => String(header || "").trim());
+  return rows.slice(1).filter((row) => row.some((cell) => String(cell ?? "").trim())).map((cells, rowIndex) => ({
+    rowNumber: rowIndex + 2,
+    values: headers.reduce((record, header, cellIndex) => {
+      record[header] = String(cells[cellIndex] ?? "").trim();
+      return record;
+    }, {})
+  }));
+}
+
+async function parseAssetBulkFile(file) {
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  if (extension === "xlsx") {
+    return parseExcelAssetRows(file);
+  }
+  if (extension === "xls") {
+    throw new Error("Legacy .xls is not supported. Please save the sheet as .xlsx or CSV.");
+  }
+  return parseCsvAssetRows(await file.text());
+}
+
+function normalizeAssetHeader(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function pickAssetBulkValue(row, aliases) {
+  const lookup = Object.entries(row).reduce((map, [key, value]) => {
+    map[normalizeAssetHeader(key)] = value;
+    return map;
+  }, {});
+  return aliases.map(normalizeAssetHeader).map((key) => lookup[key]).find((value) => value !== undefined && value !== "") || "";
+}
+
+function assetBulkPayloadFromRow(row, rowNumber) {
+  const outlet = pickAssetBulkValue(row, ["Location", "Outlet", "Outlet Name"]);
+  const name = pickAssetBulkValue(row, ["Item Name", "Asset Name", "Name"]);
+  const category = pickAssetBulkValue(row, ["Category"]);
+  const serialNo = pickAssetBulkValue(row, ["Serial No.", "Serial No", "Serial Number"]);
+  if (!outlet || !name || !category) {
+    throw new Error(`Row ${rowNumber}: Location, Item Name, and Category are required.`);
+  }
+  if (!(state.outlets || []).some((item) => item.toLowerCase() === outlet.toLowerCase())) {
+    throw new Error(`Row ${rowNumber}: Location "${outlet}" is not in Outlet Master.`);
+  }
+  if (!(state.categories || []).some((item) => (item.name || item).toLowerCase() === category.toLowerCase())) {
+    throw new Error(`Row ${rowNumber}: Category "${category}" is not in Category Master.`);
+  }
+  return {
+    outlet,
+    name,
+    category,
+    code: pickAssetBulkValue(row, ["Asset Code", "Code"]) || serialNo,
+    subCategory: pickAssetBulkValue(row, ["Sub Category", "SubCategory"]),
+    make: pickAssetBulkValue(row, ["Make"]),
+    model: pickAssetBulkValue(row, ["Model"]),
+    serialNo,
+    power: pickAssetBulkValue(row, ["Power"]),
+    phase: pickAssetBulkValue(row, ["phase", "Phase"]),
+    dimension: pickAssetBulkValue(row, ["Diamantion", "Dimension", "Dimensions"]),
+    volume: pickAssetBulkValue(row, ["Volume"]),
+    amc: pickAssetBulkValue(row, ["AMC"]),
+    warranty: pickAssetBulkValue(row, ["Warrenty", "Warranty"]),
+    purchaseDate: pickAssetBulkValue(row, ["Purchase Date"]),
+    purchasePrice: pickAssetBulkValue(row, ["Purchase Price"]),
+    vendor: pickAssetBulkValue(row, ["Vendor"]),
+    remarks: pickAssetBulkValue(row, ["Remarks"]),
+    status: "Active"
+  };
+}
+
+function csvEscape(value) {
+  const text = String(value ?? "");
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, "\"\"")}"` : text;
+}
+
+function downloadAssetBulkTemplate() {
+  const sample = [
+    ASSET_BULK_COLUMNS,
+    ["Aiko Ambli", "Walk-in Freezer", "AC", "Freezer", "Blue Star", "BS-500", "SN-001", "2 kW", "3", "1200x900x2100 mm", "500 L", "Yes", "2027-03-31", "2025-04-01", "85000", "ABC Cooling", "Kitchen cold storage"]
+  ];
+  const blob = new Blob([sample.map((row) => row.map(csvEscape).join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "ticketops-asset-bulk-template.csv";
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function setAssetBulkStatus(message, tone = "idle") {
+  const status = document.querySelector("#assetBulkStatus");
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.tone = tone;
+}
+
+async function importAssetBulkFile(event) {
+  const fileInput = event.currentTarget;
+  const file = fileInput.files?.[0];
+  if (!file) return;
+  const uploadButton = document.querySelector("#assetBulkUploadButton");
+  uploadButton.disabled = true;
+  uploadButton.textContent = "Uploading...";
+  try {
+    const rows = await parseAssetBulkFile(file);
+    if (!rows.length) throw new Error("The upload file has no asset rows.");
+    const errors = [];
+    let imported = 0;
+    for (const row of rows) {
+      try {
+        const payload = assetBulkPayloadFromRow(row.values, row.rowNumber);
+        await api("/api/assets", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        imported += 1;
+        setAssetBulkStatus(`Imported ${imported}/${rows.length} assets...`, "busy");
+      } catch (error) {
+        errors.push(error.message);
+      }
+    }
+    await loadState();
+    if (errors.length) {
+      setAssetBulkStatus(`${imported} imported. ${errors.length} skipped: ${errors.slice(0, 3).join(" ")}`, "warning");
+      showToast(`${imported} assets imported, ${errors.length} skipped.`, "warning");
+    } else {
+      setAssetBulkStatus(`${imported} assets imported successfully.`, "success");
+      showToast(`${imported} assets imported successfully.`, "success");
+    }
+  } catch (error) {
+    setAssetBulkStatus(error.message, "error");
+    showToast(error.message, "error");
+  } finally {
+    fileInput.value = "";
+    uploadButton.disabled = false;
+    uploadButton.textContent = "Bulk Upload";
+  }
+}
+
 async function saveAssetMaster(event) {
   event.preventDefault();
   if (!canUseView("masters")) return;
@@ -4372,11 +4580,29 @@ function renderMasters() {
     deleteValue: `categories:${escapeHtml(category.id)}:${escapeHtml(category.name)}`
   }), masterSearchTerm("categories") ? "No categories match this search." : "No categories yet.");
 
-  renderMasterList("#assetBoard", (state.assets || []).map((asset) => masterListItem(asset, [asset.name, asset.outlet, asset.category, asset.code, asset.status])), "assets", (asset) => masterEntry({
+  renderMasterList("#assetBoard", (state.assets || []).map((asset) => masterListItem(asset, [
+    asset.name,
+    asset.outlet,
+    asset.category,
+    asset.subCategory,
+    asset.make,
+    asset.model,
+    asset.serialNo,
+    asset.vendor,
+    asset.code,
+    asset.status
+  ])), "assets", (asset) => masterEntry({
     className: `asset-row status-${token(asset.status)}`,
     editAttr: `data-edit-asset="${escapeHtml(asset.id)}"`,
     title: escapeHtml(asset.name),
-    detail: `${escapeHtml(asset.outlet)} / ${escapeHtml(asset.category)} / ${escapeHtml(asset.code || "No code")}`,
+    detail: escapeHtml([
+      asset.outlet,
+      asset.category,
+      asset.subCategory,
+      asset.make || asset.vendor,
+      asset.model,
+      asset.serialNo || asset.code || "No code"
+    ].filter(Boolean).join(" / ")),
     deleteValue: `assets:${escapeHtml(asset.id)}:${escapeHtml(asset.name)}`
   }), masterSearchTerm("assets") ? "No assets match this search." : "No assets yet.");
 
@@ -6011,6 +6237,9 @@ bind("#ticketCategory", "change", updateTicketPriorityPreview);
 bind("#ticketNote", "input", updateTicketPriorityPreview);
 bind("#assetForm", "submit", saveAssetMaster);
 bind("#assetCancel", "click", resetAssetForm);
+bind("#assetBulkTemplate", "click", downloadAssetBulkTemplate);
+bind("#assetBulkUploadButton", "click", () => document.querySelector("#assetBulkFile")?.click());
+bind("#assetBulkFile", "change", importAssetBulkFile);
 bind("#outletForm", "submit", createOutlet);
 bind("#outletCancel", "click", resetOutletForm);
 bind("#categoryForm", "submit", createCategory);

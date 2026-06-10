@@ -957,6 +957,29 @@ function assetById(db, assetId) {
   return (db.assets || []).find((asset) => asset.id === assetId);
 }
 
+function cleanTextValue(value) {
+  return String(value ?? "").trim();
+}
+
+function assetMetadataFromPayload(payload = {}, fallback = {}) {
+  return {
+    subCategory: cleanTextValue(payload.subCategory ?? fallback.subCategory),
+    make: cleanTextValue(payload.make ?? fallback.make),
+    model: cleanTextValue(payload.model ?? fallback.model),
+    serialNo: cleanTextValue(payload.serialNo ?? fallback.serialNo),
+    power: cleanTextValue(payload.power ?? fallback.power),
+    phase: cleanTextValue(payload.phase ?? fallback.phase),
+    dimension: cleanTextValue(payload.dimension ?? fallback.dimension),
+    volume: cleanTextValue(payload.volume ?? fallback.volume),
+    amc: cleanTextValue(payload.amc ?? fallback.amc),
+    warranty: cleanTextValue(payload.warranty ?? fallback.warranty),
+    purchaseDate: cleanTextValue(payload.purchaseDate ?? fallback.purchaseDate),
+    purchasePrice: cleanTextValue(payload.purchasePrice ?? fallback.purchasePrice),
+    vendor: cleanTextValue(payload.vendor ?? fallback.vendor),
+    remarks: cleanTextValue(payload.remarks ?? fallback.remarks)
+  };
+}
+
 function technicianWithAttendance(db, tech) {
   const activePlan = activeAttendancePlan(db, tech.id);
   return {
@@ -1768,6 +1791,7 @@ async function createAsset(payload, user) {
   const code = String(payload.code || "").trim();
   const status = String(payload.status || "Active").trim();
   const notes = String(payload.notes || "").trim();
+  const metadata = assetMetadataFromPayload(payload);
 
   if (!db.outlets.includes(outlet)) return { status: 400, body: { error: "Outlet is invalid" } };
   if (!db.categories.some((item) => item.name === category)) return { status: 400, body: { error: "Category is invalid" } };
@@ -1784,6 +1808,7 @@ async function createAsset(payload, user) {
     code,
     status,
     notes,
+    ...metadata,
     createdBy: user?.id || "",
     createdAt: new Date().toISOString()
   };
@@ -1819,13 +1844,14 @@ async function updateAsset(assetId, payload, user) {
   const code = String(payload.code ?? existing.code ?? "").trim();
   const status = String(payload.status || existing.status || "Active").trim();
   const notes = String(payload.notes ?? existing.notes ?? "").trim();
+  const metadata = assetMetadataFromPayload(payload, existing);
   if (!db.outlets.includes(outlet)) return { status: 400, body: { error: "Outlet is invalid" } };
   if (!db.categories.some((item) => item.name === category)) return { status: 400, body: { error: "Category is invalid" } };
   if (!name) return { status: 400, body: { error: "Asset name is required" } };
   if (code && db.assets.some((asset) => asset.id !== assetId && String(asset.code).toLowerCase() === code.toLowerCase())) {
     return { status: 409, body: { error: "Asset code already exists" } };
   }
-  const updated = { ...existing, outlet, category, name, code, status, notes, updatedBy: user?.id || "" };
+  const updated = { ...existing, outlet, category, name, code, status, notes, ...metadata, updatedBy: user?.id || "" };
   if (useSupabase) {
     await requireSupabase(await supabase.from("assets").update({
       outlet,
