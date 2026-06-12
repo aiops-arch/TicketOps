@@ -40,6 +40,7 @@ const LAST_ACTIVITY_STORAGE_KEY = "ticketops-last-activity";
 const BOOTSTRAP_CACHE_KEY = "ticketops-bootstrap-cache-v4";
 const BROWSER_DB_STORAGE_KEY = "ticketops-browser-db-v3";
 const BOOTSTRAP_CACHE_TTL_MS = 10 * 60 * 1000;
+const APPS_SCRIPT_BOOTSTRAP_CACHE_TTL_MS = 60 * 1000;
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_TICKET_PHOTOS = 5;
 const GOOGLE_SHEETS_MAX_TICKET_PHOTOS = 2;
@@ -555,6 +556,10 @@ function closePhotoLightbox() {
 
 let currentUser = readStoredUser();
 let directoryUsers = [];
+let directoryUsersLoaded = false;
+let directoryUsersRequest = null;
+let stitchStatusLoaded = false;
+let stitchStatusRequest = null;
 let editingUserAccessId = "";
 let editingCategoryId = "";
 let editingTechnicianId = "";
@@ -640,12 +645,22 @@ function readStoredUser() {
 
 function saveUser(user) {
   currentUser = normalizeSessionUser(user);
+  directoryUsers = [];
+  directoryUsersLoaded = false;
+  directoryUsersRequest = null;
+  stitchStatusLoaded = false;
+  stitchStatusRequest = null;
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(currentUser));
   markUserActivity();
 }
 
 function clearUser() {
   currentUser = null;
+  directoryUsers = [];
+  directoryUsersLoaded = false;
+  directoryUsersRequest = null;
+  stitchStatusLoaded = false;
+  stitchStatusRequest = null;
   localStorage.removeItem(AUTH_STORAGE_KEY);
   localStorage.removeItem(LAST_ACTIVITY_STORAGE_KEY);
   sessionStorage.removeItem("ticketops-last-view");
@@ -779,15 +794,7 @@ function toggleDesktopNav() {
 
 function setSidebarHoverOpen(open) {
   window.clearTimeout(sidebarHoverTimer);
-  if (!currentUser || isMobileNav() || desktopNavOpen) {
-    document.body.classList.remove("sidebar-hover-open");
-    return;
-  }
-  const apply = () => {
-    document.body.classList.toggle("sidebar-hover-open", open);
-    if (open) document.querySelector(".topbar")?.scrollTo?.({ top: 0, left: 0 });
-  };
-  sidebarHoverTimer = window.setTimeout(apply, open ? 45 : 90);
+  document.body.classList.remove("sidebar-hover-open");
 }
 
 function escapeHtml(value) {
@@ -2130,7 +2137,8 @@ function hasOperationalData(nextState) {
 
 async function fetchBootstrapState({ preferCache = true } = {}) {
   const cached = readBootstrapCache();
-  if (preferCache && !LOCAL_DATA_MODE && !USE_APPS_SCRIPT_API && cached?.state && Date.now() - Number(cached.at || 0) < BOOTSTRAP_CACHE_TTL_MS) {
+  const cacheTtl = USE_APPS_SCRIPT_API ? APPS_SCRIPT_BOOTSTRAP_CACHE_TTL_MS : BOOTSTRAP_CACHE_TTL_MS;
+  if (preferCache && !LOCAL_DATA_MODE && cached?.state && Date.now() - Number(cached.at || 0) < cacheTtl) {
     return cached.state;
   }
   if (USE_BROWSER_FALLBACK_API) {
@@ -2304,22 +2312,78 @@ function renderAuthChrome() {
   });
 }
 
+function activeRouteView() {
+  return document.body.dataset.view || requestedRouteView() || roleHomeView();
+}
+
+function viewNeedsDirectoryUsers(viewName = activeRouteView()) {
+  return ["admin", "masters", "settings", "directory"].includes(viewName);
+}
+
+function viewNeedsStitchStatus(viewName = activeRouteView()) {
+  return currentUser?.role === "admin" && ["settings", "system"].includes(viewName);
+}
+
+async function ensureDirectoryUsers({ force = false, rerender = false } = {}) {
+  if (!currentUser || (!force && directoryUsersLoaded)) return;
+  if (!directoryUsersRequest) {
+    directoryUsersRequest = loadDirectoryUsers()
+      .finally(() => {
+        directoryUsersLoaded = true;
+        directoryUsersRequest = null;
+      });
+  }
+  await directoryUsersRequest;
+  if (rerender) {
+    const viewName = activeRouteView();
+    renderActiveView(viewName);
+    renderUtilityView(viewName);
+  }
+}
+
+async function ensureStitchStatus({ force = false, rerender = false } = {}) {
+  if (!currentUser || currentUser.role !== "admin" || !state.stitch?.configured || (!force && stitchStatusLoaded)) return;
+  if (!stitchStatusRequest) {
+    stitchStatusRequest = api("/api/stitch/status")
+      .then((status) => {
+        state.stitch = { ...state.stitch, ...status };
+      })
+      .catch(() => {
+        state.stitch = { ...state.stitch, connected: false, error: "Unable to verify Stitch right now" };
+      })
+      .finally(() => {
+        stitchStatusLoaded = true;
+        stitchStatusRequest = null;
+      });
+  }
+  await stitchStatusRequest;
+  if (rerender) {
+    const viewName = activeRouteView();
+    renderActiveView(viewName);
+    renderUtilityView(viewName);
+  }
+}
+
+function requestDeferredViewData(viewName = activeRouteView()) {
+  if (viewNeedsDirectoryUsers(viewName) && !directoryUsersLoaded) {
+    ensureDirectoryUsers({ rerender: true }).catch((error) => console.warn(error));
+  }
+  if (viewNeedsStitchStatus(viewName) && !stitchStatusLoaded) {
+    ensureStitchStatus({ rerender: true }).catch((error) => console.warn(error));
+  }
+}
+
 async function loadState() {
   if (!currentUser) return;
   setAppLoading(true, "Reading live operations", "Loading tickets, technicians, outlets, schedules, and report totals.");
   try {
     state = normalizeBootstrapState(await fetchBootstrapState());
     rebuildStateIndex();
-    if (currentUser?.role === "admin" && state.stitch?.configured) {
-      try {
-        state.stitch = { ...state.stitch, ...(await api("/api/stitch/status")) };
-      } catch {
-        state.stitch = { ...state.stitch, connected: false, error: "Unable to verify Stitch right now" };
-      }
-    }
-    if (["admin", "auditor"].includes(currentUser?.role) || canUseView("masters") || canUseView("history")) {
-      await loadDirectoryUsers();
-    } else {
+    const viewName = activeRouteView();
+    if (viewNeedsStitchStatus(viewName)) await ensureStitchStatus();
+    if (viewNeedsDirectoryUsers(viewName)) {
+      await ensureDirectoryUsers();
+    } else if (!directoryUsersLoaded) {
       directoryUsers = [];
     }
     renderSelects();
@@ -5885,10 +5949,25 @@ function renderSystem() {
 }
 
 function renderUtilityViews() {
-  renderSettings();
-  renderDirectory();
-  renderActivity();
-  renderSystem();
+  renderUtilityView();
+}
+
+function renderUtilityView(viewName = activeRouteView()) {
+  if (viewName === "settings") {
+    renderSettings();
+    return;
+  }
+  if (viewName === "directory") {
+    renderDirectory();
+    return;
+  }
+  if (viewName === "activity") {
+    renderActivity();
+    return;
+  }
+  if (viewName === "system") {
+    renderSystem();
+  }
 }
 
 function renderStagePulse() {
@@ -6014,8 +6093,10 @@ function updateLiveIntel() {
 function render() {
   renderAuthChrome();
   renderStagePulse();
-  renderActiveView(document.body.dataset.view || roleHomeView());
-  renderUtilityViews();
+  const viewName = activeRouteView();
+  renderActiveView(viewName);
+  renderUtilityView(viewName);
+  requestDeferredViewData(viewName);
 }
 
 function renderActiveView(viewName) {
@@ -6076,6 +6157,8 @@ function switchView(viewName) {
   document.querySelectorAll(".tab[data-view]").forEach((tab) => tab.classList.toggle("is-active", tab.dataset.view === nextView));
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("is-active", view.id === nextView));
   renderActiveView(nextView);
+  renderUtilityView(nextView);
+  requestDeferredViewData(nextView);
   closeMobileNav();
   requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0 }));
 
@@ -6111,6 +6194,7 @@ function showConnectionError(error) {
 }
 
 function startWaterDrift() {
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
   const root = document.documentElement;
   let rafId = 0;
   let targetX = 0;
@@ -6119,14 +6203,20 @@ function startWaterDrift() {
   let currentY = 0;
 
   function paint() {
-    currentX += (targetX - currentX) * 0.06;
-    currentY += (targetY - currentY) * 0.06;
+    const deltaX = targetX - currentX;
+    const deltaY = targetY - currentY;
+    currentX += deltaX * 0.06;
+    currentY += deltaY * 0.06;
     root.style.setProperty("--water-a-x", `${18 + currentX * 7}%`);
     root.style.setProperty("--water-a-y", `${12 + currentY * 6}%`);
     root.style.setProperty("--water-b-x", `${72 - currentX * 7}%`);
     root.style.setProperty("--water-b-y", `${42 + currentY * 5}%`);
     root.style.setProperty("--water-c-x", `${92 + currentX * 4}%`);
     root.style.setProperty("--water-c-y", `${18 - currentY * 4}%`);
+    if (Math.abs(deltaX) < 0.002 && Math.abs(deltaY) < 0.002) {
+      rafId = 0;
+      return;
+    }
     rafId = window.requestAnimationFrame(paint);
   }
 

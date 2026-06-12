@@ -25363,3 +25363,262 @@ body.ops-portal.has-session[data-view="masters"] .asset-bulk-status[data-tone="e
     flex: 1 1 180px;
   }
 }
+
+/* Sidebar stability patch: button-controlled rail, no hover expansion. */
+@media (min-width: 768px) {
+  body.ops-portal.has-session {
+    --sidebar-closed: 88px;
+    --sidebar-open: 300px;
+    --active-sidebar: var(--sidebar-closed);
+    padding-left: calc(var(--active-sidebar) + 24px) !important;
+    transition: padding-left 210ms cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  }
+
+  body.ops-portal.has-session.desktop-nav-open {
+    --active-sidebar: var(--sidebar-open);
+  }
+
+  body.ops-portal.has-session.sidebar-hover-open {
+    --active-sidebar: var(--sidebar-closed) !important;
+  }
+
+  body.ops-portal.has-session .topbar,
+  body.ops-portal.has-session .topbar:hover,
+  body.ops-portal.has-session .topbar:focus-within,
+  body.ops-portal.has-session.sidebar-hover-open .topbar,
+  body.ops-portal.has-session.sidebar-hover-open .topbar:hover,
+  body.ops-portal.has-session.sidebar-hover-open .topbar:focus-within {
+    position: fixed !important;
+    inset: 12px auto 12px 12px !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    align-content: stretch !important;
+    gap: 12px !important;
+    width: var(--sidebar-closed) !important;
+    height: auto !important;
+    padding: 14px 10px !important;
+    overflow: hidden !important;
+    transform: none !important;
+    animation: none !important;
+    transition:
+      width 210ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      padding 210ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 160ms ease,
+      border-color 160ms ease !important;
+    will-change: width !important;
+  }
+
+  body.ops-portal.has-session.desktop-nav-open .topbar,
+  body.ops-portal.has-session.desktop-nav-open .topbar:hover,
+  body.ops-portal.has-session.desktop-nav-open .topbar:focus-within {
+    width: var(--sidebar-open) !important;
+    padding: 16px 14px !important;
+  }
+
+  body.ops-portal.has-session .brand-lockup,
+  body.ops-portal.has-session .topbar:hover .brand-lockup,
+  body.ops-portal.has-session .topbar:focus-within .brand-lockup {
+    display: grid !important;
+    grid-template-columns: 46px 0 !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 0 !important;
+    min-height: 62px !important;
+    width: 100% !important;
+    padding: 4px 0 12px !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--brand) 14%, transparent) !important;
+    overflow: hidden !important;
+  }
+
+  body.ops-portal.has-session.desktop-nav-open .brand-lockup,
+  body.ops-portal.has-session.desktop-nav-open .topbar:hover .brand-lockup,
+  body.ops-portal.has-session.desktop-nav-open .topbar:focus-within .brand-lockup {
+    grid-template-columns: 46px minmax(0, 1fr) !important;
+    justify-content: start !important;
+    gap: 12px !important;
+    padding-inline: 4px !important;
+  }
+
+  body.ops-portal.has-session .brand-mark {
+    width: 46px !important;
+    height: 46px !important;
+    min-width: 46px !important;
+    object-fit: contain !important;
+  }
+
+  body.ops-portal.has-session .topbar .brand-lockup > div,
+  body.ops-portal.has-session .topbar:hover .brand-lockup > div,
+  body.ops-portal.has-session .topbar:focus-within .brand-lockup > div,
+  body.ops-portal.has-session.sidebar-hover-open .topbar .brand-lockup > div,
+  body.ops-portal.has-session.sidebar-hover-open .topbar:hover .brand-lockup > div,
+  body.ops-portal.has-session.sidebar-hover-open .topbar:focus-within .brand-lockup > div {
+    max-width: 0 !important;
+    opacity: 0 !important;
+    transform: none !important;
+    pointer-events: none !important;
+    transition: opacity 120ms ease, max-width 210ms cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  }
+
+  body.ops-portal.has-session.desktop-nav-open .topbar .brand-lockup > div,
+  body.ops-portal.has-session.desktop-nav-open .topbar:hover .brand-lockup > div,
+  body.ops-portal.has-session.desktop-nav-open .topbar:focus-within .brand-lockup > div {
+    max-width: 190px !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  body.ops-portal.has-session .topbar .tabs,
+  body.ops-portal.has-session .topbar:hover .tabs,
+  body.ops-portal.has-session .topbar:focus-within .tabs {
+    display: grid !important;
+    align-content: start !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden auto !important;
+    scrollbar-width: none !important;
+  }
+
+  body.ops-portal.has-session .topbar .tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  body.ops-portal.has-session .topbar .tab,
+  body.ops-portal.has-session .topbar:hover .tab,
+  body.ops-portal.has-session .topbar:focus-within .tab {
+    display: grid !important;
+    grid-template-columns: 38px 0 !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 0 !important;
+    width: 100% !important;
+    min-height: 43px !important;
+    padding: 3px !important;
+    overflow: hidden !important;
+    transform: none !important;
+    transition:
+      background-color 140ms ease,
+      border-color 140ms ease,
+      color 140ms ease,
+      box-shadow 140ms ease !important;
+  }
+
+  body.ops-portal.has-session.desktop-nav-open .topbar .tab,
+  body.ops-portal.has-session.desktop-nav-open .topbar:hover .tab,
+  body.ops-portal.has-session.desktop-nav-open .topbar:focus-within .tab {
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+    justify-content: start !important;
+    gap: 10px !important;
+    padding: 3px 10px 3px 3px !important;
+  }
+
+  body.ops-portal.has-session .topbar .tab .nav-icon,
+  body.ops-portal.has-session .topbar .tab span:first-child {
+    width: 38px !important;
+    height: 35px !important;
+    min-width: 38px !important;
+  }
+
+  body.ops-portal.has-session .topbar .tab .tab-label,
+  body.ops-portal.has-session .topbar:hover .tab .tab-label,
+  body.ops-portal.has-session .topbar:focus-within .tab .tab-label,
+  body.ops-portal.has-session.sidebar-hover-open .topbar .tab .tab-label,
+  body.ops-portal.has-session.sidebar-hover-open .topbar:hover .tab .tab-label,
+  body.ops-portal.has-session.sidebar-hover-open .topbar:focus-within .tab .tab-label {
+    max-width: 0 !important;
+    opacity: 0 !important;
+    transform: none !important;
+    pointer-events: none !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    transition: opacity 120ms ease, max-width 210ms cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  }
+
+  body.ops-portal.has-session.desktop-nav-open .topbar .tab .tab-label,
+  body.ops-portal.has-session.desktop-nav-open .topbar:hover .tab .tab-label,
+  body.ops-portal.has-session.desktop-nav-open .topbar:focus-within .tab .tab-label {
+    max-width: 190px !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  body.ops-portal.has-session .topbar-actions,
+  body.ops-portal.has-session .topbar:hover .topbar-actions,
+  body.ops-portal.has-session .topbar:focus-within .topbar-actions {
+    display: grid !important;
+    align-self: end !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin-top: auto !important;
+    padding-top: 10px !important;
+    border-top: 1px solid color-mix(in srgb, var(--brand) 14%, transparent) !important;
+    overflow: hidden !important;
+  }
+
+  body.ops-portal.has-session .account-dock,
+  body.ops-portal.has-session .topbar:hover .account-dock,
+  body.ops-portal.has-session .topbar:focus-within .account-dock {
+    display: grid !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body.ops-portal.has-session .live-pill,
+  body.ops-portal.has-session .user-pill,
+  body.ops-portal.has-session .account-actions,
+  body.ops-portal.has-session .topbar:hover .live-pill,
+  body.ops-portal.has-session .topbar:hover .user-pill,
+  body.ops-portal.has-session .topbar:hover .account-actions,
+  body.ops-portal.has-session .topbar:focus-within .live-pill,
+  body.ops-portal.has-session .topbar:focus-within .user-pill,
+  body.ops-portal.has-session .topbar:focus-within .account-actions {
+    max-height: 0 !important;
+    opacity: 0 !important;
+    transform: none !important;
+    pointer-events: none !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+    transition: opacity 120ms ease, max-height 210ms cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  }
+
+  body.ops-portal.has-session.desktop-nav-open .live-pill,
+  body.ops-portal.has-session.desktop-nav-open .user-pill,
+  body.ops-portal.has-session.desktop-nav-open .account-actions,
+  body.ops-portal.has-session.desktop-nav-open .topbar:hover .live-pill,
+  body.ops-portal.has-session.desktop-nav-open .topbar:hover .user-pill,
+  body.ops-portal.has-session.desktop-nav-open .topbar:hover .account-actions,
+  body.ops-portal.has-session.desktop-nav-open .topbar:focus-within .live-pill,
+  body.ops-portal.has-session.desktop-nav-open .topbar:focus-within .user-pill,
+  body.ops-portal.has-session.desktop-nav-open .topbar:focus-within .account-actions {
+    max-height: 120px !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+  }
+
+  body.ops-portal.has-session #sidebarToggle,
+  body.ops-portal.has-session .topbar:hover #sidebarToggle,
+  body.ops-portal.has-session .topbar:focus-within #sidebarToggle {
+    order: 3 !important;
+    justify-self: center !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    padding: 0 !important;
+    border-radius: 12px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  body.ops-portal.has-session.desktop-nav-open #sidebarToggle,
+  body.ops-portal.has-session.desktop-nav-open .topbar:hover #sidebarToggle,
+  body.ops-portal.has-session.desktop-nav-open .topbar:focus-within #sidebarToggle {
+    justify-self: end !important;
+  }
+}
