@@ -22737,7 +22737,7 @@ body[data-theme="dark"].ops-portal .photo-preview-empty {
 @media (min-width: 768px) {
   body.ops-portal.has-session {
     --sidebar-closed: 88px;
-    --sidebar-open: 300px;
+    --sidebar-open: 248px;
     padding-left: calc(var(--sidebar-closed) + 18px) !important;
     transition: padding-left var(--motion-sidebar-ms) var(--motion-sidebar-ease) !important;
   }
@@ -25462,7 +25462,7 @@ body.ops-portal.has-session[data-view="masters"] .asset-bulk-status[data-tone="e
   body.ops-portal.has-session.desktop-nav-open .topbar .brand-lockup > div,
   body.ops-portal.has-session.desktop-nav-open .topbar:hover .brand-lockup > div,
   body.ops-portal.has-session.desktop-nav-open .topbar:focus-within .brand-lockup > div {
-    max-width: 190px !important;
+    max-width: 150px !important;
     opacity: 1 !important;
     pointer-events: auto !important;
   }
@@ -25539,7 +25539,7 @@ body.ops-portal.has-session[data-view="masters"] .asset-bulk-status[data-tone="e
   body.ops-portal.has-session.desktop-nav-open .topbar .tab .tab-label,
   body.ops-portal.has-session.desktop-nav-open .topbar:hover .tab .tab-label,
   body.ops-portal.has-session.desktop-nav-open .topbar:focus-within .tab .tab-label {
-    max-width: 190px !important;
+    max-width: 150px !important;
     opacity: 1 !important;
     pointer-events: auto !important;
   }

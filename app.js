@@ -83,7 +83,7 @@ function ticketRequiresPhoto({ impact = "", category = "", note = "" } = {}) {
 }
 
 const ROLE_DEFAULT_VIEWS = {
-  admin: ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"],
+  admin: ["dashboard", "manager", "admin", "masters", "scheduler", "technician", "history", "reports"],
   manager: ["manager"],
   technician: ["technician"],
   auditor: ["dashboard", "reports"]
@@ -91,7 +91,7 @@ const ROLE_DEFAULT_VIEWS = {
 
 const UTILITY_VIEWS = [];
 const ROLE_VIEW_ALLOWLIST = {
-  admin: ["dashboard", "manager", "admin", "masters", "scheduler", "history", "reports"],
+  admin: ["dashboard", "manager", "admin", "masters", "scheduler", "technician", "history", "reports"],
   manager: ["manager"],
   technician: ["technician"],
   auditor: ["dashboard", "reports"]
