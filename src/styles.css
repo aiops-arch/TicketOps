@@ -26537,3 +26537,16 @@ textarea:focus {
   to { opacity: 1; transform: translateY(0); }
 }
 
+
+/* ── SIDEBAR FLICKER FIX: lock both sidebar variables to 220px so width never changes ── */
+@media (min-width: 768px) {
+  body.ops-portal.has-session {
+    --sidebar-peek: 220px;
+    --sidebar-expanded: 220px;
+    --sidebar-gap: 0px;
+  }
+  body.ops-portal.has-session .topbar {
+    transition: background 220ms var(--motion-smooth), box-shadow 220ms var(--motion-smooth) !important;
+    will-change: auto !important;
+  }
+}
