@@ -25859,23 +25859,23 @@ body[data-theme="warm"]::after {
   body[data-theme="command"].ops-portal .topbar,
   body[data-theme="command"].ops-portal .topbar:hover,
   body[data-theme="command"].ops-portal .topbar:focus-within {
-    border-bottom-color: rgba(0, 212, 255, 0.15) !important;
-    background: rgba(8, 10, 26, 0.97) !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+    border-bottom-color: rgba(0, 212, 255, 0.15);
+    background: rgba(8, 10, 26, 0.97);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   }
   body[data-theme="saas"].ops-portal .topbar,
   body[data-theme="saas"].ops-portal .topbar:hover,
   body[data-theme="saas"].ops-portal .topbar:focus-within {
-    border-bottom-color: rgba(99, 102, 241, 0.18) !important;
-    background: rgba(255, 255, 255, 0.99) !important;
-    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.1) !important;
+    border-bottom-color: rgba(99, 102, 241, 0.18);
+    background: rgba(255, 255, 255, 0.99);
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.1);
   }
   body[data-theme="warm"].ops-portal .topbar,
   body[data-theme="warm"].ops-portal .topbar:hover,
   body[data-theme="warm"].ops-portal .topbar:focus-within {
-    border-bottom-color: rgba(217, 119, 6, 0.16) !important;
-    background: rgba(253, 249, 243, 0.98) !important;
-    box-shadow: 0 4px 18px rgba(28, 20, 10, 0.08) !important;
+    border-bottom-color: rgba(217, 119, 6, 0.16);
+    background: rgba(253, 249, 243, 0.98);
+    box-shadow: 0 4px 18px rgba(28, 20, 10, 0.08);
   }
 }
 
@@ -25885,28 +25885,274 @@ body[data-theme="warm"]::after {
   body[data-theme="command"].ops-portal.has-session .topbar:hover,
   body[data-theme="command"].ops-portal.has-session .topbar:focus-within,
   body[data-theme="command"].ops-portal.has-session.desktop-nav-open .topbar {
-    border-color: rgba(0, 212, 255, 0.16) !important;
+    border-color: rgba(0, 212, 255, 0.16);
     background:
       linear-gradient(180deg, rgba(10, 13, 32, 0.96), rgba(6, 8, 20, 0.94)),
-      var(--surface) !important;
-    box-shadow: 0 22px 56px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(0, 212, 255, 0.1) !important;
+      var(--surface);
+    box-shadow: 0 22px 56px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(0, 212, 255, 0.1);
   }
   body[data-theme="saas"].ops-portal.has-session .topbar,
   body[data-theme="saas"].ops-portal.has-session .topbar:hover,
   body[data-theme="saas"].ops-portal.has-session .topbar:focus-within,
   body[data-theme="saas"].ops-portal.has-session.desktop-nav-open .topbar {
-    border-color: rgba(99, 102, 241, 0.14) !important;
-    background: rgba(255, 255, 255, 0.99) !important;
-    box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08), inset 1px 0 0 rgba(99, 102, 241, 0.1) !important;
+    border-color: rgba(99, 102, 241, 0.14);
+    background: rgba(255, 255, 255, 0.99);
+    box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08), inset 1px 0 0 rgba(99, 102, 241, 0.1);
   }
   body[data-theme="warm"].ops-portal.has-session .topbar,
   body[data-theme="warm"].ops-portal.has-session .topbar:hover,
   body[data-theme="warm"].ops-portal.has-session .topbar:focus-within,
   body[data-theme="warm"].ops-portal.has-session.desktop-nav-open .topbar {
-    border-color: rgba(217, 119, 6, 0.16) !important;
+    border-color: rgba(217, 119, 6, 0.16);
     background:
       linear-gradient(180deg, rgba(253, 248, 240, 0.97), rgba(248, 243, 232, 0.95)),
-      var(--surface) !important;
-    box-shadow: 0 10px 32px rgba(28, 20, 10, 0.1), inset 0 1px 0 rgba(217, 119, 6, 0.12) !important;
+      var(--surface);
+    box-shadow: 0 10px 32px rgba(28, 20, 10, 0.1), inset 0 1px 0 rgba(217, 119, 6, 0.12);
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WARM PROFESSIONAL REDESIGN — global palette + compact layout layer
+   Override defaults; does not replace any theme-specific blocks above.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 1 ─ Core palette: warm amber/cream replaces teal-green */
+:root {
+  --bg: #f0e8d8;
+  --surface: rgba(255, 252, 244, 0.97);
+  --surface-soft: rgba(250, 244, 232, 0.88);
+  --surface-warm: #fdf8ee;
+  --surface-2: rgba(243, 236, 220, 0.9);
+  --surface-3: rgba(232, 223, 206, 0.92);
+  --surface-muted: rgba(236, 228, 210, 0.82);
+  --ink: #1d160e;
+  --ink-strong: #120d07;
+  --ink-soft: #7a6644;
+  --ink-faint: #a8916a;
+  --muted: #7a6644;
+  --line: #ddd0b8;
+  --line-strong: #c8b490;
+  --border: #ddd0b8;
+  --border-strong: #c8b490;
+  --night: #1e1408;
+  --night-2: #2d1e0c;
+  --accent: #c07028;
+  --accent-2: #f5d49a;
+  --teal: #c07028;
+  --teal-deep: #964e1a;
+  --gold: #c07028;
+  --glass: rgba(255, 250, 235, 0.52);
+  --glass-strong: rgba(255, 253, 243, 0.84);
+  --glass-warm: rgba(255, 248, 226, 0.6);
+  --glass-border: rgba(192, 112, 40, 0.18);
+  --glass-hover: rgba(255, 246, 220, 0.68);
+  --glow-accent: 0 0 0 1px rgba(192, 112, 40, 0.18), 0 6px 20px rgba(192, 112, 40, 0.1);
+  --shadow: 0 4px 18px rgba(28, 16, 6, 0.09), 0 2px 8px rgba(28, 16, 6, 0.05);
+  --shadow-soft: 0 2px 10px rgba(28, 16, 6, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  --elev-1: 0 1px 3px rgba(28, 16, 6, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  --elev-2: var(--shadow-soft);
+  --elev-3: var(--shadow);
+  --elev-4: 0 16px 44px rgba(28, 16, 6, 0.14), 0 6px 18px rgba(28, 16, 6, 0.08);
+  --brand: #c07028;
+  --brand-strong: #964e1a;
+  --brand-soft: rgba(192, 112, 40, 0.14);
+  --brand-glow: var(--glow-accent);
+  --status-critical: #c03838;
+  --status-warning: #c07028;
+  --status-success: #2c7a4e;
+  --status-info: #3868a8;
+  --status-active: #6c5ca0;
+  --status-neutral: #7a6644;
+  --status-critical-wash: rgba(192, 56, 56, 0.1);
+  --status-warning-wash: rgba(192, 112, 40, 0.12);
+  --status-success-wash: rgba(44, 122, 78, 0.1);
+  --status-info-wash: rgba(56, 104, 168, 0.1);
+  --status-active-wash: rgba(108, 92, 160, 0.1);
+  --status-neutral-wash: rgba(122, 102, 68, 0.1);
+  --status-critical-border: rgba(192, 56, 56, 0.24);
+  --status-warning-border: rgba(192, 112, 40, 0.26);
+  --status-success-border: rgba(44, 122, 78, 0.22);
+  --status-info-border: rgba(56, 104, 168, 0.22);
+  --status-active-border: rgba(108, 92, 160, 0.22);
+  --status-neutral-border: rgba(122, 102, 68, 0.2);
+  --duration-fast: 100ms;
+  --duration-base: 180ms;
+  --duration-slow: 260ms;
+}
+
+/* 2 ─ Body background: warm amber gradient replaces teal radials */
+html {
+  background: #f0e8d8;
+}
+body {
+  background:
+    radial-gradient(ellipse at 12% 8%, rgba(192, 112, 40, 0.09), transparent 36%),
+    radial-gradient(ellipse at 88% 92%, rgba(150, 78, 26, 0.07), transparent 34%),
+    radial-gradient(ellipse at 60% 30%, rgba(245, 212, 154, 0.06), transparent 30%),
+    linear-gradient(150deg, #f5ece0 0%, #ede2cc 55%, #f2e8d6 100%);
+}
+
+/* 3 ─ Scrollbar: warm amber */
+*::-webkit-scrollbar-track {
+  background: rgba(192, 112, 40, 0.07);
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(192, 112, 40, 0.24);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(192, 112, 40, 0.44);
+}
+
+/* 4 ─ Cards: compact, warm, no heavy glass */
+.intel-card,
+.metric,
+.ticket-card,
+.tech-card,
+.report-card,
+.master-form,
+.master-row,
+.admin-tech-card,
+.ticket-form {
+  border-color: var(--line);
+  background: var(--surface);
+  box-shadow: var(--elev-1);
+  backdrop-filter: none;
+}
+.intel-card:hover,
+.metric:hover,
+.ticket-card:hover,
+.tech-card:hover,
+.report-card:hover,
+.master-form:hover,
+.master-row:hover,
+.admin-tech-card:hover,
+.ticket-form:hover {
+  background: var(--surface-warm);
+  box-shadow: var(--elev-2);
+  border-color: var(--glass-border);
+  transform: translateY(-1px) scale(1.002);
+}
+
+/* 5 ─ Intel card compact */
+.intel-card {
+  min-height: 70px;
+  padding: 11px 13px;
+  border-top-width: 3px;
+}
+
+/* 6 ─ Ticket card compact */
+.ticket-card {
+  padding: 9px 11px;
+  border-radius: 7px;
+}
+
+/* 7 ─ Queue group headings: warm */
+.queue-group-heading {
+  border-color: rgba(192, 112, 40, 0.14);
+  background: rgba(255, 250, 235, 0.45);
+}
+.queue-group-heading strong {
+  color: var(--teal-deep);
+}
+
+/* 8 ─ Section kicker: amber */
+.section-kicker {
+  color: var(--teal-deep);
+}
+
+/* 9 ─ Focus rings: amber */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline-color: rgba(192, 112, 40, 0.5);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  box-shadow: 0 0 0 3px rgba(192, 112, 40, 0.12);
+}
+
+/* 10 ─ Sidebar/topbar: warm gradient, premium */
+.topbar {
+  background: linear-gradient(180deg, #fef5e4 0%, #f8edd6 100%);
+  box-shadow: 1px 0 0 var(--line-strong), 6px 0 20px rgba(28, 16, 6, 0.07);
+}
+.topbar:hover,
+.topbar:focus-within {
+  background: linear-gradient(180deg, #fff8ec 0%, #faf1df 100%);
+  box-shadow: 1px 0 0 var(--glass-border), 10px 0 30px rgba(28, 16, 6, 0.09);
+}
+.topbar::after {
+  background: linear-gradient(180deg, rgba(192, 112, 40, 0.1), rgba(192, 112, 40, 0.9), rgba(245, 212, 154, 0.2));
+  box-shadow: 0 0 24px rgba(192, 112, 40, 0.32), 0 0 8px rgba(192, 112, 40, 0.18);
+}
+
+/* 11 ─ Collapsible panels: chevron + toggle */
+.panel-heading {
+  cursor: pointer;
+  user-select: none;
+  border-radius: 6px;
+  padding: 5px 8px;
+  margin: -5px -8px 4px;
+  transition: background 100ms ease;
+}
+.panel-heading:hover {
+  background: rgba(192, 112, 40, 0.06);
+}
+.collapse-chevron {
+  width: 15px;
+  height: 15px;
+  color: var(--muted);
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.panel-heading.is-collapsed .collapse-chevron {
+  transform: rotate(-90deg);
+}
+.panel-body.is-collapsed {
+  display: none;
+}
+
+/* 12 ─ Mobile topbar: warm */
+@media (max-width: 767px) {
+  .topbar,
+  .topbar:hover,
+  .topbar:focus-within {
+    background: rgba(254, 247, 234, 0.97);
+    border-bottom-color: var(--line-strong);
+    box-shadow: 0 4px 16px rgba(28, 16, 6, 0.08);
+  }
+}
+
+/* 13 ─ Desktop sidebar: warm with has-session */
+@media (min-width: 768px) {
+  body.ops-portal.has-session .topbar,
+  body.ops-portal.has-session .topbar:hover,
+  body.ops-portal.has-session .topbar:focus-within,
+  body.ops-portal.has-session.desktop-nav-open .topbar {
+    background: linear-gradient(180deg, #fef5e4 0%, #f8edd6 100%);
+    border-color: var(--line-strong);
+    box-shadow: 1px 0 0 var(--line-strong), 8px 0 24px rgba(28, 16, 6, 0.07);
+  }
+}
+
+/* 14 ─ Panel heading active tab indicator: amber */
+.topbar .tab.is-active {
+  color: var(--brand);
+}
+.topbar .tab.is-active::after {
+  background: var(--brand);
+}
+
+/* 15 ─ Heading chip: warm */
+.heading-chip {
+  border-color: rgba(192, 112, 40, 0.2);
+  background: rgba(255, 248, 228, 0.5);
+  color: var(--ink-soft);
+}
+
+/* 16 ─ App shell: warm */
+.ops-portal .app-shell {
+  background: transparent;
 }

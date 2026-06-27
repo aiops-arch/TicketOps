@@ -6529,6 +6529,7 @@ function render() {
   renderActiveView(viewName);
   renderUtilityView(viewName);
   requestDeferredViewData(viewName);
+  setTimeout(initCollapsiblePanels, 50);
 }
 
 function renderActiveView(viewName) {
