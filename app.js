@@ -35,6 +35,10 @@ const USE_APPS_SCRIPT_API = /script\.google\.com\/macros\/s\/.+\/exec/i.test(API
 const USE_BROWSER_FALLBACK_API = !API_BASE;
 const AUTH_STORAGE_KEY = "ticketops-auth-user-v2";
 const THEME_STORAGE_KEY = "ticketops-theme";
+const VALID_THEMES = ["light", "dark", "command", "saas", "warm"];
+const THEME_META_COLORS = { light: "#f4f7ff", dark: "#0d1024", command: "#06071a", saas: "#f1f5f9", warm: "#faf7f0" };
+const THEME_LABELS = { light: "Default", dark: "Dark", command: "Command", saas: "Clean", warm: "Warm" };
+const THEME_NEXT = { light: "dark", dark: "command", command: "saas", saas: "warm", warm: "light" };
 const DASHBOARD_MODE_STORAGE_KEY = "ticketops-dashboard-mode";
 const LAST_ACTIVITY_STORAGE_KEY = "ticketops-last-activity";
 const BOOTSTRAP_CACHE_KEY = "ticketops-bootstrap-cache-v4";
@@ -692,25 +696,26 @@ function logoutForInactivity() {
 
 function readStoredTheme() {
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
-  return stored === "dark" ? "dark" : "light";
+  return VALID_THEMES.includes(stored) ? stored : "light";
 }
 
 function applyTheme(theme) {
-  currentTheme = theme === "dark" ? "dark" : "light";
+  currentTheme = VALID_THEMES.includes(theme) ? theme : "light";
+  const isDark = currentTheme === "dark" || currentTheme === "command";
   document.body.dataset.theme = currentTheme;
   document.documentElement.dataset.theme = currentTheme;
-  document.documentElement.style.colorScheme = currentTheme;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", currentTheme === "dark" ? "#0d1024" : "#f4f7ff");
+  document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEME_META_COLORS[currentTheme] || "#f4f7ff");
   const button = document.querySelector("#themeToggle");
   if (button) {
-    button.textContent = currentTheme === "dark" ? "Light" : "Dark";
-    button.setAttribute("aria-pressed", currentTheme === "dark" ? "true" : "false");
-    button.title = currentTheme === "dark" ? "Switch to light theme" : "Switch to dark theme";
+    button.textContent = THEME_LABELS[currentTheme] || "Default";
+    button.setAttribute("aria-pressed", isDark ? "true" : "false");
+    button.title = `Theme: ${THEME_LABELS[currentTheme]} — click to cycle`;
   }
 }
 
 function toggleTheme() {
-  const nextTheme = currentTheme === "dark" ? "light" : "dark";
+  const nextTheme = THEME_NEXT[currentTheme] || "light";
   localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
   applyTheme(nextTheme);
 }
@@ -3433,6 +3438,431 @@ async function downloadReport(type) {
   URL.revokeObjectURL(url);
 }
 
+function _reportData() {
+  const db = state.db || {};
+  const tickets = db.tickets || [];
+  const tasks = db.tasks || [];
+  const outlets = db.outlets || [];
+  const technicians = db.technicians || [];
+
+  const closed = tickets.filter(t => t.status === "Closed");
+  const open = tickets.filter(t => !["Closed", "Cancelled"].includes(t.status));
+  const closePriceTotal = closed.reduce((s, t) => s + Number(t.closePrice || 0), 0);
+  const closureRate = tickets.length ? Math.round(closed.length / tickets.length * 1000) / 10 : 0;
+
+  const byPriority = {};
+  tickets.forEach(t => { byPriority[t.priority] = (byPriority[t.priority] || 0) + 1; });
+
+  const byStatus = {};
+  tickets.forEach(t => { byStatus[t.status] = (byStatus[t.status] || 0) + 1; });
+
+  const byCat = {};
+  tickets.forEach(t => { byCat[t.category || "Other"] = (byCat[t.category || "Other"] || 0) + 1; });
+  const catSorted = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+
+  const byMonth = {};
+  tickets.forEach(t => {
+    const m = String(t.createdAt || "").slice(0, 7);
+    if (!m) return;
+    if (!byMonth[m]) byMonth[m] = { created: 0, closed: 0 };
+    byMonth[m].created++;
+    if (t.status === "Closed") byMonth[m].closed++;
+  });
+  const months = Object.keys(byMonth).sort();
+
+  const resTimes = closed.filter(t => t.createdAt && t.updatedAt)
+    .map(t => Math.round((new Date(t.updatedAt) - new Date(t.createdAt)) / 360000) / 10)
+    .filter(h => h >= 0 && h < 10000);
+  const avgRes = resTimes.length ? Math.round(resTimes.reduce((a, b) => a + b, 0) / resTimes.length * 10) / 10 : 0;
+  const sortedRes = resTimes.slice().sort((a, b) => a - b);
+  const medRes = sortedRes.length ? sortedRes[Math.floor(sortedRes.length / 2)] : 0;
+
+  const techTickets = {}, techClosed = {};
+  tickets.forEach(t => {
+    if (t.assignedTo) {
+      techTickets[t.assignedTo] = (techTickets[t.assignedTo] || 0) + 1;
+      if (t.status === "Closed") techClosed[t.assignedTo] = (techClosed[t.assignedTo] || 0) + 1;
+    }
+  });
+
+  const outletStats = outlets.map(outlet => {
+    const ot = tickets.filter(t => t.outlet === outlet);
+    const oc = ot.filter(t => t.status === "Closed");
+    const oo = ot.filter(t => !["Closed", "Cancelled"].includes(t.status));
+    const ocp = oc.reduce((s, t) => s + Number(t.closePrice || 0), 0);
+    const ot2 = tasks.filter(t => t.outlet === outlet);
+    const od = ot2.filter(t => t.status === "Done");
+    return { outlet, total: ot.length, closed: oc.length, open: oo.length, closePriceTotal: ocp, tasks: ot2.length, doneTasks: od.length };
+  });
+
+  const doneTasks = tasks.filter(t => t.status === "Done").length;
+  const taskRate = tasks.length ? Math.round(doneTasks / tasks.length * 100) : 0;
+  const userRoles = {};
+  (db.users || []).forEach(u => { userRoles[u.role] = (userRoles[u.role] || 0) + 1; });
+
+  const techStats = technicians.map(t => ({
+    ...t,
+    assigned: techTickets[t.id] || 0,
+    closedCount: techClosed[t.id] || 0,
+    closeRate: techTickets[t.id] ? Math.round((techClosed[t.id] || 0) / techTickets[t.id] * 100) : 0
+  }));
+
+  return { tickets, tasks, outlets, technicians, closed, open, closePriceTotal, closureRate, byPriority, byStatus, catSorted, byMonth, months, avgRes, medRes, outletStats, doneTasks, taskRate, userRoles, techStats };
+}
+
+function _openReportWindow(html, title) {
+  const win = window.open("", "_blank");
+  if (!win) { showToast("Pop-up blocked. Allow pop-ups for this site.", "error"); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
+function _brandTag(outlet) {
+  const l = outlet.toLowerCase();
+  if (l.includes("aiko")) return "Aiko";
+  if (l.includes("capiche")) return "Capiche";
+  if (l.includes("prep")) return "Prep Kitchen";
+  return "";
+}
+
+function _rateColor(rate) {
+  return rate >= 80 ? "#1E6E4A" : rate >= 60 ? "#C98A2A" : "#A63232";
+}
+
+function printFullReport() {
+  const d = _reportData();
+  const reportDate = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+  const maxCat = d.catSorted[0]?.[1] || 1;
+
+  const outletRows = d.outletStats.map(o => {
+    const rate = o.total ? Math.round(o.closed / o.total * 100) : 0;
+    const rateW = Math.max(2, rate);
+    const brand = _brandTag(o.outlet);
+    return `<tr>
+      <td><span style="font-weight:600;">${o.outlet}</span>${brand ? `<span style="font-size:10px;font-weight:700;padding:1px 4px;margin-left:6px;border-radius:2px;background:#DDE8F0;color:#1A4A6B;">${brand}</span>` : ""}</td>
+      <td style="text-align:right;">${o.total}</td>
+      <td style="text-align:right;color:#1E6E4A;font-weight:600;">${o.closed}</td>
+      <td style="text-align:right;">${o.open}</td>
+      <td><div style="display:flex;align-items:center;gap:6px;"><div style="width:60px;height:6px;background:#EEE;"><div style="width:${rateW}%;height:100%;background:${_rateColor(rate)};"></div></div><span style="font-weight:600;color:${_rateColor(rate)};">${rate}%</span></div></td>
+      <td style="text-align:right;${o.closePriceTotal ? "color:#C98A2A;font-weight:600;" : "color:#999;"}">${o.closePriceTotal ? "₹" + o.closePriceTotal.toLocaleString("en-IN") : "—"}</td>
+    </tr>`;
+  }).join("");
+
+  const catRows = d.catSorted.map(([cat, cnt]) =>
+    `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">
+      <div style="width:140px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${cat}</div>
+      <div style="flex:1;height:12px;background:#EEE;position:relative;"><div style="height:100%;width:${Math.round(cnt / maxCat * 100)}%;background:#253749;"></div></div>
+      <div style="width:24px;text-align:right;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;">${cnt}</div>
+    </div>`
+  ).join("");
+
+  const monthRows = d.months.map(m => {
+    const v = d.byMonth[m];
+    const closeRate = v.created ? Math.round(v.closed / v.created * 100) : 0;
+    const label = new Date(m + "-01").toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+    return `<div style="border:1px solid #DDD;padding:12px 14px;flex:1;">
+      <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:6px;">${label}</div>
+      <div style="font-size:28px;font-weight:700;color:#1C2B3A;font-variant-numeric:tabular-nums;">${v.created}</div>
+      <div style="font-size:11px;color:#777;margin-bottom:8px;">Tickets raised</div>
+      <div style="display:flex;gap:14px;">
+        <div><div style="font-size:16px;font-weight:700;color:#1E6E4A;">${v.closed}</div><div style="font-size:10px;text-transform:uppercase;color:#999;">Closed</div></div>
+        <div><div style="font-size:16px;font-weight:700;color:#1C2B3A;">${closeRate}%</div><div style="font-size:10px;text-transform:uppercase;color:#999;">Rate</div></div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const techRows = d.techStats.filter(t => t.assigned > 0).map(t => `
+    <div style="border:1px solid #DDD;padding:14px;display:grid;grid-template-columns:auto 1fr;gap:0 12px;align-items:start;">
+      <div style="width:38px;height:38px;border-radius:50%;background:#1C2B3A;color:#C8A45A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;">${t.name.slice(0,2).toUpperCase()}</div>
+      <div>
+        <div style="font-weight:700;font-size:14px;">${t.name}</div>
+        <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Technician</div>
+        <div style="display:flex;gap:16px;">
+          <div><div style="font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;">${t.assigned}</div><div style="font-size:10px;color:#999;text-transform:uppercase;">Assigned</div></div>
+          <div><div style="font-size:18px;font-weight:700;color:#1E6E4A;font-variant-numeric:tabular-nums;">${t.closedCount}</div><div style="font-size:10px;color:#999;text-transform:uppercase;">Closed</div></div>
+          <div><div style="font-size:18px;font-weight:700;color:#C98A2A;font-variant-numeric:tabular-nums;">${t.closeRate}%</div><div style="font-size:10px;color:#999;text-transform:uppercase;">Close Rate</div></div>
+          ${t.quality ? `<div><div style="font-size:18px;font-weight:700;color:#C98A2A;font-variant-numeric:tabular-nums;">${t.quality}</div><div style="font-size:10px;color:#999;text-transform:uppercase;">Quality</div></div>` : ""}
+        </div>
+      </div>
+    </div>`).join("");
+
+  const taskRows = d.outletStats.filter(o => o.tasks > 0).map(o => {
+    const pct = o.tasks ? Math.round(o.doneTasks / o.tasks * 100) : 0;
+    const fillW = Math.max(0, pct);
+    const fillColor = pct >= 30 ? "#1E6E4A" : pct >= 10 ? "#C98A2A" : "#DDD";
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <div style="width:150px;font-size:12px;font-weight:500;">${o.outlet}</div>
+      <div style="flex:1;height:10px;background:#EEE;border:1px solid #DDD;position:relative;"><div style="position:absolute;left:0;top:0;height:100%;width:${fillW}%;background:${fillColor};"></div></div>
+      <div style="width:70px;text-align:right;font-size:11px;color:#777;font-variant-numeric:tabular-nums;">${o.doneTasks}/${o.tasks}</div>
+      <div style="width:34px;text-align:right;font-size:11px;font-weight:600;color:${fillColor};font-variant-numeric:tabular-nums;">${pct}%</div>
+    </div>`;
+  }).join("");
+
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>TicketOps Operations Report — ${reportDate}</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{font-size:13px;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:#F5F2EC;color:#1A1A1A;}
+  .no-print{}
+  @media print{
+    body{background:#fff;font-size:11px;}
+    .no-print{display:none!important;}
+    .page-break{page-break-before:always;}
+    .card{border:1px solid #DDD!important;box-shadow:none!important;}
+  }
+  .masthead{background:#1C2B3A;color:#fff;padding:28px 36px 24px;}
+  .masthead h1{font-family:Georgia,"Times New Roman",serif;font-size:24px;font-weight:400;color:#fff;margin-bottom:4px;}
+  .masthead h1 em{font-style:normal;color:#C8A45A;}
+  .kicker{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:6px;}
+  .meta{font-size:11px;color:rgba(255,255,255,.4);margin-top:4px;}
+  .amber-strip{height:3px;background:linear-gradient(90deg,#C98A2A,#E2B05A 60%,transparent);}
+  .body{max-width:900px;margin:0 auto;padding:20px 24px 48px;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+  .kpi{background:#fff;border:1px solid #DDD;padding:14px 16px;position:relative;}
+  .kpi::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;}
+  .kpi.g::before{background:#1E6E4A;} .kpi.a::before{background:#C98A2A;} .kpi.r::before{background:#A63232;} .kpi.n::before{background:#1C2B3A;} .kpi.b::before{background:#1A5276;}
+  .kpi-lbl{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#999;font-weight:600;margin-bottom:5px;}
+  .kpi-val{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;}
+  .kpi.g .kpi-val{color:#1E6E4A;} .kpi.a .kpi-val{color:#C98A2A;} .kpi.r .kpi-val{color:#A63232;}
+  .kpi-sub{font-size:10px;color:#777;margin-top:3px;line-height:1.4;}
+  .sec-lbl{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#999;font-weight:600;padding-bottom:6px;border-bottom:1px solid #D0CEC0;margin-bottom:12px;}
+  .card{background:#fff;border:1px solid #DDD;padding:14px 16px;margin-bottom:16px;}
+  .card h3{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#999;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid #EEE;}
+  table{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums;}
+  thead th{text-align:left;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#999;padding:0 8px 6px;border-bottom:1px solid #DDD;}
+  thead th.r{text-align:right;}
+  tbody tr{border-bottom:1px solid #F0EDE6;}
+  tbody tr:last-child{border-bottom:none;}
+  tbody td{padding:7px 8px;vertical-align:middle;}
+  tbody td.r{text-align:right;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+  .three-col{display:grid;grid-template-columns:3fr 2fr;gap:14px;margin-bottom:16px;}
+  .print-btn{position:fixed;bottom:20px;right:20px;background:#1C2B3A;color:#fff;border:none;padding:10px 18px;font-size:13px;cursor:pointer;font-weight:600;z-index:999;}
+  .print-btn:hover{background:#253749;}
+  .footer{border-top:1px solid #D0CEC0;padding-top:14px;margin-top:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;}
+  .footer-brand{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#1C2B3A;}
+  .footer-note{font-size:10px;color:#999;text-align:right;}
+  .insight{background:#FBF0DC;border-left:3px solid #C98A2A;padding:8px 10px;margin-top:10px;font-size:11px;line-height:1.5;}
+  .insight strong{font-weight:600;color:#8A5A10;}
+  .status-bar{display:flex;height:18px;overflow:hidden;margin-bottom:8px;}
+  .sb{height:100%;}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;}
+  .leg-item{display:flex;align-items:center;gap:4px;font-size:11px;color:#666;}
+  .leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .p-row{display:flex;align-items:center;gap:7px;margin-bottom:7px;}
+  .p-lbl{font-size:10px;font-weight:700;width:20px;}
+  .p-track{flex:1;height:10px;background:#EEE;position:relative;}
+  .p-fill{height:100%;position:absolute;left:0;top:0;}
+  .p-cnt{font-size:10px;color:#777;width:26px;text-align:right;}
+  .p-pct{font-size:10px;width:32px;text-align:right;}
+  .mo-grid{display:flex;gap:10px;}
+</style>
+</head><body>
+<div class="masthead">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;max-width:900px;margin:0 auto;">
+    <div>
+      <div class="kicker">TicketOps · Operations Intelligence Report</div>
+      <h1>Maintenance &amp; Facilities <em>Performance Report</em></h1>
+      <div class="meta">Brands: Aiko &amp; Capiche &nbsp;·&nbsp; ${d.outlets.length} Active Outlets &nbsp;·&nbsp; Data as at ${reportDate}</div>
+    </div>
+    <div style="display:flex;gap:20px;text-align:right;">
+      <div><div style="font-size:22px;font-weight:700;color:#C8A45A;font-variant-numeric:tabular-nums;">${d.tickets.length}</div><div style="font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;">Total Tickets</div></div>
+      <div><div style="font-size:22px;font-weight:700;color:#C8A45A;font-variant-numeric:tabular-nums;">${d.closureRate}%</div><div style="font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;">Closure Rate</div></div>
+    </div>
+  </div>
+</div>
+<div class="amber-strip"></div>
+
+<div class="body">
+  <button class="print-btn no-print" onclick="window.print()">Print / Save PDF</button>
+
+  <!-- KPIs -->
+  <div style="margin-top:18px;margin-bottom:8px;" class="sec-lbl">Executive Snapshot</div>
+  <div class="kpi-grid">
+    <div class="kpi g"><div class="kpi-lbl">Tickets Resolved</div><div class="kpi-val">${d.closed.length}</div><div class="kpi-sub">of ${d.tickets.length} total &mdash; <strong>${d.closureRate}% closure rate</strong></div></div>
+    <div class="kpi a"><div class="kpi-lbl">Avg. Resolution Time</div><div class="kpi-val">${d.avgRes}h</div><div class="kpi-sub">Median ${d.medRes} h &nbsp;·&nbsp; ${Math.round(d.avgRes / 24 * 10) / 10} days average</div></div>
+    <div class="kpi r"><div class="kpi-lbl">Tickets In Pipeline</div><div class="kpi-val">${d.open.length}</div><div class="kpi-sub">Open across all outlets &mdash; ${Math.round(d.open.length / d.tickets.length * 100)}% of volume</div></div>
+    <div class="kpi a"><div class="kpi-lbl">Maintenance Spend Captured</div><div class="kpi-val">₹${d.closePriceTotal.toLocaleString("en-IN")}</div><div class="kpi-sub">Across cost-tracked tickets</div></div>
+    <div class="kpi n"><div class="kpi-lbl">Technicians Active</div><div class="kpi-val">${d.technicians.length}</div><div class="kpi-sub">All skills: AC, Electrical, Kitchen &amp; more</div></div>
+    <div class="kpi b"><div class="kpi-lbl">Maintenance Task Rate</div><div class="kpi-val">${d.taskRate}%</div><div class="kpi-sub">${d.doneTasks} completed of ${d.tasks.length} scheduled tasks</div></div>
+  </div>
+
+  <!-- Status + Priority -->
+  <div class="three-col">
+    <div class="card">
+      <h3>Ticket Status Breakdown</h3>
+      <div class="status-bar">
+        <div class="sb" style="width:${d.tickets.length ? Math.round(d.closed.length/d.tickets.length*100) : 0}%;background:#1E6E4A;"></div>
+        <div class="sb" style="width:${d.tickets.length ? Math.round((d.byStatus["Assigned"]||0)/d.tickets.length*100) : 0}%;background:#1A5276;"></div>
+        <div class="sb" style="width:${d.tickets.length ? Math.round((d.byStatus["Resolved"]||0)/d.tickets.length*100) : 0}%;background:#C98A2A;"></div>
+        <div class="sb" style="width:${d.tickets.length ? Math.round((d.byStatus["In Progress"]||0)/d.tickets.length*100) : 0}%;background:#6A5A8A;"></div>
+        <div class="sb" style="width:${d.tickets.length ? Math.round(((d.byStatus["Acknowledged"]||0)+(d.byStatus["New"]||0)+(d.byStatus["Reopened"]||0))/d.tickets.length*100) : 0}%;background:#A0A0A0;"></div>
+      </div>
+      <div class="legend">
+        ${Object.entries(d.byStatus).map(([s, n]) => `<div class="leg-item"><div class="leg-dot" style="background:${{ Closed:"#1E6E4A", Assigned:"#1A5276", Resolved:"#C98A2A", "In Progress":"#6A5A8A" }[s] || "#A0A0A0"};"></div><strong>${n}</strong>&nbsp;${s}</div>`).join("")}
+      </div>
+    </div>
+    <div class="card">
+      <h3>Priority Distribution</h3>
+      ${[["P1","#A63232","Critical"],[" P2","#C98A2A","High"],["P3","#1A5276","Standard"],["P4","#888","Cosmetic"]].map(([p,c,lbl]) => {
+        const cnt = d.byPriority[p.trim()] || 0;
+        const pct = d.tickets.length ? Math.round(cnt / d.tickets.length * 100) : 0;
+        return `<div class="p-row"><div class="p-lbl" style="color:${c};">${p.trim()}</div><div class="p-track"><div class="p-fill" style="width:${pct}%;background:${c};opacity:.85;"></div></div><div class="p-cnt">${cnt}</div><div class="p-pct" style="color:${c};">${pct}%</div></div>`;
+      }).join("")}
+      <div style="margin-top:8px;padding-top:7px;border-top:1px solid #EEE;font-size:10px;color:#999;line-height:1.6;">P1=Critical &nbsp;P2=High &nbsp;P3=Standard &nbsp;P4=Cosmetic</div>
+    </div>
+  </div>
+
+  <!-- Outlet table -->
+  <div class="sec-lbl">Outlet Performance</div>
+  <div class="card">
+    <div style="overflow-x:auto;">
+      <table>
+        <thead><tr><th>Outlet</th><th class="r">Total</th><th class="r">Closed</th><th class="r">Open</th><th>Rate</th><th class="r">Cost</th></tr></thead>
+        <tbody>${outletRows}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Monthly + Category -->
+  <div class="two-col">
+    <div>
+      <div class="sec-lbl">Monthly Trend</div>
+      <div class="mo-grid">${monthRows}</div>
+    </div>
+    <div>
+      <div class="sec-lbl">Issues by Category</div>
+      <div class="card">${catRows}</div>
+    </div>
+  </div>
+
+  <!-- Technicians -->
+  <div class="sec-lbl page-break">Technician Performance</div>
+  <div class="two-col">${techRows}</div>
+
+  <!-- Tasks -->
+  <div class="sec-lbl">Maintenance Task Completion</div>
+  <div class="card">
+    <div style="font-size:11px;color:#777;margin-bottom:10px;">${d.tasks.length} tasks generated from ${(state.db?.maintenanceRules || []).length} active rules across ${d.outlets.length} outlets.</div>
+    ${taskRows}
+  </div>
+
+  <div class="footer">
+    <div><div class="footer-brand">TicketOps</div><div class="footer-note" style="text-align:left;margin-top:2px;">Aiko &amp; Capiche Brands &mdash; Maintenance Operations</div></div>
+    <div class="footer-note">Generated ${reportDate} &nbsp;·&nbsp; Live data &nbsp;·&nbsp; Confidential</div>
+  </div>
+</div>
+</body></html>`;
+
+  _openReportWindow(html, `TicketOps Report — ${reportDate}`);
+}
+
+function printOnePager() {
+  const d = _reportData();
+  const reportDate = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+  const maxCat = d.catSorted[0]?.[1] || 1;
+
+  const outletSummary = d.outletStats.map(o => {
+    const rate = o.total ? Math.round(o.closed / o.total * 100) : 0;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F0EDE6;font-size:11px;">
+      <div style="font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${o.outlet}</div>
+      <div style="display:flex;gap:10px;flex-shrink:0;font-variant-numeric:tabular-nums;">
+        <span style="color:#777;">${o.total} tickets</span>
+        <span style="color:#1E6E4A;font-weight:600;">${rate}% closed</span>
+        ${o.closePriceTotal ? `<span style="color:#C98A2A;font-weight:600;">₹${o.closePriceTotal.toLocaleString("en-IN")}</span>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+
+  const topCats = d.catSorted.slice(0, 6).map(([cat, cnt]) =>
+    `<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;">
+      <div style="width:100px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${cat}</div>
+      <div style="flex:1;height:10px;background:#EEE;"><div style="height:100%;width:${Math.round(cnt/maxCat*100)}%;background:#253749;"></div></div>
+      <div style="width:20px;text-align:right;font-size:11px;font-weight:600;">${cnt}</div>
+    </div>`).join("");
+
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>TicketOps — One-Page Summary</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{font-size:13px;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:#fff;color:#1A1A1A;}
+  @media print{.no-print{display:none!important;}body{font-size:11px;}}
+  .hd{background:#1C2B3A;color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:flex-end;}
+  .hd-title{font-family:Georgia,serif;font-size:18px;font-weight:400;color:#fff;}
+  .hd-title em{font-style:normal;color:#C8A45A;}
+  .hd-sub{font-size:10px;color:rgba(255,255,255,.45);margin-top:3px;}
+  .amber-strip{height:2px;background:linear-gradient(90deg,#C98A2A,#E2B05A 60%,transparent);}
+  .body{padding:18px 24px;}
+  .kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:16px;}
+  .kpi{border:1px solid #DDD;padding:10px 12px;border-top:2px solid #1C2B3A;}
+  .kpi.g{border-top-color:#1E6E4A;} .kpi.a{border-top-color:#C98A2A;} .kpi.r{border-top-color:#A63232;}
+  .kpi-lbl{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:4px;}
+  .kpi-val{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;}
+  .kpi.g .kpi-val{color:#1E6E4A;} .kpi.a .kpi-val{color:#C98A2A;} .kpi.r .kpi-val{color:#A63232;}
+  .kpi-sub{font-size:9px;color:#999;margin-top:2px;}
+  .main-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .sec-lbl{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#999;border-bottom:1px solid #E5E2DA;padding-bottom:5px;margin-bottom:8px;font-weight:600;}
+  .print-btn{position:fixed;bottom:16px;right:16px;background:#1C2B3A;color:#fff;border:none;padding:8px 14px;font-size:12px;cursor:pointer;font-weight:600;}
+  .footer{border-top:1px solid #E5E2DA;margin-top:14px;padding-top:8px;display:flex;justify-content:space-between;font-size:9px;color:#999;}
+  .tech-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F0EDE6;font-size:11px;}
+  .tech-row:last-child{border-bottom:none;}
+</style>
+</head><body>
+<div class="hd">
+  <div>
+    <div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:4px;">TicketOps · Operations Summary</div>
+    <div class="hd-title">Maintenance &amp; Facilities <em>One-Page Summary</em></div>
+    <div class="hd-sub">Aiko &amp; Capiche &nbsp;·&nbsp; ${d.outlets.length} Outlets &nbsp;·&nbsp; ${reportDate}</div>
+  </div>
+  <div style="display:flex;gap:16px;text-align:right;">
+    <div><div style="font-size:18px;font-weight:700;color:#C8A45A;">${d.tickets.length}</div><div style="font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;">Tickets</div></div>
+    <div><div style="font-size:18px;font-weight:700;color:#C8A45A;">${d.closureRate}%</div><div style="font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;">Closed</div></div>
+  </div>
+</div>
+<div class="amber-strip"></div>
+<div class="body">
+  <button class="print-btn no-print" onclick="window.print()">Print / PDF</button>
+
+  <div class="kpi-row">
+    <div class="kpi g"><div class="kpi-lbl">Resolved</div><div class="kpi-val">${d.closed.length}</div><div class="kpi-sub">${d.closureRate}% of total</div></div>
+    <div class="kpi r"><div class="kpi-lbl">Open</div><div class="kpi-val">${d.open.length}</div><div class="kpi-sub">In pipeline</div></div>
+    <div class="kpi a"><div class="kpi-lbl">Avg. Resolution</div><div class="kpi-val">${d.avgRes}h</div><div class="kpi-sub">Med: ${d.medRes}h</div></div>
+    <div class="kpi a"><div class="kpi-lbl">Maint. Spend</div><div class="kpi-val">₹${d.closePriceTotal.toLocaleString("en-IN")}</div><div class="kpi-sub">Tracked cost</div></div>
+    <div class="kpi"><div class="kpi-lbl">Tasks Done</div><div class="kpi-val">${d.taskRate}%</div><div class="kpi-sub">${d.doneTasks}/${d.tasks.length}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Technicians</div><div class="kpi-val">${d.technicians.length}</div><div class="kpi-sub">Active &amp; present</div></div>
+  </div>
+
+  <div class="main-grid">
+    <div>
+      <div class="sec-lbl">Outlet Performance</div>
+      ${outletSummary}
+    </div>
+    <div>
+      <div class="sec-lbl">Top Issue Categories</div>
+      ${topCats}
+      <div style="margin-top:14px;" class="sec-lbl">Technician Activity</div>
+      ${d.techStats.filter(t => t.assigned > 0).map(t => `
+        <div class="tech-row">
+          <span style="font-weight:500;">${t.name}</span>
+          <span style="display:flex;gap:10px;font-variant-numeric:tabular-nums;">
+            <span style="color:#777;">${t.assigned} assigned</span>
+            <span style="color:#1E6E4A;font-weight:600;">${t.closedCount} closed</span>
+            <span style="color:#C98A2A;font-weight:600;">${t.closeRate}%</span>
+          </span>
+        </div>`).join("")}
+    </div>
+  </div>
+
+  <div class="footer">
+    <span><strong>TicketOps</strong> &nbsp;·&nbsp; Aiko &amp; Capiche Brands — Maintenance Operations</span>
+    <span>Generated ${reportDate} &nbsp;·&nbsp; Live data extract &nbsp;·&nbsp; Confidential</span>
+  </div>
+</div>
+</body></html>`;
+
+  _openReportWindow(html, `TicketOps Summary — ${reportDate}`);
+}
+
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -5661,6 +6091,8 @@ function renderReports() {
     <button class="small-button primary" data-export-report="tickets">Export Tickets CSV</button>
     <button class="small-button primary" data-export-report="technicians">Export Technicians CSV</button>
     <button class="small-button primary" data-export-report="outlets">Export Outlets CSV</button>
+    <button class="small-button primary" data-print-full-report>Full Report</button>
+    <button class="small-button" data-print-one-pager>One-Page Summary</button>
   ` : "";
 
   document.querySelector("#reportsBoard").innerHTML = `
@@ -6662,6 +7094,16 @@ document.addEventListener("click", async (event) => {
   const loadBackupButton = event.target.closest?.("[data-load-backup-report]");
   if (loadBackupButton) {
     document.querySelector("#backupReportFile")?.click();
+    return;
+  }
+
+  if (event.target.closest?.("[data-print-full-report]")) {
+    printFullReport();
+    return;
+  }
+
+  if (event.target.closest?.("[data-print-one-pager]")) {
+    printOnePager();
     return;
   }
 
