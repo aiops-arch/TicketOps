@@ -3439,7 +3439,7 @@ async function downloadReport(type) {
 }
 
 function _reportData() {
-  const db = state.db || {};
+  const db = state || {};
   const tickets = db.tickets || [];
   const tasks = db.tasks || [];
   const outlets = db.outlets || [];
@@ -3743,7 +3743,7 @@ function printFullReport() {
   <!-- Tasks -->
   <div class="sec-lbl">Maintenance Task Completion</div>
   <div class="card">
-    <div style="font-size:11px;color:#777;margin-bottom:10px;">${d.tasks.length} tasks generated from ${(state.db?.maintenanceRules || []).length} active rules across ${d.outlets.length} outlets.</div>
+    <div style="font-size:11px;color:#777;margin-bottom:10px;">${d.tasks.length} tasks generated from ${(state.maintenanceRules || []).length} active rules across ${d.outlets.length} outlets.</div>
     ${taskRows}
   </div>
 

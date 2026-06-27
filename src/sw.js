@@ -1,13 +1,11 @@
-const CACHE_NAME = "ticketops-v40-live-data-guard";
+const CACHE_NAME = "ticketops-v41-live-data-guard";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./customer.html",
   "./frontend-config.js",
   "./styles.css",
-  "./customer.css",
   "./app.js",
-  "./customer.js",
   "./manifest.webmanifest",
   "./assets/icon.svg"
 ];

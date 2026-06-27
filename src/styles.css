@@ -1573,7 +1573,6 @@ body.has-session .topbar:focus-within .tabs {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-}
 
 .dispatch-card {
   display: grid;
@@ -6725,6 +6724,8 @@ input::placeholder {
   white-space: nowrap;
   font-size: 11px;
 }
+
+.repair-row {
   align-items: center;
   min-height: 58px;
   padding: 10px 12px;
@@ -7757,7 +7758,7 @@ body[data-dashboard-mode="detail"] #dashboardDetailGrid {
     max-height: 500px;
     overflow-y: auto;
   }
-}
+
   .category-repair-board,
   .outlet-health-grid,
   .dispatch-grid,

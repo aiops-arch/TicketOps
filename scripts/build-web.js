@@ -12,8 +12,6 @@ const files = [
   "sw.js",
   "manifest.webmanifest",
   "customer.html",
-  "customer.css",
-  "customer.js",
 ];
 
 fs.rmSync(out, { recursive: true, force: true });
