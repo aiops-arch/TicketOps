@@ -2,6 +2,10 @@ const DB_SHEET_NAME = "ticketops_db";
 const SNAPSHOT_SHEET_NAME = "compiled_snapshot";
 const DB_KEY = "db";
 const DB_CHUNK_SIZE = 45000;
+const BACKUP_FOLDER_NAME = "TicketOps Backups";
+const BACKUP_RETENTION_DAYS = 31;
+const BACKUP_TRIGGER_HOURS = [9, 12, 15, 18, 21];
+const BACKUP_FILE_PREFIX = "ticketops-backup-";
 const DEFAULT_PASSWORDS = {
   aiops: "AIops",
   "chintan.patel": "chintan123",
@@ -93,8 +97,11 @@ function handleRequest(envelope) {
   if (method === "GET" && path === "/api/auth/demo-users") return ok({ users: (db.users || []).map(publicUser) });
   if (method === "POST" && path === "/api/auth/change-password") return changePassword(db, user, body);
   if (method === "POST" && /^\/api\/admin\/users\/[^/]+\/reset-password$/.test(path)) return resetPassword(db, user, segment(path, 3), body);
-  if (method === "GET" && path === "/api/bootstrap") return requireLogin(user, () => { refreshTodayTasks(db); return ok(withReports(scopedDbForUser(db, user), user)); });
+  if (method === "GET" && path === "/api/bootstrap") return requireLogin(user, () => { if (!db.__readOnlyFallback) refreshTodayTasks(db); return ok(withReports(scopedDbForUser(db, user), user)); });
   if (method === "GET" && path === "/api/categories") return requireAdmin(user, () => ok(db.categories || []));
+  if (method === "GET" && path === "/api/backups/drive/status") return requireAdmin(user, () => ok(driveBackupStatus()));
+  if (method === "POST" && path === "/api/backups/drive/run") return requireAdmin(user, () => ok(createDriveBackup("manual")));
+  if (method === "POST" && path === "/api/backups/drive/install") return requireAdmin(user, () => ok(installDriveBackupTriggers()));
   if (method === "GET" && path.startsWith("/api/reports/export/")) return requireAdmin(user, () => ok(exportCsv(db, segment(path, 3))));
   if (method === "GET" && path.startsWith("/api/backups/monthly/")) return requireAdmin(user, () => monthlyBackup(db, decodeURIComponent(segment(path, 3))));
   if (method === "POST" && path === "/api/backups/report") return requireAdmin(user, () => ok(backupReport(body)));
@@ -160,10 +167,14 @@ function loadDb() {
   const row = finder.getRow();
   const text = String(sheet.getRange(row, 2).getValue() || "");
   if (!text) return normalizeDb(JSON.parse(JSON.stringify(DEFAULT_DB)));
-  return normalizeDb(JSON.parse(text));
+  const parsed = parseDbJson(text, "ticketops_db");
+  return usableDb(parsed) ? normalizeDb(parsed) : fallbackDb("ticketops_db is invalid or has no users");
 }
 
 function saveDb(db) {
+  if (db && db.__readOnlyFallback) {
+    throw new Error("Live DB snapshot is in recovery fallback; refusing to overwrite stored Sheet data.");
+  }
   const normalized = normalizeDb(db);
   saveChunkedDb(normalized);
   const sheet = dbSheet();
@@ -195,7 +206,33 @@ function loadChunkedDb() {
   if (!rows.length) return null;
   const text = rows.map((row) => String(row[2] || "")).join("");
   if (!text) return null;
-  return normalizeDb(JSON.parse(text));
+  const parsed = parseDbJson(text, "compiled_snapshot");
+  return usableDb(parsed) ? normalizeDb(parsed) : null;
+}
+
+function parseDbJson(text, source) {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("TicketOps DB JSON parse failed", {
+      source: source,
+      length: String(text || "").length,
+      message: error && error.message ? error.message : String(error)
+    });
+    return null;
+  }
+}
+
+function fallbackDb(reason) {
+  console.error("TicketOps DB fallback activated", { reason: reason || "unknown" });
+  const db = normalizeDb(JSON.parse(JSON.stringify(DEFAULT_DB)));
+  db.__readOnlyFallback = true;
+  db.__fallbackReason = reason || "unknown";
+  return db;
+}
+
+function usableDb(db) {
+  return Boolean(db && typeof db === "object" && Array.isArray(db.users) && db.users.length);
 }
 
 function saveChunkedDb(db) {
@@ -743,6 +780,155 @@ function monthlyBackup(db, month) {
     tickets: (db.tickets || []).filter((ticket) => String(ticket.createdAt || ticket.updatedAt || "").slice(0, 7) === month),
     tasks: (db.tasks || []).filter((task) => String(task.date || task.createdAt || "").slice(0, 7) === month)
   });
+}
+
+function scheduledDriveBackup() {
+  return createDriveBackup("scheduled");
+}
+
+function createDriveBackup(reason) {
+  const db = loadDb();
+  if (db.__readOnlyFallback) throw new Error("Backup skipped because live DB is in recovery fallback.");
+  const normalized = normalizeDb(JSON.parse(JSON.stringify(db)));
+  const now = new Date();
+  const stamp = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd-HH-mm-ss");
+  const counts = backupCounts(normalized);
+  const payload = {
+    type: "ticketops-full-drive-backup",
+    version: 1,
+    reason: reason || "manual",
+    createdAt: now.toISOString(),
+    timezone: Session.getScriptTimeZone(),
+    retentionDays: BACKUP_RETENTION_DAYS,
+    counts,
+    db: normalized
+  };
+  const json = JSON.stringify(payload);
+  const checksum = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, json)
+    .map(function(byte) { return ("0" + ((byte < 0 ? byte + 256 : byte).toString(16))).slice(-2); })
+    .join("");
+  payload.sha256 = checksum;
+  const finalJson = JSON.stringify(payload);
+  const folder = backupFolder();
+  const filename = BACKUP_FILE_PREFIX + stamp + "-u" + counts.users + "-t" + counts.tickets + "-tasks" + counts.tasks + ".json";
+  const file = folder.createFile(filename, finalJson, "application/json");
+  file.setDescription("TicketOps full DB backup. sha256=" + checksum + "; createdAt=" + payload.createdAt);
+  const cleanup = cleanupOldDriveBackups(folder, now);
+  return {
+    ok: true,
+    fileId: file.getId(),
+    fileName: filename,
+    folderId: folder.getId(),
+    folderName: folder.getName(),
+    createdAt: payload.createdAt,
+    retentionDays: BACKUP_RETENTION_DAYS,
+    deletedOldFiles: cleanup.deleted,
+    keptFiles: cleanup.kept,
+    counts,
+    sha256: checksum
+  };
+}
+
+function backupCounts(db) {
+  return {
+    users: (db.users || []).length,
+    outlets: (db.outlets || []).length,
+    categories: (db.categories || []).length,
+    assets: (db.assets || []).length,
+    technicians: (db.technicians || []).length,
+    tickets: (db.tickets || []).length,
+    tasks: (db.tasks || []).length,
+    maintenanceRules: (db.maintenanceRules || []).length,
+    attendancePlans: (db.attendancePlans || []).length,
+    ticketHistory: (db.ticketHistory || []).length
+  };
+}
+
+function backupFolder() {
+  const props = PropertiesService.getScriptProperties();
+  const storedId = props.getProperty("TICKETOPS_BACKUP_FOLDER_ID");
+  if (storedId) {
+    try {
+      return DriveApp.getFolderById(storedId);
+    } catch (error) {
+      props.deleteProperty("TICKETOPS_BACKUP_FOLDER_ID");
+    }
+  }
+  const folders = DriveApp.getFoldersByName(BACKUP_FOLDER_NAME);
+  const folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(BACKUP_FOLDER_NAME);
+  props.setProperty("TICKETOPS_BACKUP_FOLDER_ID", folder.getId());
+  return folder;
+}
+
+function cleanupOldDriveBackups(folder, now) {
+  const cutoff = now.getTime() - (BACKUP_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  const files = folder.getFiles();
+  let deleted = 0;
+  let kept = 0;
+  while (files.hasNext()) {
+    const file = files.next();
+    if (file.getName().indexOf(BACKUP_FILE_PREFIX) !== 0) continue;
+    if (file.getDateCreated().getTime() < cutoff) {
+      file.setTrashed(true);
+      deleted += 1;
+    } else {
+      kept += 1;
+    }
+  }
+  return { deleted, kept };
+}
+
+function driveBackupStatus() {
+  const folder = backupFolder();
+  const files = folder.getFiles();
+  const backups = [];
+  while (files.hasNext()) {
+    const file = files.next();
+    if (file.getName().indexOf(BACKUP_FILE_PREFIX) !== 0) continue;
+    backups.push({
+      id: file.getId(),
+      name: file.getName(),
+      createdAt: file.getDateCreated().toISOString(),
+      size: file.getSize()
+    });
+  }
+  backups.sort(function(a, b) { return String(b.createdAt).localeCompare(String(a.createdAt)); });
+  return {
+    folderId: folder.getId(),
+    folderName: folder.getName(),
+    retentionDays: BACKUP_RETENTION_DAYS,
+    scheduleHours: BACKUP_TRIGGER_HOURS,
+    expectedMonthlyFiles: BACKUP_TRIGGER_HOURS.length * 30,
+    backupCount: backups.length,
+    latest: backups.slice(0, 10),
+    triggers: ScriptApp.getProjectTriggers()
+      .filter(function(trigger) { return trigger.getHandlerFunction() === "scheduledDriveBackup"; })
+      .map(function(trigger) { return { handler: trigger.getHandlerFunction(), eventType: String(trigger.getEventType()) }; })
+  };
+}
+
+function installDriveBackupTriggers() {
+  ScriptApp.getProjectTriggers().forEach(function(trigger) {
+    if (trigger.getHandlerFunction() === "scheduledDriveBackup") ScriptApp.deleteTrigger(trigger);
+  });
+  BACKUP_TRIGGER_HOURS.forEach(function(hour) {
+    ScriptApp.newTrigger("scheduledDriveBackup")
+      .timeBased()
+      .everyDays(1)
+      .atHour(hour)
+      .nearMinute(0)
+      .create();
+  });
+  const firstBackup = createDriveBackup("install-verification");
+  const status = driveBackupStatus();
+  return {
+    ok: true,
+    installedTriggers: BACKUP_TRIGGER_HOURS.length,
+    scheduleHours: BACKUP_TRIGGER_HOURS,
+    retentionDays: BACKUP_RETENTION_DAYS,
+    firstBackup,
+    status
+  };
 }
 
 function backupReport(backup) {
