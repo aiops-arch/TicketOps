@@ -34,14 +34,23 @@
         </div>
       </div>
       <nav class="tabs" aria-label="Role views">
-        <button class="tab is-active" data-view="dashboard"><span class="nav-icon">▦</span><span class="tab-label">Dashboard</span></button>
-        <button class="tab" data-view="manager"><span class="nav-icon">◉</span><span class="tab-label">Manager</span></button>
-        <button class="tab" data-view="admin"><span class="nav-icon">⚙</span><span class="tab-label">Admin</span></button>
-        <button class="tab" data-view="scheduler"><span class="nav-icon">◷</span><span class="tab-label">Scheduler</span></button>
-        <button class="tab" data-view="masters"><span class="nav-icon">▣</span><span class="tab-label">Masters</span></button>
-        <button class="tab" data-view="technician"><span class="nav-icon">⚒</span><span class="tab-label">Technician</span></button>
-        <button class="tab" data-view="history"><span class="nav-icon">H</span><span class="tab-label">History</span></button>
-        <button class="tab" data-view="reports"><span class="nav-icon">▤</span><span class="tab-label">Reports</span></button>
+        <div class="nav-section">
+          <span class="nav-section-label" data-dot="ops">Operations</span>
+          <button class="tab is-active" data-view="dashboard"><span class="nav-icon">▦</span><span class="tab-label">Dashboard</span></button>
+          <button class="tab" data-view="manager"><span class="nav-icon">◉</span><span class="tab-label">Manager Desk</span></button>
+          <button class="tab" data-view="admin"><span class="nav-icon">⚙</span><span class="tab-label">Admin Control</span></button>
+        </div>
+        <div class="nav-section">
+          <span class="nav-section-label" data-dot="maint">Maintenance</span>
+          <button class="tab" data-view="scheduler"><span class="nav-icon">◷</span><span class="tab-label">Scheduler</span></button>
+          <button class="tab" data-view="masters"><span class="nav-icon">▣</span><span class="tab-label">Masters</span></button>
+          <button class="tab" data-view="technician"><span class="nav-icon">⚒</span><span class="tab-label">Technician</span></button>
+        </div>
+        <div class="nav-section">
+          <span class="nav-section-label" data-dot="analytics">Analytics</span>
+          <button class="tab" data-view="history"><span class="nav-icon">H</span><span class="tab-label">History</span></button>
+          <button class="tab" data-view="reports"><span class="nav-icon">▤</span><span class="tab-label">Reports</span></button>
+        </div>
       </nav>
       <div class="topbar-actions" aria-label="Account controls">
         <button id="sidebarToggle" class="ghost-button menu-toggle is-hidden" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
