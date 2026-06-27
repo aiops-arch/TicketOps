@@ -2,7 +2,7 @@
 *.apk
 node_modules/
 dist/
-www/
+# www/ is tracked so git push server main deploys it
 output/
 .env
 .vercel/
