@@ -313,10 +313,15 @@
               Issue note
               <input id="ticketNote" required placeholder="Example: Freezer not cooling">
             </label>
-            <label class="photo-upload">
-              Issue photos
-              <input id="ticketPhoto" type="file" accept="image/*" multiple>
-            </label>
+            <div class="photo-upload" id="ticketPhotoGroup">
+              <span class="photo-upload-label">Issue photos</span>
+              <div class="photo-picker-btns">
+                <button type="button" class="photo-picker-btn" data-photo-for="ticketPhoto" data-photo-mode="camera">Camera</button>
+                <button type="button" class="photo-picker-btn" data-photo-for="ticketPhoto" data-photo-mode="gallery">Gallery</button>
+              </div>
+              <input class="visually-hidden" type="file" accept="image/*" capture="environment" data-photo-for="ticketPhoto" data-photo-mode="camera">
+              <input class="visually-hidden" type="file" accept="image/*" multiple data-photo-for="ticketPhoto" data-photo-mode="gallery">
+            </div>
             <div id="ticketPriorityPreview" class="ticket-priority-preview" aria-live="polite"></div>
             <button type="submit" class="primary-button">Create Ticket</button>
           </form>

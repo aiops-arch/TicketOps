@@ -577,6 +577,8 @@ let editingAssignmentWindowId = "";
 let editingMaintenanceRuleId = "";
 let editingMaintenanceAssignments = [];
 let ticketPhotoPreviewUrls = [];
+let ticketPhotoFiles = [];
+let techPhotoFiles = [];
 let mobileNavOpen = false;
 let desktopNavOpen = false;
 let sidebarHoverTimer = 0;
@@ -848,15 +850,14 @@ function maxTicketPhotosForStorage() {
   return USE_APPS_SCRIPT_API ? GOOGLE_SHEETS_MAX_TICKET_PHOTOS : MAX_TICKET_PHOTOS;
 }
 
-async function readTicketPhotos() {
-  const input = document.querySelector("#ticketPhoto");
-  const files = [...(input?.files || [])];
-  if (!files.length) return [];
+async function readPhotosFromFiles(files = []) {
   const maxPhotos = maxTicketPhotosForStorage();
-  if (files.length > maxPhotos) {
-    throw new Error(`Attach up to ${maxPhotos} images only.`);
-  }
+  if (files.length > maxPhotos) throw new Error(`Attach up to ${maxPhotos} images only.`);
   return Promise.all(files.map(compressImageFile));
+}
+
+async function readTicketPhotos() {
+  return readPhotosFromFiles(ticketPhotoFiles);
 }
 
 function readTicketPhoto() {
@@ -864,17 +865,13 @@ function readTicketPhoto() {
 }
 
 async function readPhotosFromInput(input) {
-  const files = [...(input?.files || [])];
-  const maxPhotos = maxTicketPhotosForStorage();
-  if (files.length > maxPhotos) throw new Error(`Attach up to ${maxPhotos} images only.`);
-  return Promise.all(files.map(compressImageFile));
+  return readPhotosFromFiles([...(input?.files || [])]);
 }
 
 function updateTicketPhotoHint() {
-  const input = document.querySelector("#ticketPhoto");
   const hint = document.querySelector("#ticketCreateResult");
-  if (!input || !hint) return;
-  const files = [...(input.files || [])];
+  if (!hint) return;
+  const files = ticketPhotoFiles;
   renderTicketPhotoPreview(files);
   if (!files.length) {
     hint.textContent = "";
@@ -890,15 +887,15 @@ function updateTicketPhotoHint() {
 }
 
 function renderTicketPhotoPreview(files = []) {
-  const input = document.querySelector("#ticketPhoto");
-  if (!input) return;
+  const group = document.querySelector("#ticketPhotoGroup");
+  if (!group) return;
 
   let preview = document.querySelector("#ticketPhotoPreview");
   if (!preview) {
     preview = document.createElement("div");
     preview.id = "ticketPhotoPreview";
     preview.className = "ticket-photo-preview";
-    input.closest(".photo-upload")?.insertAdjacentElement("afterend", preview);
+    group.insertAdjacentElement("afterend", preview);
   }
 
   ticketPhotoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -918,8 +915,9 @@ function renderTicketPhotoPreview(files = []) {
   const overLimit = files.length > maxPhotos;
   preview.innerHTML = `
     <div class="photo-preview-head ${overLimit ? "is-over-limit" : ""}">
-      <strong>${escapeHtml(files.length)} selected</strong>
+      <strong>${escapeHtml(files.length)} photo${files.length === 1 ? "" : "s"} selected</strong>
       <span>${overLimit ? `Remove ${escapeHtml(files.length - maxPhotos)} to continue` : `Limit ${escapeHtml(maxPhotos)} image${maxPhotos === 1 ? "" : "s"}`}</span>
+      <button type="button" class="photo-clear-inline-btn" data-photo-clear="ticketPhoto">Clear</button>
     </div>
     <div class="photo-preview-grid">
       ${files.slice(0, maxPhotos).map((file) => {
@@ -934,6 +932,24 @@ function renderTicketPhotoPreview(files = []) {
       }).join("")}
     </div>
   `;
+}
+
+function updateTechPhotoHint() {
+  const hint = document.querySelector("#techPhotoHint");
+  if (!hint) return;
+  const files = techPhotoFiles;
+  if (!files.length) {
+    hint.innerHTML = "";
+    hint.classList.remove("form-error");
+    return;
+  }
+  const maxPhotos = maxTicketPhotosForStorage();
+  const overLimit = files.length > maxPhotos;
+  const msg = overLimit
+    ? `Only ${maxPhotos} photo(s) allowed. Clear and re-select.`
+    : `${files.length} photo(s) selected.`;
+  hint.innerHTML = `${escapeHtml(msg)} <button type="button" class="photo-clear-inline-btn" data-photo-clear="techPhoto">Clear</button>`;
+  hint.classList.toggle("form-error", overLimit);
 }
 
 function readImageFile(file) {
@@ -2447,7 +2463,8 @@ async function createTicket(event) {
     });
     document.querySelector("#ticketNote").value = "";
     document.querySelector("#ticketArea").value = "";
-    document.querySelector("#ticketPhoto").value = "";
+    ticketPhotoFiles = [];
+    document.querySelectorAll('input[data-photo-for="ticketPhoto"]').forEach(el => { el.value = ""; });
     updateTicketPhotoHint();
     updateTicketPriorityPreview();
     const suggestion = created.suggestedTechnician?.name
@@ -2473,7 +2490,7 @@ async function createTechnicianTicket(event) {
   submitButton.textContent = "Creating...";
 
   try {
-    const photoUrls = await readPhotosFromInput(document.querySelector("#technicianTicketPhotos"));
+    const photoUrls = await readPhotosFromFiles(techPhotoFiles);
     const impact = document.querySelector("#technicianTicketImpact").value;
     const category = document.querySelector("#technicianTicketCategory").value;
     const note = document.querySelector("#technicianTicketNote").value.trim();
@@ -2495,7 +2512,8 @@ async function createTechnicianTicket(event) {
       })
     });
     document.querySelector("#technicianTicketNote").value = "";
-    document.querySelector("#technicianTicketPhotos").value = "";
+    techPhotoFiles = [];
+    document.querySelectorAll('input[data-photo-for="techPhoto"]').forEach(el => { el.value = ""; });
     showToast(`${created.id} created and assigned to you.`, "success");
     await loadState();
   } catch (error) {
@@ -5626,6 +5644,7 @@ function renderClosedHistory() {
 }
 
 function renderTechnician() {
+  techPhotoFiles = [];
   const activeId = currentUser?.technicianId || document.querySelector("#activeTechnician").value || state.technicians[0]?.id;
   const activeTech = technicianById(activeId);
   const dashboard = document.querySelector("#technicianDashboard");
@@ -5717,10 +5736,16 @@ function renderTechnician() {
           Issue details
           <input id="technicianTicketNote" required placeholder="Example: Valve leaking after service">
         </label>
-        <label class="photo-upload">
-          Issue photos
-          <input id="technicianTicketPhotos" type="file" accept="image/*" multiple>
-        </label>
+        <div class="photo-upload">
+          <span class="photo-upload-label">Issue photos</span>
+          <div class="photo-picker-btns">
+            <button type="button" class="photo-picker-btn" data-photo-for="techPhoto" data-photo-mode="camera">Camera</button>
+            <button type="button" class="photo-picker-btn" data-photo-for="techPhoto" data-photo-mode="gallery">Gallery</button>
+          </div>
+          <input class="visually-hidden" type="file" accept="image/*" capture="environment" data-photo-for="techPhoto" data-photo-mode="camera">
+          <input class="visually-hidden" type="file" accept="image/*" multiple data-photo-for="techPhoto" data-photo-mode="gallery">
+          <p id="techPhotoHint" class="form-hint" aria-live="polite"></p>
+        </div>
         <button type="submit" class="primary-button">Create Ticket</button>
         <p id="technicianTicketResult" class="form-hint" aria-live="polite"></p>
       </form>
@@ -6741,6 +6766,19 @@ function initCollapsiblePanels() {
 }
 
 document.addEventListener("click", (event) => {
+  const pickerBtn = event.target.closest(".photo-picker-btn");
+  if (pickerBtn) {
+    const { photoFor, photoMode } = pickerBtn.dataset;
+    document.querySelector(`input[data-photo-for="${photoFor}"][data-photo-mode="${photoMode}"]`)?.click();
+    return;
+  }
+  const clearBtn = event.target.closest("[data-photo-clear]");
+  if (clearBtn) {
+    const forKey = clearBtn.dataset.photoClear;
+    if (forKey === "ticketPhoto") { ticketPhotoFiles = []; updateTicketPhotoHint(); }
+    else if (forKey === "techPhoto") { techPhotoFiles = []; updateTechPhotoHint(); }
+    return;
+  }
   const heading = event.target.closest?.("#manager .panel > .panel-heading, #admin > .panel > .panel-heading");
   if (!heading) return;
   const interactive = event.target.closest("button, select, input, a, label");
@@ -6754,7 +6792,6 @@ document.getElementById("kpiDrillClose")?.addEventListener("click", closeKpiDril
 document.getElementById("kpiDrillOverlay")?.addEventListener("click", (e) => { if (e.target === e.currentTarget) closeKpiDrill(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeKpiDrill(); });
 bind("#ticketForm", "submit", createTicket);
-bind("#ticketPhoto", "change", updateTicketPhotoHint);
 bind("#ticketImpact", "change", updateTicketPriorityPreview);
 bind("#ticketCategory", "change", updateTicketPriorityPreview);
 bind("#ticketNote", "input", updateTicketPriorityPreview);
@@ -7282,6 +7319,20 @@ document.addEventListener("submit", async (event) => {
 });
 
 document.addEventListener("change", async (event) => {
+  if (event.target.matches("input[data-photo-mode]")) {
+    const newFiles = [...(event.target.files || [])];
+    const forKey = event.target.dataset.photoFor;
+    if (forKey === "ticketPhoto") {
+      ticketPhotoFiles = [...ticketPhotoFiles, ...newFiles];
+      updateTicketPhotoHint();
+    } else if (forKey === "techPhoto") {
+      techPhotoFiles = [...techPhotoFiles, ...newFiles];
+      updateTechPhotoHint();
+    }
+    event.target.value = "";
+    return;
+  }
+
   if (event.target.id === "backupReportFile") {
     const file = event.target.files?.[0];
     if (!file) return;

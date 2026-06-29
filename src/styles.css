@@ -2338,6 +2338,57 @@ input::placeholder {
   font-size: 12px;
 }
 
+.photo-upload-label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.photo-picker-btns {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.photo-picker-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px var(--space-3);
+  min-height: 44px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms;
+}
+
+.photo-picker-btn:hover {
+  background: var(--glass-hover, rgba(0, 0, 0, 0.05));
+  border-color: var(--border-strong);
+}
+
+.photo-picker-btn:active {
+  opacity: 0.75;
+}
+
+.photo-clear-inline-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: var(--space-2);
+  color: var(--brand);
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .inline-control {
   max-width: 320px;
   margin-bottom: 2px;
