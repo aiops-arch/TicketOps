@@ -2164,6 +2164,11 @@ body[data-dashboard-mode="detail"] #dashboardSummaryGrid { display: none; }
 .rstat--tasks { background: var(--success-soft); color: var(--success); }
 @media (max-width: 720px) { .report-row--viz { grid-template-columns: 1fr; } .report-row-stats { justify-content: flex-start; } }
 
+/* ── Technician: Scheduled Jobs + Repair Tickets side-by-side on big screens ── */
+.technician-job-columns { display: grid; gap: 16px; align-items: start; }
+@media (min-width: 1100px) { .technician-job-columns { grid-template-columns: 1fr 1fr; } }
+.technician-job-columns + .technician-evidence-section { margin-top: 16px; }
+
 /* ── Section panels + tables: gentle entrance ── */
 .analytics-panel, .report-table { animation: fadeUp .5s ease both; }
 .ops-chart svg, .ops-chart .donut { animation: popIn .55s cubic-bezier(.2, .8, .2, 1) both; }

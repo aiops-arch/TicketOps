@@ -5853,7 +5853,7 @@ function renderTechnician() {
   ` : "";
 
   ticketBoard.innerHTML = activeTech
-    ? scheduledJobs + ticketJobs + evidenceJobs
+    ? `<div class="technician-job-columns">${scheduledJobs}${ticketJobs}</div>${evidenceJobs}`
     : "";
 }
 
