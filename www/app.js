@@ -2085,42 +2085,86 @@ async function browserFallbackApi(path, options = {}) {
   throw new Error("This static fallback needs the Google Apps Script URL for that action.");
 }
 
+function setSyncHint(text) {
+  const el = document.querySelector("#syncStatus");
+  if (el) el.textContent = text;
+  const detail = document.querySelector("#appLoadingDetail");
+  if (detail && document.body.classList.contains("is-app-loading")) detail.textContent = text;
+}
+
+// Apps Script /exec 302-redirects to a googleusercontent "echo" URL to serve the
+// result. Under load / cold start that bounce can hand back Google's HTML wrapper
+// or the doGet() default instead of our JSON — a *transient* failure. Reads (GET)
+// are idempotent so we retry them through the race with a timeout; mutations are
+// NOT retried (a re-POST could duplicate the write) but still get a timeout.
 async function appsScriptApi(path, options = {}) {
   const method = String(options.method || "GET").toUpperCase();
   const headers = {
     ...(currentUser ? { "X-TicketOps-User": currentUser.id, "X-TicketOps-Role": currentUser.role } : {}),
     ...(options.headers || {})
   };
-  const response = await fetch(API_BASE, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({
-      path,
-      method,
-      headers,
-      body: options.body ? JSON.parse(options.body) : null
-    })
+  const requestBody = JSON.stringify({
+    path,
+    method,
+    headers,
+    body: options.body ? JSON.parse(options.body) : null
   });
-  const text = await response.text();
-  let payload;
-  try {
-    payload = JSON.parse(text);
-  } catch (error) {
-    console.error("Apps Script returned invalid JSON", {
-      path,
-      status: response.status,
-      preview: text.slice(0, 240)
-    });
-    throw new Error("Live Google backend returned invalid JSON. Use ?data=browser for local redesign testing, or check the Apps Script response.");
-  }
-  if (!response.ok || payload.ok === false) {
-    const backendError = payload.error || payload.body?.error || "Request failed";
-    if (/Expected ',' or ']' after array element in JSON/i.test(String(backendError))) {
-      throw new Error("Live Google backend data is corrupted in the Sheet snapshot. Local test data still works with ?data=browser.");
+
+  const isRead = method === "GET";
+  const maxAttempts = isRead ? 4 : 1;
+  const timeoutMs = 25000;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (attempt > 1) setSyncHint("Waking up the server… (first request can take ~20s)");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let text = "";
+    let httpOk = false;
+    try {
+      const response = await fetch(API_BASE, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: requestBody,
+        redirect: "follow",
+        signal: controller.signal
+      });
+      httpOk = response.ok;
+      text = await response.text();
+    } catch (error) {
+      clearTimeout(timer);
+      lastError = error.name === "AbortError"
+        ? new Error("The live backend took too long to respond. It may be waking up — please try again.")
+        : error;
+      if (isRead && attempt < maxAttempts) { await new Promise((r) => setTimeout(r, 600 * attempt)); continue; }
+      throw lastError;
     }
-    throw new Error(backendError);
+    clearTimeout(timer);
+
+    // Detect the redirect-race responses: Google's HTML wrapper, or the doGet() default.
+    const head = text.slice(0, 200).toLowerCase();
+    const looksLikeHtml = head.includes("<!doctype html") || head.includes("<html");
+    let payload = null;
+    if (!looksLikeHtml) { try { payload = JSON.parse(text); } catch (e) { payload = null; } }
+    const isDoGetSentinel = payload && payload.body && payload.body.name === "TicketOps Google Sheets API" && path !== "/api/health";
+
+    if (looksLikeHtml || payload === null || isDoGetSentinel) {
+      lastError = new Error("Live Google backend returned a transient redirect page.");
+      if (isRead && attempt < maxAttempts) { await new Promise((r) => setTimeout(r, 600 * attempt)); continue; }
+      console.error("Apps Script returned non-JSON", { path, attempt, preview: text.slice(0, 240) });
+      throw new Error("Live Google backend returned invalid JSON. Use ?data=browser for local redesign testing, or check the Apps Script response.");
+    }
+
+    if (!httpOk || payload.ok === false) {
+      const backendError = payload.error || payload.body?.error || "Request failed";
+      if (/Expected ',' or ']' after array element in JSON/i.test(String(backendError))) {
+        throw new Error("Live Google backend data is corrupted in the Sheet snapshot. Local test data still works with ?data=browser.");
+      }
+      throw new Error(backendError);
+    }
+    return payload.body;
   }
-  return payload.body;
+  throw lastError || new Error("Request failed");
 }
 
 function bootstrapCacheKey() {
@@ -2409,6 +2453,10 @@ async function loadState({ silent = true } = {}) {
   } else if (syncEl) {
     syncEl.textContent = "Syncing...";
   }
+  // On silent reloads (after a save, or the background auto-refresh) keep the
+  // user where they were — don't jump scroll to top or steal caret focus.
+  const scrollY = silent ? window.scrollY : null;
+  const focusToken = silent ? captureActiveField() : null;
   try {
     state = normalizeBootstrapState(await fetchBootstrapState());
     rebuildStateIndex();
@@ -2422,6 +2470,8 @@ async function loadState({ silent = true } = {}) {
     renderSelects();
     render();
     updateLiveIntel();
+    if (scrollY != null) window.scrollTo(0, scrollY);
+    restoreActiveField(focusToken);
   } finally {
     if (!silent) setAppLoading(false);
   }
@@ -6838,23 +6888,61 @@ bind("#activeTechnician", "change", renderTechnician);
 document.querySelectorAll("[data-master-tab]").forEach((button) => {
   button.addEventListener("click", () => switchMasterTab(button.dataset.masterTab));
 });
+// --- Focus/scroll preservation across re-renders ---------------------------
+// Views re-render by replacing innerHTML, which destroys the live <input> the
+// user is typing in (focus + caret lost → "re-click per letter") and resets
+// scroll ("whole page refresh" feeling). These helpers capture the caret/scroll
+// before a re-render and restore them after.
+function focusFieldSignature(el) {
+  if (!el || (el.tagName !== "INPUT" && el.tagName !== "TEXTAREA" && el.tagName !== "SELECT")) return null;
+  if (el.id) return "#" + (window.CSS && CSS.escape ? CSS.escape(el.id) : el.id);
+  for (const attr of ["data-master-search", "data-history-search", "data-admin-queue-search"]) {
+    if (el.hasAttribute(attr)) {
+      const val = el.getAttribute(attr);
+      return val ? `[${attr}="${val}"]` : `[${attr}]`;
+    }
+  }
+  return null;
+}
+function captureActiveField() {
+  const el = document.activeElement;
+  const signature = focusFieldSignature(el);
+  if (!signature) return null;
+  let caret = null;
+  try { caret = el.selectionStart; } catch (e) {}
+  return { signature, caret };
+}
+function restoreActiveField(token) {
+  if (!token) return;
+  const next = document.querySelector(token.signature);
+  if (next) {
+    next.focus();
+    if (token.caret != null) { try { next.setSelectionRange(token.caret, token.caret); } catch (e) {} }
+  }
+}
+function preserveActiveFieldFocus(renderFn) {
+  const token = captureActiveField();
+  renderFn();
+  restoreActiveField(token);
+}
+
 document.addEventListener("input", (event) => {
   const search = event.target.closest?.("[data-master-search]");
   if (!search) return;
   masterSearchTerms[search.dataset.masterSearch] = search.value;
-  renderMasters();
+  preserveActiveFieldFocus(renderMasters);
 });
 document.addEventListener("input", (event) => {
   const adminSearch = event.target.closest?.("[data-admin-queue-search]");
   if (adminSearch) {
     adminQueueSearch = adminSearch.value;
-    renderAdmin();
+    preserveActiveFieldFocus(renderAdmin);
     return;
   }
   const archiveSearch = event.target.closest?.("[data-history-search]");
   if (archiveSearch) {
     historySearch = archiveSearch.value;
-    renderClosedHistory();
+    preserveActiveFieldFocus(renderClosedHistory);
   }
 });
 bind("#logoutButton", "click", () => {
