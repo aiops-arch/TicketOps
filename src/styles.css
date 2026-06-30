@@ -899,15 +899,19 @@ body.ops-portal:not(.has-session) .nav-backdrop { display: none; }
 /* KPI grid */
 .dashboard-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 152px), 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+@media (min-width: 768px) {
+  /* exactly 4 per row → the 8 KPI tiles form two clean rows */
+  .dashboard-kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 }
 .dashboard-kpi {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  min-height: 86px;
-  padding: 13px 14px;
+  gap: 6px;
+  min-height: 108px;
+  padding: 16px 18px;
   border-radius: var(--radius-md);
   background: var(--panel);
   border: 1px solid var(--panel-border);
@@ -920,7 +924,7 @@ body.ops-portal:not(.has-session) .nav-backdrop { display: none; }
 .dashboard-kpi-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .dashboard-kpi-head span { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint); }
 .dashboard-kpi-head b { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: var(--radius-pill); background: var(--kpi-soft, var(--accent-soft)); color: var(--kpi-tone, var(--accent)); }
-.dashboard-kpi strong { font-family: var(--font-head); font-size: clamp(20px, 3.5vw, 30px); line-height: 1; letter-spacing: -0.02em; color: var(--ink); }
+.dashboard-kpi strong { font-family: var(--font-head); font-size: clamp(24px, 3.5vw, 34px); line-height: 1; letter-spacing: -0.02em; color: var(--ink); }
 .dashboard-kpi small { font-size: 11.5px; color: var(--ink-faint); }
 .dashboard-kpi-meter { display: block; height: 5px; border-radius: 999px; background: var(--bg-sunken); overflow: hidden; margin-top: auto; }
 .dashboard-kpi-meter em { display: block; height: 100%; border-radius: inherit; background: var(--kpi-tone, var(--accent)); }
@@ -957,12 +961,13 @@ body.ops-portal:not(.has-session) .nav-backdrop { display: none; }
   -webkit-mask: radial-gradient(circle 19px at 50% 50%, transparent 98%, #000 100%);
   mask: radial-gradient(circle 19px at 50% 50%, transparent 98%, #000 100%);
 }
-.ops-chart > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.ops-chart > div span { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint); }
-.ops-chart > div strong { font-family: var(--font-head); font-size: 22px; }
-.ops-chart > div p { font-size: 11.5px; color: var(--ink-faint); }
+.ops-chart:not(.trend-card) > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ops-chart:not(.trend-card) > div span { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint); }
+.ops-chart:not(.trend-card) > div strong { font-family: var(--font-head); font-size: 22px; }
+.ops-chart:not(.trend-card) > div p { font-size: 11.5px; color: var(--ink-faint); }
 
-.trend-card { flex-direction: column; align-items: stretch; gap: 10px; }
+.trend-card { grid-column: 1 / -1; flex-direction: column; align-items: stretch; gap: 10px; }
+.trend-card .dashboard-trend { min-height: 88px; }
 .trend-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .trend-head span { font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: var(--ink-faint); }
 .trend-legend { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--ink-faint); }
