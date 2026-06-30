@@ -3684,11 +3684,19 @@ function printFullReport() {
   html{font-size:13px;}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:#F5F2EC;color:#1A1A1A;}
   .no-print{}
+  @page{size:A4;margin:11mm 9mm;}
   @media print{
-    body{background:#fff;font-size:11px;}
+    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+    html,body{background:#fff;font-size:10.5px;}
     .no-print{display:none!important;}
+    .body{max-width:none;margin:0;padding:8px 0 0;}
+    .masthead{padding:18px 24px 16px;}
     .page-break{page-break-before:always;}
-    .card{border:1px solid #DDD!important;box-shadow:none!important;}
+    .card,.kpi,table,.two-col,.three-col,.mo-grid>div,.footer{break-inside:avoid;page-break-inside:avoid;}
+    tr,.p-row,.leg-item{break-inside:avoid;page-break-inside:avoid;}
+    thead{display:table-header-group;}
+    .sec-lbl{break-after:avoid;page-break-after:avoid;}
+    h1,h3{break-after:avoid;}
   }
   .masthead{background:#1C2B3A;color:#fff;padding:28px 36px 24px;}
   .masthead h1{font-family:Georgia,"Times New Roman",serif;font-size:24px;font-weight:400;color:#fff;margin-bottom:4px;}
@@ -3866,7 +3874,14 @@ function printOnePager() {
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
   html{font-size:13px;}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:#fff;color:#1A1A1A;}
-  @media print{.no-print{display:none!important;}body{font-size:11px;}}
+  @page{size:A4;margin:9mm;}
+  @media print{
+    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+    .no-print{display:none!important;}
+    body{font-size:10.5px;}
+    .body{padding:10px 0 0;}
+    .kpi,.tech-row,.main-grid>div,.footer{break-inside:avoid;page-break-inside:avoid;}
+  }
   .hd{background:#1C2B3A;color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:flex-end;}
   .hd-title{font-family:Georgia,serif;font-size:18px;font-weight:400;color:#fff;}
   .hd-title em{font-style:normal;color:#C8A45A;}
