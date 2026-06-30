@@ -2243,6 +2243,18 @@ body[data-dashboard-mode="detail"] #dashboardSummaryGrid { display: none; }
   .dashboard-grid .metric { animation: none; }
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   30 — PREMIUM MICRO-INTERACTIONS  (keyboard focus, toasts)
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Crisp keyboard-focus ring (only on keyboard nav, not mouse clicks) */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Toasts slide up into view */
+.toast-container > * { animation: toastIn .32s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .toast-container > * { animation: none; } }
+
 /* 27 — FINAL UTILITY OVERRIDES  (must stay last so equal-specificity ties win)  */
 /* Doubled class = specificity (0,2,0): wins over single-class display rules and
    element-descendant rules so `.is-hidden` reliably hides anything app.js toggles. */

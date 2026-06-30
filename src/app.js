@@ -6671,6 +6671,55 @@ function renderActiveView(viewName) {
   }
 }
 
+// --- Premium entrance: count-up numbers + donut sweep when a page is opened ---
+function prefersReducedMotion() {
+  return Boolean(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+}
+function animateCountUp(el) {
+  const raw = el.textContent.trim();
+  if (raw.includes("/")) return;                                  // skip fractions (2/3, 0/16)
+  const m = raw.match(/^([^\d-]*)(-?[\d,]+(?:\.\d+)?)([^\d%]*%?)$/);
+  if (!m) return;                                                 // non-numeric (Stable, No price, clock)
+  const prefix = m[1], suffix = m[3], numText = m[2];
+  const target = parseFloat(numText.replace(/,/g, ""));
+  if (!isFinite(target) || target === 0) return;
+  const isFloat = numText.includes(".");
+  const grouped = numText.includes(",");
+  const fmt = (n) => {
+    let v = isFloat ? n.toFixed(1) : String(Math.round(n));
+    if (grouped) v = Number(v).toLocaleString("en-IN");
+    return prefix + v + suffix;
+  };
+  const dur = 700, t0 = performance.now();
+  el.textContent = fmt(0);
+  (function step(now) {
+    const t = Math.min(1, (now - t0) / dur);
+    el.textContent = fmt(target * (1 - Math.pow(1 - t, 3)));      // easeOutCubic
+    if (t < 1) requestAnimationFrame(step);
+    else el.textContent = fmt(target);
+  })(t0);
+}
+function animateDonut(ring) {
+  const target = parseFloat(ring.style.getPropertyValue("--value")) || 0;
+  if (target <= 0) return;
+  const dur = 850, t0 = performance.now();
+  ring.style.setProperty("--value", "0");
+  (function step(now) {
+    const t = Math.min(1, (now - t0) / dur);
+    ring.style.setProperty("--value", (target * (1 - Math.pow(1 - t, 3))).toFixed(2));
+    if (t < 1) requestAnimationFrame(step);
+    else ring.style.setProperty("--value", String(target));
+  })(t0);
+}
+function animateViewEntrance(viewName) {
+  if (prefersReducedMotion()) return;
+  const view = document.getElementById(viewName);
+  if (!view) return;
+  view.querySelectorAll(".dashboard-kpi strong, .dashboard-grid .metric strong, .report-card > div > strong, .hero-metrics strong")
+    .forEach(animateCountUp);
+  view.querySelectorAll(".chart-ring").forEach(animateDonut);
+}
+
 function switchView(viewName) {
   const nextView = canOpenView(viewName) ? viewName : allowedViews()[0];
   if (!nextView) return;
@@ -6690,6 +6739,7 @@ function switchView(viewName) {
   renderActiveView(nextView);
   renderUtilityView(nextView);
   requestDeferredViewData(nextView);
+  requestAnimationFrame(() => animateViewEntrance(nextView));
   closeMobileNav();
   requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0 }));
 
