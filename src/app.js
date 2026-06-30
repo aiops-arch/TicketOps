@@ -41,7 +41,7 @@ const THEME_LABELS = { light: "Default", dark: "Dark", command: "Command", saas:
 const THEME_NEXT = { light: "dark", dark: "command", command: "saas", saas: "warm", warm: "light" };
 const DASHBOARD_MODE_STORAGE_KEY = "ticketops-dashboard-mode";
 const LAST_ACTIVITY_STORAGE_KEY = "ticketops-last-activity";
-const BOOTSTRAP_CACHE_KEY = "ticketops-bootstrap-cache-v4";
+const BOOTSTRAP_CACHE_KEY = "ticketops-bootstrap-cache-v5";
 const BROWSER_DB_STORAGE_KEY = "ticketops-browser-db-v3";
 const BOOTSTRAP_CACHE_TTL_MS = 10 * 60 * 1000;
 const APPS_SCRIPT_BOOTSTRAP_CACHE_TTL_MS = 60 * 1000;
@@ -2175,9 +2175,12 @@ async function fetchBootstrapState({ preferCache = true } = {}) {
         method: "GET",
         headers: cached?.etag ? { "If-None-Match": cached.etag } : {}
       }));
-      if (!hasOperationalData(nextState) && cached?.state && hasOperationalData(cached.state)) {
-        showToast("Live data returned empty. Showing last synced data while the backend catches up.", "warning", 6000);
-        return cached.state;
+      if (!hasOperationalData(nextState)) {
+        if (cached?.state && hasOperationalData(cached.state)) {
+          showToast("Live data returned empty. Showing last synced data while the backend catches up.", "warning", 6000);
+          return cached.state;
+        }
+        return nextState;
       }
       writeBootstrapCache(nextState, cached?.etag || "");
       return nextState;
@@ -2399,7 +2402,7 @@ function requestDeferredViewData(viewName = activeRouteView()) {
   }
 }
 
-async function loadState({ silent = false } = {}) {
+async function loadState({ silent = true } = {}) {
   if (!currentUser) return;
   const syncEl = document.querySelector("#syncStatus");
   if (!silent) {
