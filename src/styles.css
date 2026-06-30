@@ -2178,26 +2178,31 @@ body[data-dashboard-mode="detail"] #dashboardSummaryGrid { display: none; }
     gap: 16px;
     align-items: start;
   }
-  .work-col, .technician-job-columns > section {
+  .work-col, .technician-job-columns > section, .scheduler-layout > div {
     display: flex;
     flex-direction: column;
     gap: 16px;
     min-height: 60px;
-    max-height: calc(100vh - 40px);
+    max-height: calc(100vh - 32px);
     overflow-y: auto;
-    overscroll-behavior: contain;
+    /* NO overscroll-behavior: contain — so reaching a column's edge keeps
+       scrolling the page ("moves along with the box") instead of feeling stuck. */
     padding-right: 6px;
     scrollbar-width: thin;
     scrollbar-color: var(--panel-border) transparent;
   }
   .work-col::-webkit-scrollbar,
-  .technician-job-columns > section::-webkit-scrollbar { width: 8px; }
+  .technician-job-columns > section::-webkit-scrollbar,
+  .scheduler-layout > div::-webkit-scrollbar { width: 8px; }
   .work-col::-webkit-scrollbar-thumb,
-  .technician-job-columns > section::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 8px; }
+  .technician-job-columns > section::-webkit-scrollbar-thumb,
+  .scheduler-layout > div::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 8px; }
   .work-col::-webkit-scrollbar-thumb:hover,
-  .technician-job-columns > section::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
+  .technician-job-columns > section::-webkit-scrollbar-thumb:hover,
+  .scheduler-layout > div::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
   .work-col::-webkit-scrollbar-track,
-  .technician-job-columns > section::-webkit-scrollbar-track { background: transparent; }
+  .technician-job-columns > section::-webkit-scrollbar-track,
+  .scheduler-layout > div::-webkit-scrollbar-track { background: transparent; }
 }
 
 /* ── Section panels + tables: gentle entrance ── */

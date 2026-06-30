@@ -1,4 +1,4 @@
-const CACHE_NAME = "ticketops-v41-live-data-guard";
+const CACHE_NAME = "ticketops-v42-2col-scroll";
 const APP_SHELL = [
   "./",
   "./index.html",
