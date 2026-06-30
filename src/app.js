@@ -6876,17 +6876,12 @@ function togglePanelCollapse(panel) {
 }
 
 function initManagerSideRail() {
-  // Group Create Ticket + Scheduled Work into one grid item so the Review Gate
-  // never inflates their rows (grid distributes a spanning item's height across
-  // all spanned rows, which opened a huge gap under the intake panel).
-  const view = document.querySelector("#manager");
-  const intake = view?.querySelector(".intake-panel");
-  const scheduled = view?.querySelector(".manager-scheduled-panel");
-  if (!view || !intake || !scheduled || view.querySelector(".manager-side-rail")) return;
-  const rail = document.createElement("div");
-  rail.className = "manager-side-rail";
-  intake.before(rail);
-  rail.append(intake, scheduled);
+  // Disabled: Manager Desk now uses the 2-column .work-columns layout defined in
+  // index.html (Create Ticket full-width on top, then Manager Verification |
+  // Technician Jobs as two independently scrolling columns). The old side-rail
+  // grouping moved the scheduled panel out of its column; the grid-gap problem it
+  // originally worked around no longer exists now that views are display:block.
+  return;
 }
 
 function initCollapsiblePanels() {

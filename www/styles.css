@@ -2164,10 +2164,41 @@ body[data-dashboard-mode="detail"] #dashboardSummaryGrid { display: none; }
 .rstat--tasks { background: var(--success-soft); color: var(--success); }
 @media (max-width: 720px) { .report-row--viz { grid-template-columns: 1fr; } .report-row-stats { justify-content: flex-start; } }
 
-/* ── Technician: Scheduled Jobs + Repair Tickets side-by-side on big screens ── */
-.technician-job-columns { display: grid; gap: 16px; align-items: start; }
-@media (min-width: 1100px) { .technician-job-columns { grid-template-columns: 1fr 1fr; } }
+/* ── 2-column work layouts with independent per-column scroll ──
+   Manager Desk, Admin Control (.work-columns / .work-col) and
+   Technician Work (.technician-job-columns > section). Below 1024px they
+   stack into a single normal-flow column. */
+.work-columns, .technician-job-columns { display: flex; flex-direction: column; gap: 16px; }
 .technician-job-columns + .technician-evidence-section { margin-top: 16px; }
+
+@media (min-width: 1024px) {
+  .work-columns, .technician-job-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  .work-col, .technician-job-columns > section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 60px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--panel-border) transparent;
+  }
+  .work-col::-webkit-scrollbar,
+  .technician-job-columns > section::-webkit-scrollbar { width: 8px; }
+  .work-col::-webkit-scrollbar-thumb,
+  .technician-job-columns > section::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 8px; }
+  .work-col::-webkit-scrollbar-thumb:hover,
+  .technician-job-columns > section::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
+  .work-col::-webkit-scrollbar-track,
+  .technician-job-columns > section::-webkit-scrollbar-track { background: transparent; }
+}
 
 /* ── Section panels + tables: gentle entrance ── */
 .analytics-panel, .report-table { animation: fadeUp .5s ease both; }

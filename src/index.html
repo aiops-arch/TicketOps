@@ -328,26 +328,31 @@
           <p id="ticketCreateResult" class="form-hint" aria-live="polite"></p>
         </div>
 
-        <div class="panel admin-access-panel">
-          <div class="panel-heading">
-            <div>
-              <span class="section-kicker">Review Gate</span>
-              <h2>Manager Verification</h2>
+        <div class="work-columns">
+          <div class="work-col">
+            <div class="panel admin-access-panel">
+              <div class="panel-heading">
+                <div>
+                  <span class="section-kicker">Review Gate</span>
+                  <h2>Manager Verification</h2>
+                </div>
+                <span class="heading-chip">Close or reopen</span>
+              </div>
+              <div id="managerTickets" class="card-list"></div>
             </div>
-            <span class="heading-chip">Close or reopen</span>
           </div>
-          <div id="managerTickets" class="card-list"></div>
-        </div>
-
-        <div class="panel manager-scheduled-panel">
-          <div class="panel-heading">
-            <div>
-              <span class="section-kicker">Scheduled Work</span>
-              <h2>Technician Jobs</h2>
+          <div class="work-col">
+            <div class="panel manager-scheduled-panel">
+              <div class="panel-heading">
+                <div>
+                  <span class="section-kicker">Scheduled Work</span>
+                  <h2>Technician Jobs</h2>
+                </div>
+                <span class="heading-chip">Outlet checklist</span>
+              </div>
+              <div id="managerScheduledJobs" class="card-list"></div>
             </div>
-            <span class="heading-chip">Outlet checklist</span>
           </div>
-          <div id="managerScheduledJobs" class="card-list"></div>
         </div>
       </section>
 
@@ -391,48 +396,53 @@
           <div id="adminPasswordBoard" class="password-reset-panel"></div>
         </div>
 
-        <div class="panel admin-attendance-panel">
-          <div class="panel-heading">
-            <div>
-              <span class="section-kicker">People Signal</span>
-              <h2>Technician Attendance</h2>
+        <div class="work-columns">
+          <div class="work-col">
+            <div class="panel admin-queue-panel">
+              <div class="panel-heading">
+                <div>
+                  <span class="section-kicker">Control Queue</span>
+                  <h2>Admin Ticket Queue</h2>
+                </div>
+                <span class="heading-chip">Suggested technician</span>
+              </div>
+              <div id="adminTickets" class="card-list"></div>
             </div>
-            <span class="heading-chip">Dispatch-aware</span>
           </div>
-          <div id="attendanceBoard" class="tech-grid"></div>
-        </div>
+          <div class="work-col">
+            <div class="panel admin-attendance-panel">
+              <div class="panel-heading">
+                <div>
+                  <span class="section-kicker">People Signal</span>
+                  <h2>Technician Attendance</h2>
+                </div>
+                <span class="heading-chip">Dispatch-aware</span>
+              </div>
+              <div id="attendanceBoard" class="tech-grid"></div>
+            </div>
 
-        <div class="panel admin-field-panel">
-          <div class="panel-heading">
-            <div>
-              <span class="section-kicker">Field Visibility</span>
-              <h2>Technician Dashboards</h2>
+            <div class="panel admin-field-panel">
+              <div class="panel-heading">
+                <div>
+                  <span class="section-kicker">Field Visibility</span>
+                  <h2>Technician Dashboards</h2>
+                </div>
+                <span class="heading-chip">Today tasks + active jobs</span>
+              </div>
+              <div id="adminTechnicianDashboard" class="admin-tech-dashboard"></div>
             </div>
-            <span class="heading-chip">Today tasks + active jobs</span>
-          </div>
-          <div id="adminTechnicianDashboard" class="admin-tech-dashboard"></div>
-        </div>
 
-        <div class="panel admin-scheduled-panel">
-          <div class="panel-heading">
-            <div>
-              <span class="section-kicker">Scheduled Work</span>
-              <h2>Technician Jobs</h2>
+            <div class="panel admin-scheduled-panel">
+              <div class="panel-heading">
+                <div>
+                  <span class="section-kicker">Scheduled Work</span>
+                  <h2>Technician Jobs</h2>
+                </div>
+                <span class="heading-chip">All outlets</span>
+              </div>
+              <div id="adminScheduledJobs" class="card-list"></div>
             </div>
-            <span class="heading-chip">All outlets</span>
           </div>
-          <div id="adminScheduledJobs" class="card-list"></div>
-        </div>
-
-        <div class="panel admin-queue-panel">
-          <div class="panel-heading">
-            <div>
-              <span class="section-kicker">Control Queue</span>
-              <h2>Admin Ticket Queue</h2>
-            </div>
-            <span class="heading-chip">Suggested technician</span>
-          </div>
-          <div id="adminTickets" class="card-list"></div>
         </div>
       </section>
 
