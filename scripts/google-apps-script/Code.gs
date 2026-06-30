@@ -102,6 +102,7 @@ function handleRequest(envelope) {
   if (method === "GET" && path === "/api/backups/drive/status") return requireAdmin(user, () => ok(driveBackupStatus()));
   if (method === "POST" && path === "/api/backups/drive/run") return requireAdmin(user, () => ok(createDriveBackup("manual")));
   if (method === "POST" && path === "/api/backups/drive/install") return requireAdmin(user, () => ok(installDriveBackupTriggers()));
+  if (method === "POST" && path === "/api/backups/drive/restore") return requireAdmin(user, () => ok(restoreFromDriveBackup(body)));
   if (method === "GET" && path.startsWith("/api/reports/export/")) return requireAdmin(user, () => ok(exportCsv(db, segment(path, 3))));
   if (method === "GET" && path.startsWith("/api/backups/monthly/")) return requireAdmin(user, () => monthlyBackup(db, decodeURIComponent(segment(path, 3))));
   if (method === "POST" && path === "/api/backups/report") return requireAdmin(user, () => ok(backupReport(body)));
@@ -876,6 +877,23 @@ function cleanupOldDriveBackups(folder, now) {
     }
   }
   return { deleted, kept };
+}
+
+function restoreFromDriveBackup(body) {
+  var fileId = body && body.fileId;
+  if (!fileId) throw new Error("fileId is required");
+  var content = DriveApp.getFileById(fileId).getBlob().getDataAsString();
+  var payload = JSON.parse(content);
+  var db = (payload.type === "ticketops-full-drive-backup" && payload.db) ? payload.db : payload;
+  var result = importTicketOpsJson(db);
+  return {
+    ok: true,
+    fileId: fileId,
+    users: (db.users || []).length,
+    tickets: (db.tickets || []).length,
+    tasks: (db.tasks || []).length,
+    bytesWritten: result.rows
+  };
 }
 
 function driveBackupStatus() {
