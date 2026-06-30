@@ -799,9 +799,8 @@ function toggleDesktopNav() {
   updateMobileNav();
 }
 
-function setSidebarHoverOpen(open) {
-  window.clearTimeout(sidebarHoverTimer);
-  document.body.classList.remove("sidebar-hover-open");
+function setSidebarHoverOpen(_open) {
+  // Sidebar is fixed 220px — no hover expand behaviour.
 }
 
 function escapeHtml(value) {
