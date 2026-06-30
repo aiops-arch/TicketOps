@@ -2255,6 +2255,10 @@ async function handleLogin(event) {
   button.textContent = "Signing in...";
   errorBox.textContent = "";
 
+  const slowTimer = setTimeout(() => {
+    if (button.disabled) errorBox.textContent = "Still checking — Apps Script can take 10–15s on first call.";
+  }, 5000);
+
   try {
     await loginWithCredentials(
       document.querySelector("#loginUsername").value,
@@ -2263,6 +2267,7 @@ async function handleLogin(event) {
   } catch (error) {
     errorBox.textContent = error.message;
   } finally {
+    clearTimeout(slowTimer);
     button.disabled = false;
     button.textContent = "Enter Command Center";
   }
@@ -6886,6 +6891,8 @@ document.addEventListener("keydown", (event) => {
 });
 bind("#resetData", "click", async () => {
   if (currentUser?.role !== "admin") return;
+  const confirmed = await showConfirm("Reset all demo data? This cannot be undone.", "Reset Data", "primary-button modal-danger");
+  if (!confirmed) return;
   await api("/api/reset", { method: "POST" });
   await loadState();
 });
@@ -7019,6 +7026,8 @@ document.addEventListener("click", async (event) => {
     return;
   }
   if (menuAction === "reset" && currentUser?.role === "admin") {
+    const confirmed = await showConfirm("Reset all demo data? This cannot be undone.", "Reset Data", "primary-button modal-danger");
+    if (!confirmed) return;
     await api("/api/reset", { method: "POST" });
     await loadState();
     return;

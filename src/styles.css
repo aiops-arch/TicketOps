@@ -26600,4 +26600,18 @@ textarea:focus {
     transition: background 220ms var(--motion-smooth), box-shadow 220ms var(--motion-smooth) !important;
     will-change: auto !important;
   }
+
+  /* Nav tabs scroll internally so account-dock is never clipped on short viewports */
+  body.ops-portal.has-session .topbar .tabs {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  body.ops-portal.has-session .topbar .tabs::-webkit-scrollbar {
+    display: none;
+  }
+  body.ops-portal.has-session .topbar-actions {
+    flex-shrink: 0;
+  }
 }
