@@ -2302,7 +2302,7 @@ async function enterApp() {
       : roleHomeView();
   setAppLoading(true);
   try {
-    await loadState();
+    await loadState({ silent: false });
     document.querySelector("#appShell").classList.remove("is-hidden");
     switchView(document.body.dataset.view);
     markUserActivity();
@@ -2399,9 +2399,14 @@ function requestDeferredViewData(viewName = activeRouteView()) {
   }
 }
 
-async function loadState() {
+async function loadState({ silent = false } = {}) {
   if (!currentUser) return;
-  setAppLoading(true, "Reading live operations", "Loading tickets, technicians, outlets, schedules, and report totals.");
+  const syncEl = document.querySelector("#syncStatus");
+  if (!silent) {
+    setAppLoading(true, "Reading live operations", "Loading tickets, technicians, outlets, schedules, and report totals.");
+  } else if (syncEl) {
+    syncEl.textContent = "Syncing...";
+  }
   try {
     state = normalizeBootstrapState(await fetchBootstrapState());
     rebuildStateIndex();
@@ -2416,7 +2421,7 @@ async function loadState() {
     render();
     updateLiveIntel();
   } finally {
-    setAppLoading(false);
+    if (!silent) setAppLoading(false);
   }
 }
 
