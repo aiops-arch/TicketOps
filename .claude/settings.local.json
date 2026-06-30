@@ -72,7 +72,28 @@
       "Skill(artifact-design)",
       "Artifact",
       "Bash(awk -F: '{if \\($1 < 9437\\) print}')",
-      "Bash(awk -F: '{if \\($1 < 23016\\) print}')"
+      "Bash(awk -F: '{if \\($1 < 23016\\) print}')",
+      "mcp__plugin_vercel_vercel__list_teams",
+      "mcp__plugin_vercel_vercel__list_projects",
+      "mcp__plugin_vercel_vercel__list_deployments",
+      "mcp__plugin_vercel_vercel__get_deployment_build_logs",
+      "mcp__plugin_vercel_vercel__get_runtime_errors",
+      "Bash(git tag *)",
+      "Bash(python3 *)",
+      "Bash(grep *)",
+      "PowerShell(\\(Get-Content \"E:\\\\TicketOps\\\\src\\\\styles.css\" -Tail 10\\) -join \"`n\")",
+      "PowerShell(\\(Get-Content \"E:\\\\TicketOps\\\\src\\\\styles.css\"\\).Count)",
+      "PowerShell(\\(Get-Content \"E:\\\\TicketOps\\\\www\\\\styles.css\" -Tail 5\\) -join \"`n\")",
+      "Bash(git -C E:\\\\TicketOps log --oneline -5)",
+      "Bash(git -C E:\\\\TicketOps status --short)",
+      "WebFetch(domain:script.google.com)",
+      "WebFetch(domain:script.googleusercontent.com)",
+      "WebFetch(domain:ticketops-silk.vercel.app)",
+      "PowerShell(clasp login *)",
+      "PowerShell(clasp whoami *)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(node \"C:\\\\Users\\\\SPC1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\E--TicketOps\\\\294a1faf-9d5d-4a38-b2b2-49c615c6a15c\\\\scratchpad\\\\endpoint-verify.js\" 2>&1)",
+      "PowerShell(cd E:\\\\TicketOps; node scripts/build-web.js 2>&1; Write-Host \"styles.css in www:\"; \\(Get-Content \"E:\\\\TicketOps\\\\www\\\\styles.css\" | Measure-Object -Line\\).Lines)"
     ]
   }
 }
