@@ -6203,15 +6203,26 @@ function renderReports() {
 
 function renderReportTables() {
   const reports = state.reports || {};
-  const outletRows = (reports.byOutlet || []).map((outlet) => `
-    <article class="report-row">
+  const outletList = reports.byOutlet || [];
+  const maxOutletOpen = Math.max(...outletList.map((o) => Number(o.open ?? o.count ?? 0)), 1);
+  const outletRows = outletList.map((outlet) => {
+    const open = Number(outlet.open ?? outlet.count ?? 0);
+    const critical = Number(outlet.critical || 0);
+    const blocked = Number(outlet.blocked || 0);
+    const done = Number(outlet.completedTasks || 0);
+    const totalTasks = done + Number(outlet.pendingTasks || 0);
+    return `
+    <article class="report-row report-row--viz">
       <strong>${escapeHtml(outlet.outlet)}</strong>
-      <span>${escapeHtml(outlet.open ?? outlet.count ?? 0)} open</span>
-      <span>${escapeHtml(outlet.critical || 0)} critical</span>
-      <span>${escapeHtml(outlet.blocked || 0)} blocked</span>
-      <span>${escapeHtml(outlet.completedTasks || 0)}/${escapeHtml((outlet.completedTasks || 0) + (outlet.pendingTasks || 0))} tasks</span>
-    </article>
-  `).join("");
+      <div class="report-row-bar"><span style="width:${Math.round((open / maxOutletOpen) * 100)}%"></span></div>
+      <div class="report-row-stats">
+        <span class="rstat rstat--open">${open} open</span>
+        ${critical ? `<span class="rstat rstat--critical">${critical} critical</span>` : ""}
+        ${blocked ? `<span class="rstat rstat--blocked">${blocked} blocked</span>` : ""}
+        <span class="rstat rstat--tasks">${done}/${totalTasks} tasks</span>
+      </div>
+    </article>`;
+  }).join("");
 
   const techRows = (reports.technicianWorkload || []).map((tech) => `
     <article class="report-row">

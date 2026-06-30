@@ -2096,6 +2096,92 @@ body[data-dashboard-mode="detail"] #dashboardSummaryGrid { display: none; }
   .page-break { break-before: page; }
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   28 — COLOR & MOTION POLISH   (vivid charts · colorful cards · entrance motion)
+   ════════════════════════════════════════════════════════════════════════ */
+
+@keyframes growX { from { transform: scaleX(0); }  to { transform: scaleX(1); } }
+@keyframes growY { from { transform: scaleY(0); }  to { transform: scaleY(1); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes popIn  { from { opacity: 0; transform: translateY(6px) scale(.97); } to { opacity: 1; transform: none; } }
+
+/* ── Analytics bar charts: gradient fills that grow in ── */
+.bar-fill { transform-origin: left center; animation: growX .8s cubic-bezier(.2, .8, .2, 1) both; }
+.bar-fill--teal   { background: linear-gradient(90deg, #0f766e, #2dd4bf); }
+.bar-fill--orange { background: linear-gradient(90deg, #ea580c, #fb923c); }
+.bar-fill--purple { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+.bar-fill--red    { background: linear-gradient(90deg, #dc2626, #f87171); }
+.bar-fill--muted  { background: linear-gradient(90deg, #64748b, #cbd5e1); }
+.bar-row { border-radius: 8px; transition: background .15s ease; }
+.bar-row:hover { background: var(--bg-sunken); }
+.bar-value small { color: var(--success); font-weight: 700; }
+
+/* ── Activity spark bars: gradient + grow ── */
+.spark-bar { transform-origin: center bottom; animation: growY .7s cubic-bezier(.2, .8, .2, 1) both; background: linear-gradient(180deg, #2dd4bf, #0f766e); }
+.spark-col:hover .spark-bar { filter: brightness(1.08); }
+.spark-value { color: var(--accent); font-weight: 700; }
+
+/* ── 7D Flow bars + progress meters grow in ── */
+.trend-bars i { transform-origin: center bottom; animation: growY .6s cubic-bezier(.2, .8, .2, 1) both; }
+.trend-bars i.created { background: linear-gradient(180deg, #60a5fa, #2563eb); }
+.trend-bars i.closed  { background: linear-gradient(180deg, #34d399, #059669); }
+.dashboard-kpi-meter em { transform-origin: left center; animation: growX .9s cubic-bezier(.2, .8, .2, 1) both; }
+.tech-load-bar span { transform-origin: left center; animation: growX .8s ease both; }
+
+/* ── Colorful report metric cards (cycle tones, tinted, pop in) ── */
+.report-card { border-top: 3px solid var(--rc, var(--accent)); background: linear-gradient(180deg, color-mix(in srgb, var(--rc, var(--accent)) 8%, var(--panel)), var(--panel)); animation: popIn .45s cubic-bezier(.2, .8, .2, 1) both; transition: transform .16s ease, box-shadow .16s ease; }
+.report-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.report-card strong { color: var(--rc, var(--ink)); }
+.report-card-grid > .report-card:not(.alert-card):nth-child(6n + 1) { --rc: var(--info); }
+.report-card-grid > .report-card:not(.alert-card):nth-child(6n + 2) { --rc: var(--purple); }
+.report-card-grid > .report-card:not(.alert-card):nth-child(6n + 3) { --rc: var(--success); }
+.report-card-grid > .report-card:not(.alert-card):nth-child(6n + 4) { --rc: var(--accent); }
+.report-card-grid > .report-card:not(.alert-card):nth-child(6n + 5) { --rc: var(--warning); }
+.report-card-grid > .report-card:not(.alert-card):nth-child(6n + 6) { --rc: #0ea5e9; }
+.report-card.alert-card { --rc: var(--danger); }
+.report-card-grid > .report-card:nth-child(1) { animation-delay: .03s; }
+.report-card-grid > .report-card:nth-child(2) { animation-delay: .06s; }
+.report-card-grid > .report-card:nth-child(3) { animation-delay: .09s; }
+.report-card-grid > .report-card:nth-child(4) { animation-delay: .12s; }
+.report-card-grid > .report-card:nth-child(5) { animation-delay: .15s; }
+.report-card-grid > .report-card:nth-child(6) { animation-delay: .18s; }
+.report-card-grid > .report-card:nth-child(7) { animation-delay: .21s; }
+.report-card-grid > .report-card:nth-child(8) { animation-delay: .24s; }
+
+/* ── Report rows: subtle hover motion ── */
+.report-row { transition: transform .15s ease, box-shadow .15s ease, background .15s ease; }
+.report-row:hover { transform: translateX(3px); box-shadow: var(--shadow-xs); }
+
+/* ── Outlet-health rows: mini bar + colored stat chips ── */
+.report-row--viz { display: grid; grid-template-columns: minmax(110px, 1.1fr) minmax(90px, 1.7fr) auto; align-items: center; gap: 14px; }
+.report-row-bar { height: 8px; border-radius: 999px; background: var(--bg-sunken); overflow: hidden; }
+.report-row-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #0f766e, #2dd4bf); transform-origin: left center; animation: growX .8s cubic-bezier(.2, .8, .2, 1) both; }
+.report-row-stats { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.rstat { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.rstat--open { background: var(--info-soft); color: var(--info); }
+.rstat--critical { background: var(--danger-soft); color: var(--danger); }
+.rstat--blocked { background: var(--warning-soft); color: #b45309; }
+.rstat--tasks { background: var(--success-soft); color: var(--success); }
+@media (max-width: 720px) { .report-row--viz { grid-template-columns: 1fr; } .report-row-stats { justify-content: flex-start; } }
+
+/* ── Section panels + tables: gentle entrance ── */
+.analytics-panel, .report-table { animation: fadeUp .5s ease both; }
+.ops-chart svg, .ops-chart .donut { animation: popIn .55s cubic-bezier(.2, .8, .2, 1) both; }
+
+/* ── KPI + intel cards: entrance ── */
+.dashboard-kpi { animation: popIn .4s cubic-bezier(.2, .8, .2, 1) both; }
+.intel-card { animation: fadeUp .45s ease both; }
+
+/* ── Friendlier, colorful empty states ── */
+.empty, .empty.mini { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 5%, var(--panel)), var(--panel)); border: 1px dashed color-mix(in srgb, var(--accent) 32%, var(--panel-border)); color: var(--ink-soft); border-radius: var(--radius-md); }
+
+/* ── Respect reduced-motion preference (no !important needed; later source order wins) ── */
+@media (prefers-reduced-motion: reduce) {
+  .bar-fill, .spark-bar, .trend-bars i, .dashboard-kpi-meter em, .tech-load-bar span,
+  .report-card, .analytics-panel, .report-table, .ops-chart svg, .ops-chart .donut,
+  .dashboard-kpi, .intel-card { animation: none; }
+}
+
 /* 27 — FINAL UTILITY OVERRIDES  (must stay last so equal-specificity ties win)  */
 /* Doubled class = specificity (0,2,0): wins over single-class display rules and
    element-descendant rules so `.is-hidden` reliably hides anything app.js toggles. */
