@@ -2187,6 +2187,62 @@ body[data-dashboard-mode="detail"] #dashboardSummaryGrid { display: none; }
   .dashboard-kpi, .intel-card { animation: none; }
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   29 — ADVANCED & DYNAMIC PASS  (applies the polish to every view)
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Panels glide in on each render */
+.app-shell .panel { animation: fadeUp .42s ease both; }
+
+/* List & grid children pop in with a light stagger — the app feels alive */
+.card-list > *, .master-list > *, .rule-list > *, .tech-grid > *,
+.dispatch-grid > *, .admin-tech-dashboard > *, .technician-task-list > * {
+  animation: popIn .4s cubic-bezier(.2, .8, .2, 1) both;
+}
+.card-list > *:nth-child(2) { animation-delay: .04s; }
+.card-list > *:nth-child(3) { animation-delay: .08s; }
+.card-list > *:nth-child(4) { animation-delay: .12s; }
+.card-list > *:nth-child(5) { animation-delay: .16s; }
+.card-list > *:nth-child(n + 6) { animation-delay: .2s; }
+
+/* Colorful metric tiles (Admin + History stat rows) — match the report cards */
+.dashboard-grid .metric {
+  border-top: 3px solid var(--rc, var(--accent));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rc, var(--accent)) 7%, var(--panel)), var(--panel));
+  animation: popIn .4s cubic-bezier(.2, .8, .2, 1) both;
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.dashboard-grid .metric:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.dashboard-grid .metric strong { color: var(--rc, var(--ink)); }
+.dashboard-grid .metric:nth-child(4n + 1) { --rc: var(--info); }
+.dashboard-grid .metric:nth-child(4n + 2) { --rc: var(--purple); }
+.dashboard-grid .metric:nth-child(4n + 3) { --rc: var(--warning); }
+.dashboard-grid .metric:nth-child(4n + 4) { --rc: var(--success); }
+.dashboard-grid .metric.urgent { --rc: var(--danger); }
+
+/* Universal hover lift on cards & rows across every page */
+.ticket-card, .master-list > *:not(.master-list-summary), .tech-card, .dispatch-card,
+.card, .settings-card, .rule-list > * {
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.ticket-card:hover, .master-list > *:not(.master-list-summary):hover, .tech-card:hover,
+.dispatch-card:hover, .card:hover, .rule-list > *:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+
+/* Buttons, tabs & pills feel responsive */
+.primary-button, .small-button, .ghost-button, .photo-picker-btn,
+.master-tab, .analytics-period-btn, .mode-pill {
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease, background .15s ease, color .15s ease;
+}
+.primary-button:hover { filter: brightness(1.06); box-shadow: var(--shadow); }
+.primary-button:active, .small-button:active, .ghost-button:active { transform: translateY(1px); }
+.small-button:hover, .ghost-button:hover { background: var(--bg-sunken); }
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .panel, .card-list > *, .master-list > *, .rule-list > *, .tech-grid > *,
+  .dispatch-grid > *, .admin-tech-dashboard > *, .technician-task-list > *,
+  .dashboard-grid .metric { animation: none; }
+}
+
 /* 27 — FINAL UTILITY OVERRIDES  (must stay last so equal-specificity ties win)  */
 /* Doubled class = specificity (0,2,0): wins over single-class display rules and
    element-descendant rules so `.is-hidden` reliably hides anything app.js toggles. */
